@@ -74,6 +74,20 @@ textarea {
   color: #60a5fa;
 }
 
+.dev-progress-badge {
+  display: inline-flex;
+  align-items: center;
+  margin: 16px 0 0;
+  padding: 8px 10px;
+  border-radius: 999px;
+  background: rgba(250, 204, 21, 0.16);
+  border: 1px solid rgba(250, 204, 21, 0.32);
+  color: #fde68a;
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+}
+
 .nav {
   display: grid;
   gap: 8px;
