@@ -13,6 +13,7 @@ type FormState = {
   carrier: string;
   status: LineStatus;
   memo: string;
+  nextReviewDate: string;
 };
 
 type UndoState = {
@@ -25,6 +26,7 @@ const initialFormState: FormState = {
   carrier: '',
   status: '利用中',
   memo: '',
+  nextReviewDate: '',
 };
 
 function formatCreatedAt(value: string): string {
@@ -43,12 +45,30 @@ function formatCreatedAt(value: string): string {
   }).format(date);
 }
 
+function formatReviewDate(value: string): string {
+  if (!value) {
+    return '未設定';
+  }
+
+  const date = new Date(`${value}T00:00:00`);
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+
+  return new Intl.DateTimeFormat('ja-JP', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(date);
+}
+
 function toFormState(draft: LineDraft): FormState {
   return {
     lineName: draft.lineName,
     carrier: draft.carrier,
     status: draft.status,
     memo: draft.memo,
+    nextReviewDate: draft.nextReviewDate,
   };
 }
 
@@ -103,17 +123,18 @@ export function LinesPage(): JSX.Element {
     setEditingId(null);
   }
 
-  function validateForm(): { lineName: string; carrier: string; memo: string } | null {
+  function validateForm(): { lineName: string; carrier: string; memo: string; nextReviewDate: string } | null {
     const lineName = form.lineName.trim();
     const carrier = form.carrier.trim();
     const memo = form.memo.trim();
+    const nextReviewDate = form.nextReviewDate;
 
     if (!lineName || !carrier || !form.status) {
       setErrorMessage('回線名、キャリア、契約状態は必須です。');
       return null;
     }
 
-    return { lineName, carrier, memo };
+    return { lineName, carrier, memo, nextReviewDate };
   }
 
   function handleUndo(): void {
@@ -173,6 +194,7 @@ export function LinesPage(): JSX.Element {
               carrier: validated.carrier,
               status: form.status,
               memo: validated.memo,
+              nextReviewDate: validated.nextReviewDate,
             })
           : draft,
       );
@@ -190,6 +212,7 @@ export function LinesPage(): JSX.Element {
       carrier: validated.carrier,
       status: form.status,
       memo: validated.memo,
+      nextReviewDate: validated.nextReviewDate,
     });
 
     const nextDrafts = [nextDraft, ...drafts];
@@ -277,6 +300,15 @@ export function LinesPage(): JSX.Element {
               </select>
             </label>
 
+            <label className="field">
+              <span>次回確認日</span>
+              <input
+                type="date"
+                value={form.nextReviewDate}
+                onChange={(event) => updateField('nextReviewDate', event.target.value)}
+              />
+            </label>
+
             <label className="field field--full">
               <span>メモ</span>
               <textarea
@@ -333,6 +365,7 @@ export function LinesPage(): JSX.Element {
                     <span className={draft.status === '利用中' ? 'badge badge--ok' : 'badge'}>{draft.status}</span>
                   </div>
                   <span>{draft.carrier}</span>
+                  <span>次回確認日: {formatReviewDate(draft.nextReviewDate)}</span>
                   {draft.memo ? <span>{draft.memo}</span> : null}
                   <span className="muted">保存日時: {formatCreatedAt(draft.createdAt)}</span>
                   <div className="button-row button-row--tight">

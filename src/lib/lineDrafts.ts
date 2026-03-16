@@ -8,6 +8,7 @@ export type LineDraft = {
   carrier: string;
   status: LineStatus;
   memo: string;
+  nextReviewDate: string;
   createdAt: string;
 };
 
@@ -31,6 +32,7 @@ function toLineDraft(value: unknown): LineDraft | null {
   const carrier = typeof value.carrier === 'string' ? value.carrier : null;
   const status = typeof value.status === 'string' && isLineStatus(value.status) ? value.status : null;
   const memo = typeof value.memo === 'string' ? value.memo : '';
+  const nextReviewDate = typeof value.nextReviewDate === 'string' ? value.nextReviewDate : '';
   const createdAt = typeof value.createdAt === 'string' ? value.createdAt : null;
 
   if (!id || !lineName || !carrier || !status || !createdAt) {
@@ -43,6 +45,7 @@ function toLineDraft(value: unknown): LineDraft | null {
     carrier,
     status,
     memo,
+    nextReviewDate,
     createdAt,
   };
 }
@@ -97,6 +100,7 @@ export function createLineDraft(input: {
   carrier: string;
   status: LineStatus;
   memo: string;
+  nextReviewDate: string;
 }): LineDraft {
   return {
     id: globalThis.crypto?.randomUUID?.() ?? `${Date.now()}`,
@@ -104,13 +108,14 @@ export function createLineDraft(input: {
     carrier: input.carrier,
     status: input.status,
     memo: input.memo,
+    nextReviewDate: input.nextReviewDate,
     createdAt: new Date().toISOString(),
   };
 }
 
 export function updateLineDraft(
   draft: LineDraft,
-  input: { lineName: string; carrier: string; status: LineStatus; memo: string },
+  input: { lineName: string; carrier: string; status: LineStatus; memo: string; nextReviewDate: string },
 ): LineDraft {
   return {
     ...draft,
@@ -118,5 +123,6 @@ export function updateLineDraft(
     carrier: input.carrier,
     status: input.status,
     memo: input.memo,
+    nextReviewDate: input.nextReviewDate,
   };
 }
