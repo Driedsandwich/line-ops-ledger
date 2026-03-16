@@ -47,41 +47,50 @@ function toLineDraft(value: unknown): LineDraft | null {
   };
 }
 
-export function loadLineDrafts(): LineDraft[] {
-  if (typeof window === 'undefined') {
-    return [];
-  }
+export interface LineDraftStore {
+  load(): LineDraft[];
+  save(drafts: LineDraft[]): void;
+}
 
-  try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-
-    if (!raw) {
+class LocalStorageLineDraftStore implements LineDraftStore {
+  load(): LineDraft[] {
+    if (typeof window === 'undefined') {
       return [];
     }
 
-    const parsed: unknown = JSON.parse(raw);
+    try {
+      const raw = window.localStorage.getItem(STORAGE_KEY);
 
-    if (!Array.isArray(parsed)) {
+      if (!raw) {
+        return [];
+      }
+
+      const parsed: unknown = JSON.parse(raw);
+
+      if (!Array.isArray(parsed)) {
+        return [];
+      }
+
+      return parsed
+        .map(toLineDraft)
+        .filter((draft): draft is LineDraft => draft !== null)
+        .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    } catch (error) {
+      console.error('failed to load line drafts', error);
       return [];
     }
+  }
 
-    return parsed
-      .map(toLineDraft)
-      .filter((draft): draft is LineDraft => draft !== null)
-      .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-  } catch (error) {
-    console.error('failed to load line drafts', error);
-    return [];
+  save(drafts: LineDraft[]): void {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(drafts));
   }
 }
 
-export function saveLineDrafts(drafts: LineDraft[]): void {
-  if (typeof window === 'undefined') {
-    return;
-  }
-
-  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(drafts));
-}
+export const lineDraftStore: LineDraftStore = new LocalStorageLineDraftStore();
 
 export function createLineDraft(input: {
   lineName: string;
@@ -96,5 +105,18 @@ export function createLineDraft(input: {
     status: input.status,
     memo: input.memo,
     createdAt: new Date().toISOString(),
+  };
+}
+
+export function updateLineDraft(
+  draft: LineDraft,
+  input: { lineName: string; carrier: string; status: LineStatus; memo: string },
+): LineDraft {
+  return {
+    ...draft,
+    lineName: input.lineName,
+    carrier: input.carrier,
+    status: input.status,
+    memo: input.memo,
   };
 }

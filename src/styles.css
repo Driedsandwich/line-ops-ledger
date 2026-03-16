@@ -268,6 +268,10 @@ textarea {
   margin-top: 18px;
 }
 
+.button-row--tight {
+  margin-top: 8px;
+}
+
 .button {
   border: 1px solid rgba(148, 163, 184, 0.22);
   background: rgba(15, 23, 42, 0.95);
@@ -284,6 +288,11 @@ textarea {
 .button--primary {
   background: rgba(37, 99, 235, 0.3);
   border-color: rgba(96, 165, 250, 0.4);
+}
+
+.button--danger {
+  background: rgba(127, 29, 29, 0.28);
+  border-color: rgba(248, 113, 113, 0.28);
 }
 
 .form-grid {
