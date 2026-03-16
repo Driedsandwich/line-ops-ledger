@@ -22,10 +22,20 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
+  const url = new URL(event.request.url);
+
+  if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+    return;
+  }
+
   if (event.request.mode === 'navigate') {
     event.respondWith(
       fetch(event.request).catch(() => caches.match('/') || caches.match('/offline.html')),
     );
+    return;
+  }
+
+  if (url.origin !== self.location.origin) {
     return;
   }
 
