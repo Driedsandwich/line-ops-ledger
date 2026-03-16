@@ -13,6 +13,7 @@ export type LineDraft = {
 };
 
 const STORAGE_KEY = 'line-ops-ledger.line-drafts';
+const REVIEW_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
 function isLineStatus(value: string): value is LineStatus {
   return LINE_STATUS_OPTIONS.includes(value as LineStatus);
@@ -20,6 +21,23 @@ function isLineStatus(value: string): value is LineStatus {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
+}
+
+export function normalizeReviewDate(value: string): string {
+  if (!REVIEW_DATE_PATTERN.test(value)) {
+    return '';
+  }
+
+  const date = new Date(`${value}T00:00:00`);
+  if (Number.isNaN(date.getTime())) {
+    return '';
+  }
+
+  const [year, month, day] = value.split('-').map((part) => Number(part));
+  const isSameDate =
+    date.getFullYear() === year && date.getMonth() + 1 === month && date.getDate() === day;
+
+  return isSameDate ? value : '';
 }
 
 function toLineDraft(value: unknown): LineDraft | null {
@@ -32,7 +50,7 @@ function toLineDraft(value: unknown): LineDraft | null {
   const carrier = typeof value.carrier === 'string' ? value.carrier : null;
   const status = typeof value.status === 'string' && isLineStatus(value.status) ? value.status : null;
   const memo = typeof value.memo === 'string' ? value.memo : '';
-  const nextReviewDate = typeof value.nextReviewDate === 'string' ? value.nextReviewDate : '';
+  const nextReviewDate = typeof value.nextReviewDate === 'string' ? normalizeReviewDate(value.nextReviewDate) : '';
   const createdAt = typeof value.createdAt === 'string' ? value.createdAt : null;
 
   if (!id || !lineName || !carrier || !status || !createdAt) {
@@ -108,7 +126,7 @@ export function createLineDraft(input: {
     carrier: input.carrier,
     status: input.status,
     memo: input.memo,
-    nextReviewDate: input.nextReviewDate,
+    nextReviewDate: normalizeReviewDate(input.nextReviewDate),
     createdAt: new Date().toISOString(),
   };
 }
@@ -123,6 +141,6 @@ export function updateLineDraft(
     carrier: input.carrier,
     status: input.status,
     memo: input.memo,
-    nextReviewDate: input.nextReviewDate,
+    nextReviewDate: normalizeReviewDate(input.nextReviewDate),
   };
 }

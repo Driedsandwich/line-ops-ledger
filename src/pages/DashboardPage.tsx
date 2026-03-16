@@ -1,4 +1,4 @@
-import { lineDraftStore, type LineDraft } from '../lib/lineDrafts';
+import { lineDraftStore, normalizeReviewDate, type LineDraft } from '../lib/lineDrafts';
 
 function startOfDay(input: Date): Date {
   const date = new Date(input);
@@ -12,11 +12,12 @@ function diffInDays(from: Date, to: Date): number {
 }
 
 function parseReviewDate(value: string): Date | null {
-  if (!value) {
+  const normalized = normalizeReviewDate(value);
+  if (!normalized) {
     return null;
   }
 
-  const parsed = new Date(`${value}T00:00:00`);
+  const parsed = new Date(`${normalized}T00:00:00`);
   return Number.isNaN(parsed.getTime()) ? null : parsed;
 }
 
@@ -51,7 +52,7 @@ function buildSummary(drafts: LineDraft[]): {
   let closingCount = 0;
 
   const nearest = drafts
-    .filter((draft) => Boolean(draft.nextReviewDate))
+    .filter((draft) => Boolean(normalizeReviewDate(draft.nextReviewDate)))
     .sort((a, b) => a.nextReviewDate.localeCompare(b.nextReviewDate))
     .slice(0, 5);
 

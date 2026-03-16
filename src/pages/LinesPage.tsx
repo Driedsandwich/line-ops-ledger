@@ -3,6 +3,7 @@ import {
   createLineDraft,
   lineDraftStore,
   LINE_STATUS_OPTIONS,
+  normalizeReviewDate,
   updateLineDraft,
   type LineStatus,
   type LineDraft,
@@ -46,15 +47,12 @@ function formatCreatedAt(value: string): string {
 }
 
 function formatReviewDate(value: string): string {
-  if (!value) {
+  const normalized = normalizeReviewDate(value);
+  if (!normalized) {
     return '未設定';
   }
 
-  const date = new Date(`${value}T00:00:00`);
-  if (Number.isNaN(date.getTime())) {
-    return value;
-  }
-
+  const date = new Date(`${normalized}T00:00:00`);
   return new Intl.DateTimeFormat('ja-JP', {
     year: 'numeric',
     month: '2-digit',
@@ -131,6 +129,11 @@ export function LinesPage(): JSX.Element {
 
     if (!lineName || !carrier || !form.status) {
       setErrorMessage('回線名、キャリア、契約状態は必須です。');
+      return null;
+    }
+
+    if (nextReviewDate && !normalizeReviewDate(nextReviewDate)) {
+      setErrorMessage('次回確認日は YYYY-MM-DD 形式の実在日付だけ保存できます。');
       return null;
     }
 
@@ -304,6 +307,8 @@ export function LinesPage(): JSX.Element {
               <span>次回確認日</span>
               <input
                 type="date"
+                min="2000-01-01"
+                max="9999-12-31"
                 value={form.nextReviewDate}
                 onChange={(event) => updateField('nextReviewDate', event.target.value)}
               />
