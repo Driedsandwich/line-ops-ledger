@@ -1,9 +1,9 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   createLineDraft,
+  lineDraftStore,
   LINE_STATUS_OPTIONS,
-  loadLineDrafts,
-  saveLineDrafts,
+  updateLineDraft,
   type LineStatus,
   type LineDraft,
 } from '../lib/lineDrafts';
@@ -13,6 +13,11 @@ type FormState = {
   carrier: string;
   status: LineStatus;
   memo: string;
+};
+
+type UndoState = {
+  drafts: LineDraft[];
+  label: string;
 };
 
 const initialFormState: FormState = {
@@ -38,14 +43,48 @@ function formatCreatedAt(value: string): string {
   }).format(date);
 }
 
+function toFormState(draft: LineDraft): FormState {
+  return {
+    lineName: draft.lineName,
+    carrier: draft.carrier,
+    status: draft.status,
+    memo: draft.memo,
+  };
+}
+
+function isEditableElement(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) {
+    return false;
+  }
+
+  const tagName = target.tagName;
+  return tagName === 'INPUT' || tagName === 'TEXTAREA' || tagName === 'SELECT' || target.isContentEditable;
+}
+
 export function LinesPage(): JSX.Element {
-  const [drafts, setDrafts] = useState<LineDraft[]>(() => loadLineDrafts());
+  const [drafts, setDrafts] = useState<LineDraft[]>(() => lineDraftStore.load());
   const [form, setForm] = useState<FormState>(initialFormState);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [undoState, setUndoState] = useState<UndoState | null>(null);
 
   const hasDrafts = drafts.length > 0;
   const countLabel = useMemo(() => `${drafts.length}件`, [drafts.length]);
+  const submitLabel = editingId ? '更新する' : '保存する';
+  const cardBadge = editingId ? '編集中' : '最小保存';
+
+  function persist(nextDrafts: LineDraft[], options?: { previousDrafts?: LineDraft[]; undoLabel?: string }): void {
+    setDrafts(nextDrafts);
+    lineDraftStore.save(nextDrafts);
+
+    if (options?.previousDrafts && options.undoLabel) {
+      setUndoState({
+        drafts: options.previousDrafts,
+        label: options.undoLabel,
+      });
+    }
+  }
 
   function updateField<K extends keyof FormState>(key: K, value: FormState[K]): void {
     setForm((current) => ({
@@ -59,31 +98,134 @@ export function LinesPage(): JSX.Element {
     setSuccessMessage(null);
   }
 
-  function handleSubmit(event: React.FormEvent<HTMLFormElement>): void {
-    event.preventDefault();
-    resetMessages();
+  function resetForm(): void {
+    setForm(initialFormState);
+    setEditingId(null);
+  }
 
+  function validateForm(): { lineName: string; carrier: string; memo: string } | null {
     const lineName = form.lineName.trim();
     const carrier = form.carrier.trim();
     const memo = form.memo.trim();
 
     if (!lineName || !carrier || !form.status) {
       setErrorMessage('回線名、キャリア、契約状態は必須です。');
+      return null;
+    }
+
+    return { lineName, carrier, memo };
+  }
+
+  function handleUndo(): void {
+    if (!undoState) {
+      return;
+    }
+
+    lineDraftStore.save(undoState.drafts);
+    setDrafts(undoState.drafts);
+    setUndoState(null);
+    setEditingId(null);
+    setForm(initialFormState);
+    setErrorMessage(null);
+    setSuccessMessage(`直前の操作（${undoState.label}）を元に戻しました。`);
+  }
+
+  useEffect(() => {
+    function onKeyDown(event: KeyboardEvent): void {
+      const isUndoShortcut = (event.ctrlKey || event.metaKey) && !event.shiftKey && event.key.toLowerCase() === 'z';
+
+      if (!isUndoShortcut || !undoState) {
+        return;
+      }
+
+      if (isEditableElement(event.target)) {
+        return;
+      }
+
+      event.preventDefault();
+      handleUndo();
+    }
+
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [undoState]);
+
+  function handleSubmit(event: React.FormEvent<HTMLFormElement>): void {
+    event.preventDefault();
+    resetMessages();
+
+    const validated = validateForm();
+    if (!validated) {
+      return;
+    }
+
+    if (editingId) {
+      const current = drafts.find((draft) => draft.id === editingId);
+      if (!current) {
+        setErrorMessage('編集対象が見つかりませんでした。もう一度選び直してください。');
+        return;
+      }
+
+      const nextDrafts = drafts.map((draft) =>
+        draft.id === editingId
+          ? updateLineDraft(draft, {
+              lineName: validated.lineName,
+              carrier: validated.carrier,
+              status: form.status,
+              memo: validated.memo,
+            })
+          : draft,
+      );
+      persist(nextDrafts, {
+        previousDrafts: drafts,
+        undoLabel: `更新: ${validated.lineName}`,
+      });
+      setSuccessMessage(`回線ドラフト「${validated.lineName}」を更新しました。`);
+      resetForm();
       return;
     }
 
     const nextDraft = createLineDraft({
-      lineName,
-      carrier,
+      lineName: validated.lineName,
+      carrier: validated.carrier,
       status: form.status,
-      memo,
+      memo: validated.memo,
     });
 
     const nextDrafts = [nextDraft, ...drafts];
-    setDrafts(nextDrafts);
-    saveLineDrafts(nextDrafts);
-    setForm(initialFormState);
-    setSuccessMessage(`回線ドラフト「${lineName}」を保存しました。`);
+    persist(nextDrafts, {
+      previousDrafts: drafts,
+      undoLabel: `追加: ${validated.lineName}`,
+    });
+    setSuccessMessage(`回線ドラフト「${validated.lineName}」を保存しました。`);
+    resetForm();
+  }
+
+  function handleEdit(draft: LineDraft): void {
+    resetMessages();
+    setEditingId(draft.id);
+    setForm(toFormState(draft));
+  }
+
+  function handleDelete(draftId: string): void {
+    resetMessages();
+    const target = drafts.find((draft) => draft.id === draftId);
+    const nextDrafts = drafts.filter((draft) => draft.id !== draftId);
+    persist(nextDrafts, {
+      previousDrafts: drafts,
+      undoLabel: target ? `削除: ${target.lineName}` : '削除',
+    });
+
+    if (editingId === draftId) {
+      resetForm();
+    }
+
+    setSuccessMessage(target ? `回線ドラフト「${target.lineName}」を削除しました。` : '回線ドラフトを削除しました。');
+  }
+
+  function handleCancelEdit(): void {
+    resetMessages();
+    resetForm();
   }
 
   return (
@@ -93,7 +235,7 @@ export function LinesPage(): JSX.Element {
           <p className="eyebrow">Lines</p>
           <h2>回線一覧</h2>
           <p className="page__lead">
-            最小フォームで回線ドラフトを保存し、一覧に表示する段階です。後続で保存層を置き換えやすいよう localStorage で先行します。
+            回線ドラフトの追加に加えて、編集と削除までをこの段階で扱います。保存層は薄い store に切り出し、後で差し替えやすくします。
           </p>
         </div>
       </header>
@@ -101,8 +243,8 @@ export function LinesPage(): JSX.Element {
       <section className="card-grid card-grid--lines">
         <article className="card">
           <div className="card__header">
-            <h3>回線ドラフトを追加</h3>
-            <span className="badge">最小保存</span>
+            <h3>回線ドラフトを追加・編集</h3>
+            <span className="badge">{cardBadge}</span>
           </div>
 
           <form className="form-grid" onSubmit={handleSubmit}>
@@ -147,11 +289,27 @@ export function LinesPage(): JSX.Element {
 
             {errorMessage ? <p className="notice notice--warn field--full">{errorMessage}</p> : null}
             {successMessage ? <p className="notice field--full">{successMessage}</p> : null}
+            {undoState ? (
+              <div className="notice notice--undo field--full">
+                <div>
+                  <strong>直前の操作を戻せます</strong>
+                  <p className="muted">{undoState.label} / `Ctrl+Z` または `⌘Z` でも戻せます</p>
+                </div>
+                <button type="button" className="button" onClick={handleUndo}>
+                  操作を戻す
+                </button>
+              </div>
+            ) : null}
 
             <div className="button-row field--full">
               <button type="submit" className="button button--primary">
-                保存する
+                {submitLabel}
               </button>
+              {editingId ? (
+                <button type="button" className="button" onClick={handleCancelEdit}>
+                  編集をやめる
+                </button>
+              ) : null}
             </div>
           </form>
         </article>
@@ -177,6 +335,14 @@ export function LinesPage(): JSX.Element {
                   <span>{draft.carrier}</span>
                   {draft.memo ? <span>{draft.memo}</span> : null}
                   <span className="muted">保存日時: {formatCreatedAt(draft.createdAt)}</span>
+                  <div className="button-row button-row--tight">
+                    <button type="button" className="button" onClick={() => handleEdit(draft)}>
+                      編集する
+                    </button>
+                    <button type="button" className="button button--danger" onClick={() => handleDelete(draft.id)}>
+                      削除する
+                    </button>
+                  </div>
                 </li>
               ))}
             </ul>

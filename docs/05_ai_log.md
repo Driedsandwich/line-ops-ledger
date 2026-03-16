@@ -8,3 +8,5 @@
 - PR #3 を squash merge
 - Issue #4 を起票
 - Issue #4 の実装として、`/lines` の最小フォームと localStorage ベースの仮保存を追加
+- PR #5 を squash merge
+- Issue #6 の実装として、`/lines` の編集・削除と保存層の薄い抽象化を追加

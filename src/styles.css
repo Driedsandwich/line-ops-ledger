@@ -261,11 +261,27 @@ textarea {
   color: #fecaca;
 }
 
+.notice--undo {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+  border: 1px solid rgba(96, 165, 250, 0.24);
+}
+
+.notice--undo p {
+  margin: 6px 0 0;
+}
+
 .button-row {
   display: flex;
   gap: 12px;
   flex-wrap: wrap;
   margin-top: 18px;
+}
+
+.button-row--tight {
+  margin-top: 8px;
 }
 
 .button {
@@ -284,6 +300,11 @@ textarea {
 .button--primary {
   background: rgba(37, 99, 235, 0.3);
   border-color: rgba(96, 165, 250, 0.4);
+}
+
+.button--danger {
+  background: rgba(127, 29, 29, 0.28);
+  border-color: rgba(248, 113, 113, 0.28);
 }
 
 .form-grid {
@@ -341,6 +362,11 @@ textarea {
 
   .card-grid--lines {
     grid-template-columns: 1fr;
+  }
+
+  .notice--undo {
+    flex-direction: column;
+    align-items: flex-start;
   }
 }
 

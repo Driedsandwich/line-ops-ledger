@@ -6,7 +6,7 @@ const navItems = [
   { to: '/settings', label: '設定' },
 ];
 
-const devProgressLabel = 'DEV / feat/lines-draft-min-save / PR #5';
+const devProgressLabel = 'DEV / feat/lines-edit-delete-storage-layer / PR #7';
 
 export function AppLayout(): JSX.Element {
   return (
