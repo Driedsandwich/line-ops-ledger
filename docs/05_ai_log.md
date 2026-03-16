@@ -10,3 +10,5 @@
 - Issue #4 の実装として、`/lines` の最小フォームと localStorage ベースの仮保存を追加
 - PR #5 を squash merge
 - Issue #6 の実装として、`/lines` の編集・削除と保存層の薄い抽象化を追加
+- PR #7 をユーザー側で squash merge + branch delete
+- Issue #8 の実装として、次回確認日とダッシュボード実データ集計を追加
