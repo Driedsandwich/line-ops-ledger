@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="回線運用台帳">
+  <rect width="128" height="128" rx="28" fill="#020617" />
+  <path d="M32 38h64v12H32zm0 20h64v12H32zm0 20h42v12H32z" fill="#60a5fa" />
+  <circle cx="92" cy="84" r="12" fill="#22c55e" />
+</svg>
