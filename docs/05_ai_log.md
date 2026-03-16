@@ -1,15 +1,7 @@
-# AI作業ログ（AI Log）
+# AI Log
 
-プロンプト全文や生ログの貼り付けは、機密漏えいの温床になります。
-ここは **「1PRにつき1行〜数行」** の要約だけを残してください。
-
-## 記載ルール（AI向け）
-- 1PRにつき1エントリ（追記方式）
-- 機密情報、APIキー、個人情報を絶対に書かない
-- 詳細な判断理由は `docs/04_decisions.md` に書く
-
-## フォーマット（推奨）
-- YYYY-MM-DD / PR #123 / Issue #45: 要約（何を、なぜ、どう確認したか）
-
-## 例
-- 2026-01-25 / PR #12 / Issue #7: 目的に合わせて入力バリデーションを追加。runbookに確認手順を追記し、statusの次の作業を更新。ローカル実行でエラーなしを確認。
+## 2026-03-17
+- repo `Driedsandwich/line-ops-ledger` を確認
+- Bootstrap Issue #1 を作成
+- Context Hub Issue #2 を作成
+- 初回の visible 差分として、PWA shell / dashboard zero-state / storage persistence UI を追加
