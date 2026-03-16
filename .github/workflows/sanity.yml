@@ -1,0 +1,24 @@
+name: Repo sanity
+
+on:
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  sanity:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Verify expected files exist
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f README.md
+          test -f 00_START_HERE.md
+          echo "Repo sanity OK"
