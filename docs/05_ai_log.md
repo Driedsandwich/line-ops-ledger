@@ -15,4 +15,5 @@
 
 ## 2026-03-18
 - PR #21 をユーザー側で squash merge + branch delete
-- Issue #22 の実装として、`/lines` の複数選択と一括ステータス変更を追加
+- PR #23 をユーザー側で squash merge + branch delete
+- Issue #24 の実装として、`/lines` の一括削除を追加
