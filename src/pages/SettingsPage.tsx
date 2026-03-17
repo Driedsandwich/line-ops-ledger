@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   CURRENT_LINE_DRAFT_SCHEMA_VERSION,
   lineDraftStore,
@@ -67,6 +67,7 @@ export function SettingsPage(): JSX.Element {
   const [storageInfo, setStorageInfo] = useState<LineDraftStorageInfo>(initialStorageInfo);
   const [loading, setLoading] = useState(true);
   const [actionMessage, setActionMessage] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   async function refresh(): Promise<void> {
     setLoading(true);
@@ -96,6 +97,41 @@ export function SettingsPage(): JSX.Element {
     await refresh();
   }
 
+  function handleExportBackup(): void {
+    try {
+      const json = lineDraftStore.exportBackupJson();
+      const filename = lineDraftStore.buildBackupFilename();
+      const blob = new Blob([json], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      link.click();
+      URL.revokeObjectURL(url);
+      setActionMessage(`JSON バックアップをエクスポートしました: ${filename}`);
+    } catch (error) {
+      setActionMessage(error instanceof Error ? error.message : 'バックアップのエクスポートに失敗しました。');
+    }
+  }
+
+  async function handleImportFile(event: React.ChangeEvent<HTMLInputElement>): Promise<void> {
+    const file = event.target.files?.[0];
+    if (!file) {
+      return;
+    }
+
+    try {
+      const raw = await file.text();
+      const result = lineDraftStore.importBackupJson(raw);
+      await refresh();
+      setActionMessage(`JSON バックアップをインポートしました。${result.importedCount}件を復元しました。`);
+    } catch (error) {
+      setActionMessage(error instanceof Error ? error.message : 'バックアップのインポートに失敗しました。');
+    } finally {
+      event.target.value = '';
+    }
+  }
+
   const persistenceLabel = !state.supported
     ? '非対応'
     : state.persisted === true
@@ -111,7 +147,7 @@ export function SettingsPage(): JSX.Element {
           <p className="eyebrow">Settings</p>
           <h2>永続ストレージ状態</h2>
           <p className="page__lead">
-            永続ストレージ状態に加えて、回線台帳の保存データ情報を確認できる画面です。
+            永続ストレージ状態に加えて、回線台帳の保存データ情報と JSON バックアップ導線を確認できる画面です。
           </p>
         </div>
       </header>
@@ -179,6 +215,34 @@ export function SettingsPage(): JSX.Element {
           <p className="muted">
             旧配列形式の保存データがある場合、この画面を開いた時点で現行の versioned envelope へ読み替えます。
           </p>
+        </article>
+
+        <article className="card">
+          <div className="card__header">
+            <h3>JSON バックアップ</h3>
+            <span className="badge">手動退避</span>
+          </div>
+
+          <p className="muted">
+            現在の保存データを JSON ファイルとして退避できます。インポートすると現在の保存データを置き換えます。
+          </p>
+
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="application/json,.json"
+            className="hidden-file-input"
+            onChange={(event) => void handleImportFile(event)}
+          />
+
+          <div className="button-row">
+            <button type="button" className="button button--primary" onClick={handleExportBackup}>
+              JSON をエクスポート
+            </button>
+            <button type="button" className="button" onClick={() => fileInputRef.current?.click()}>
+              JSON をインポート
+            </button>
+          </div>
         </article>
       </section>
     </div>
