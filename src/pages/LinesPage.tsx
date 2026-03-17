@@ -1,17 +1,23 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
   createLineDraft,
+  DEFAULT_LINE_TYPE,
   lineDraftStore,
   LINE_STATUS_OPTIONS,
+  LINE_TYPE_OPTIONS,
+  normalizeMonthlyCost,
   normalizeReviewDate,
   updateLineDraft,
-  type LineStatus,
   type LineDraft,
+  type LineStatus,
+  type LineType,
 } from '../lib/lineDrafts';
 
 type FormState = {
   lineName: string;
   carrier: string;
+  lineType: LineType;
+  monthlyCost: string;
   status: LineStatus;
   memo: string;
   nextReviewDate: string;
@@ -25,6 +31,8 @@ type UndoState = {
 const initialFormState: FormState = {
   lineName: '',
   carrier: '',
+  lineType: DEFAULT_LINE_TYPE,
+  monthlyCost: '',
   status: '利用中',
   memo: '',
   nextReviewDate: '',
@@ -60,10 +68,20 @@ function formatReviewDate(value: string): string {
   }).format(date);
 }
 
+function formatMonthlyCost(value: number | null): string {
+  if (value == null) {
+    return '未設定';
+  }
+
+  return `${new Intl.NumberFormat('ja-JP').format(value)}円/月`;
+}
+
 function toFormState(draft: LineDraft): FormState {
   return {
     lineName: draft.lineName,
     carrier: draft.carrier,
+    lineType: draft.lineType,
+    monthlyCost: draft.monthlyCost == null ? '' : String(draft.monthlyCost),
     status: draft.status,
     memo: draft.memo,
     nextReviewDate: draft.nextReviewDate,
@@ -90,7 +108,7 @@ export function LinesPage(): JSX.Element {
   const hasDrafts = drafts.length > 0;
   const countLabel = useMemo(() => `${drafts.length}件`, [drafts.length]);
   const submitLabel = editingId ? '更新する' : '保存する';
-  const cardBadge = editingId ? '編集中' : '最小保存';
+  const cardBadge = editingId ? '編集中' : 'スキーマ拡張';
 
   function persist(nextDrafts: LineDraft[], options?: { previousDrafts?: LineDraft[]; undoLabel?: string }): void {
     setDrafts(nextDrafts);
@@ -121,14 +139,22 @@ export function LinesPage(): JSX.Element {
     setEditingId(null);
   }
 
-  function validateForm(): { lineName: string; carrier: string; memo: string; nextReviewDate: string } | null {
+  function validateForm(): {
+    lineName: string;
+    carrier: string;
+    lineType: LineType;
+    monthlyCost: number | null;
+    status: LineStatus;
+    memo: string;
+    nextReviewDate: string;
+  } | null {
     const lineName = form.lineName.trim();
     const carrier = form.carrier.trim();
     const memo = form.memo.trim();
     const nextReviewDate = form.nextReviewDate;
 
-    if (!lineName || !carrier || !form.status) {
-      setErrorMessage('回線名、キャリア、契約状態は必須です。');
+    if (!lineName || !carrier || !form.status || !form.lineType) {
+      setErrorMessage('回線名、キャリア、回線種別、契約状態は必須です。');
       return null;
     }
 
@@ -137,7 +163,20 @@ export function LinesPage(): JSX.Element {
       return null;
     }
 
-    return { lineName, carrier, memo, nextReviewDate };
+    if (form.monthlyCost && normalizeMonthlyCost(form.monthlyCost) == null) {
+      setErrorMessage('月額費用は 0 以上の整数だけ保存できます。');
+      return null;
+    }
+
+    return {
+      lineName,
+      carrier,
+      lineType: form.lineType,
+      monthlyCost: normalizeMonthlyCost(form.monthlyCost),
+      status: form.status,
+      memo,
+      nextReviewDate,
+    };
   }
 
   function handleUndo(): void {
@@ -195,15 +234,7 @@ export function LinesPage(): JSX.Element {
       }
 
       const nextDrafts = drafts.map((draft) =>
-        draft.id === editingId
-          ? updateLineDraft(draft, {
-              lineName: validated.lineName,
-              carrier: validated.carrier,
-              status: form.status,
-              memo: validated.memo,
-              nextReviewDate: validated.nextReviewDate,
-            })
-          : draft,
+        draft.id === editingId ? updateLineDraft(draft, validated) : draft,
       );
       persist(nextDrafts, {
         previousDrafts: drafts,
@@ -214,14 +245,7 @@ export function LinesPage(): JSX.Element {
       return;
     }
 
-    const nextDraft = createLineDraft({
-      lineName: validated.lineName,
-      carrier: validated.carrier,
-      status: form.status,
-      memo: validated.memo,
-      nextReviewDate: validated.nextReviewDate,
-    });
-
+    const nextDraft = createLineDraft(validated);
     const nextDrafts = [nextDraft, ...drafts];
     persist(nextDrafts, {
       previousDrafts: drafts,
@@ -293,6 +317,27 @@ export function LinesPage(): JSX.Element {
                 value={form.carrier}
                 onChange={(event) => updateField('carrier', event.target.value)}
                 placeholder="例: 楽天モバイル"
+              />
+            </label>
+
+            <label className="field">
+              <span>回線種別 *</span>
+              <select value={form.lineType} onChange={(event) => updateField('lineType', event.target.value as LineType)}>
+                {LINE_TYPE_OPTIONS.map((option) => (
+                  <option key={option} value={option}>
+                    {option}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className="field">
+              <span>月額費用</span>
+              <input
+                inputMode="numeric"
+                value={form.monthlyCost}
+                onChange={(event) => updateField('monthlyCost', event.target.value)}
+                placeholder="例: 2980"
               />
             </label>
 
@@ -374,6 +419,8 @@ export function LinesPage(): JSX.Element {
                     <span className={draft.status === '利用中' ? 'badge badge--ok' : 'badge'}>{draft.status}</span>
                   </div>
                   <span>{draft.carrier}</span>
+                  <span>回線種別: {draft.lineType}</span>
+                  <span>月額費用: {formatMonthlyCost(draft.monthlyCost)}</span>
                   <span>次回確認日: {formatReviewDate(draft.nextReviewDate)}</span>
                   {draft.memo ? <span>{draft.memo}</span> : null}
                   <span className="muted">保存日時: {formatCreatedAt(draft.createdAt)}</span>

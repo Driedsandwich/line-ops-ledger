@@ -34,6 +34,10 @@ function formatReviewDate(value: string): string {
   }).format(date);
 }
 
+function formatCurrency(value: number): string {
+  return `${new Intl.NumberFormat('ja-JP').format(value)}円/月`;
+}
+
 function buildSummary(drafts: LineDraft[]): {
   dangerCount: number;
   todayCount: number;
@@ -41,6 +45,7 @@ function buildSummary(drafts: LineDraft[]): {
   within7Days: number;
   activeCount: number;
   closingCount: number;
+  monthlyTotal: number;
   nearest: LineDraft[];
 } {
   const today = new Date();
@@ -50,6 +55,7 @@ function buildSummary(drafts: LineDraft[]): {
   let within7Days = 0;
   let activeCount = 0;
   let closingCount = 0;
+  let monthlyTotal = 0;
 
   const nearest = drafts
     .filter((draft) => Boolean(normalizeReviewDate(draft.nextReviewDate)))
@@ -61,6 +67,10 @@ function buildSummary(drafts: LineDraft[]): {
       activeCount += 1;
     } else {
       closingCount += 1;
+    }
+
+    if (draft.monthlyCost != null) {
+      monthlyTotal += draft.monthlyCost;
     }
 
     const reviewDate = parseReviewDate(draft.nextReviewDate);
@@ -91,6 +101,7 @@ function buildSummary(drafts: LineDraft[]): {
     within7Days,
     activeCount,
     closingCount,
+    monthlyTotal,
     nearest,
   };
 }
@@ -106,7 +117,7 @@ export function DashboardPage(): JSX.Element {
           <p className="eyebrow">Dashboard</p>
           <h2>今日やることと危険案件の入口</h2>
           <p className="page__lead">
-            保存済み回線の次回確認日と契約状態から、危険案件サマリーと近日期限を集計します。
+            保存済み回線の次回確認日、契約状態、月額費用から、危険案件サマリーと近日期限を集計します。
           </p>
         </div>
       </header>
@@ -171,6 +182,15 @@ export function DashboardPage(): JSX.Element {
       <section className="card-grid card-grid--single">
         <article className="card">
           <div className="card__header">
+            <h3>月額費用サマリー</h3>
+            <span className="badge">実データ</span>
+          </div>
+          <p className="metric">{formatCurrency(summary.monthlyTotal)}</p>
+          <p className="muted">月額費用が入力された回線だけを合計します。未設定の回線は合計に含めません。</p>
+        </article>
+
+        <article className="card">
+          <div className="card__header">
             <h3>次回確認日が近い回線</h3>
             <span className="badge">最大5件</span>
           </div>
@@ -185,6 +205,8 @@ export function DashboardPage(): JSX.Element {
                     <span className={draft.status === '利用中' ? 'badge badge--ok' : 'badge'}>{draft.status}</span>
                   </div>
                   <span>{draft.carrier}</span>
+                  <span>回線種別: {draft.lineType}</span>
+                  <span>月額費用: {draft.monthlyCost == null ? '未設定' : formatCurrency(draft.monthlyCost)}</span>
                   <span>次回確認日: {formatReviewDate(draft.nextReviewDate)}</span>
                 </li>
               ))}
