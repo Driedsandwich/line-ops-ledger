@@ -232,7 +232,7 @@ export function LinesPage(): JSX.Element {
   const hasDrafts = visibleDrafts.length > 0;
   const countLabel = useMemo(() => `${visibleDrafts.length}件`, [visibleDrafts.length]);
   const submitLabel = editingId ? '更新する' : '保存する';
-  const cardBadge = editingId ? '編集中' : '一括更新';
+  const cardBadge = editingId ? '編集中' : '一括削除';
 
   function persist(nextDrafts: LineDraft[], options?: { previousDrafts?: LineDraft[]; undoLabel?: string }): void {
     setDrafts(nextDrafts);
@@ -375,6 +375,25 @@ export function LinesPage(): JSX.Element {
     setSuccessMessage(`${selectedIds.length}件の契約状態を「${nextStatus}」へ更新しました。`);
   }
 
+  function handleBulkDelete(): void {
+    resetMessages();
+
+    if (selectedIds.length === 0) {
+      setErrorMessage('一括削除する回線を選択してください。');
+      return;
+    }
+
+    const selectedSet = new Set(selectedIds);
+    const nextDrafts = drafts.filter((draft) => !selectedSet.has(draft.id));
+
+    persist(nextDrafts, {
+      previousDrafts: drafts,
+      undoLabel: `一括削除: ${selectedIds.length}件を削除`,
+    });
+    setSuccessMessage(`${selectedIds.length}件の回線を削除しました。`);
+    setSelectedIds([]);
+  }
+
   useEffect(() => {
     lineDraftStore.ensureCurrentVersion();
   }, []);
@@ -475,7 +494,7 @@ export function LinesPage(): JSX.Element {
           <p className="eyebrow">Lines</p>
           <h2>回線一覧</h2>
           <p className="page__lead">
-            回線ドラフトの追加に加えて、検索・絞り込み・並び替え・期限表示・一括更新で見たい回線を探しやすくします。保存層は薄い store に切り出し、後で差し替えやすくします。
+            回線ドラフトの追加に加えて、検索・絞り込み・並び替え・期限表示・一括更新・一括削除で見たい回線を探しやすくします。保存層は薄い store に切り出し、後で差し替えやすくします。
           </p>
         </div>
       </header>
@@ -602,12 +621,9 @@ export function LinesPage(): JSX.Element {
             </div>
 
             <div className="button-row field--full button-row--tight">
-              <button type="button" className="button button--primary" onClick={() => applyBulkStatus('利用中')}>
-                選択中を利用中へ
-              </button>
-              <button type="button" className="button" onClick={() => applyBulkStatus('解約予定')}>
-                選択中を解約予定へ
-              </button>
+              <button type="button" className="button button--primary" onClick={() => applyBulkStatus('利用中')}>選択中を利用中へ</button>
+              <button type="button" className="button" onClick={() => applyBulkStatus('解約予定')}>選択中を解約予定へ</button>
+              <button type="button" className="button button--danger" onClick={handleBulkDelete}>選択中を削除</button>
               <button type="button" className="button" onClick={resetFilters}>絞り込みと並び順を解除</button>
             </div>
           </div>

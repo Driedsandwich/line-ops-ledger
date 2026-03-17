@@ -6,7 +6,7 @@ const navItems = [
   { to: '/settings', label: '設定' },
 ];
 
-const devProgressLabel = 'DEV / feat/lines-bulk-status-update / PR #23';
+const devProgressLabel = 'DEV / feat/lines-bulk-delete / PR pending';
 
 export function AppLayout(): JSX.Element {
   return (
