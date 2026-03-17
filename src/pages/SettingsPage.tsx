@@ -5,6 +5,14 @@ import {
   type LineDraftStorageInfo,
 } from '../lib/lineDrafts';
 import {
+  getDefaultNotificationSettings,
+  loadNotificationSettings,
+  saveNotificationSettings,
+  type NotificationRelaunchPolicy,
+  type NotificationReminderWindow,
+  type NotificationSettings,
+} from '../lib/notificationSettings';
+import {
   readStoragePersistenceState,
   requestPersistentStorage,
   type StoragePersistenceState,
@@ -62,9 +70,38 @@ function formatSchemaVersion(value: number | null): string {
   return value == null ? '不明' : `v${value}`;
 }
 
+function formatReminderWindow(value: NotificationReminderWindow): string {
+  switch (value) {
+    case 'overdue':
+      return '期限超過だけを対象にする';
+    case 'today':
+      return '今日期限までを対象にする';
+    case 'within-3-days':
+      return '3日以内までを対象にする';
+    case 'within-7-days':
+      return '7日以内までを対象にする';
+    default:
+      return '不明';
+  }
+}
+
+function formatRelaunchPolicy(value: NotificationRelaunchPolicy): string {
+  switch (value) {
+    case 'none':
+      return '再通知しない';
+    case 'on-app-launch':
+      return '次回起動時に再表示する';
+    default:
+      return '不明';
+  }
+}
+
 export function SettingsPage(): JSX.Element {
   const [state, setState] = useState<StoragePersistenceState>(initialState);
   const [storageInfo, setStorageInfo] = useState<LineDraftStorageInfo>(initialStorageInfo);
+  const [notificationSettings, setNotificationSettings] = useState<NotificationSettings>(() =>
+    getDefaultNotificationSettings(),
+  );
   const [loading, setLoading] = useState(true);
   const [actionMessage, setActionMessage] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -74,8 +111,10 @@ export function SettingsPage(): JSX.Element {
     const nextState = await readStoragePersistenceState();
     lineDraftStore.ensureCurrentVersion();
     const nextStorageInfo = lineDraftStore.getInfo();
+    const nextNotificationSettings = loadNotificationSettings();
     setState(nextState);
     setStorageInfo(nextStorageInfo);
+    setNotificationSettings(nextNotificationSettings);
     setLoading(false);
   }
 
@@ -132,6 +171,12 @@ export function SettingsPage(): JSX.Element {
     }
   }
 
+  function updateNotificationSettings(nextSettings: NotificationSettings): void {
+    setNotificationSettings(nextSettings);
+    saveNotificationSettings(nextSettings);
+    setActionMessage('通知設定を保存しました。');
+  }
+
   const persistenceLabel = !state.supported
     ? '非対応'
     : state.persisted === true
@@ -147,7 +192,7 @@ export function SettingsPage(): JSX.Element {
           <p className="eyebrow">Settings</p>
           <h2>永続ストレージ状態</h2>
           <p className="page__lead">
-            永続ストレージ状態に加えて、回線台帳の保存データ情報と JSON バックアップ導線を確認できる画面です。
+            永続ストレージ状態に加えて、回線台帳の保存データ情報、JSON バックアップ導線、通知方針を確認できる画面です。
           </p>
         </div>
       </header>
@@ -243,6 +288,72 @@ export function SettingsPage(): JSX.Element {
               JSON をインポート
             </button>
           </div>
+        </article>
+
+        <article className="card">
+          <div className="card__header">
+            <h3>通知設定</h3>
+            <span className={notificationSettings.enabled ? 'badge badge--ok' : 'badge'}>
+              {notificationSettings.enabled ? '利用する' : '利用しない'}
+            </span>
+          </div>
+
+          <form className="form-grid">
+            <label className="field field--full">
+              <span>通知を使うか</span>
+              <select
+                value={notificationSettings.enabled ? 'enabled' : 'disabled'}
+                onChange={(event) =>
+                  updateNotificationSettings({
+                    ...notificationSettings,
+                    enabled: event.target.value === 'enabled',
+                  })
+                }
+              >
+                <option value="disabled">使わない</option>
+                <option value="enabled">使う</option>
+              </select>
+            </label>
+
+            <label className="field">
+              <span>通知対象の期限</span>
+              <select
+                value={notificationSettings.reminderWindow}
+                onChange={(event) =>
+                  updateNotificationSettings({
+                    ...notificationSettings,
+                    reminderWindow: event.target.value as NotificationReminderWindow,
+                  })
+                }
+              >
+                <option value="overdue">{formatReminderWindow('overdue')}</option>
+                <option value="today">{formatReminderWindow('today')}</option>
+                <option value="within-3-days">{formatReminderWindow('within-3-days')}</option>
+                <option value="within-7-days">{formatReminderWindow('within-7-days')}</option>
+              </select>
+            </label>
+
+            <label className="field">
+              <span>再通知の扱い</span>
+              <select
+                value={notificationSettings.relaunchPolicy}
+                onChange={(event) =>
+                  updateNotificationSettings({
+                    ...notificationSettings,
+                    relaunchPolicy: event.target.value as NotificationRelaunchPolicy,
+                  })
+                }
+              >
+                <option value="none">{formatRelaunchPolicy('none')}</option>
+                <option value="on-app-launch">{formatRelaunchPolicy('on-app-launch')}</option>
+              </select>
+            </label>
+          </form>
+
+          <p className="muted">
+            この MVP では、アプリを閉じている間の通知配信は保証しません。ここでは「どこまでを通知対象とみなすか」と
+            「次回起動時に再表示するか」の最小方針だけを保存します。
+          </p>
         </article>
       </section>
     </div>
