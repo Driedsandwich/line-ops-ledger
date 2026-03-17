@@ -312,6 +312,12 @@ textarea {
   gap: 14px;
 }
 
+.form-grid--filters {
+  margin-bottom: 16px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.16);
+}
+
 .field {
   display: grid;
   gap: 8px;
