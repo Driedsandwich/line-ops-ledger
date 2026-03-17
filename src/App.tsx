@@ -6,7 +6,7 @@ const navItems = [
   { to: '/settings', label: '設定' },
 ];
 
-const devProgressLabel = 'DEV / feat/lines-sort-controls / PR pending';
+const devProgressLabel = 'DEV / feat/lines-sort-controls / PR #19';
 
 export function AppLayout(): JSX.Element {
   return (
