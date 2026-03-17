@@ -200,6 +200,7 @@ export function LinesPage(): JSX.Element {
   const [filters, setFilters] = useState<FilterState>(initialFilterState);
   const [sortKey, setSortKey] = useState<SortKey>(initialSortKey);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [expandedIds, setExpandedIds] = useState<string[]>([]);
   const [form, setForm] = useState<FormState>(initialFormState);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -232,32 +233,23 @@ export function LinesPage(): JSX.Element {
   const hasDrafts = visibleDrafts.length > 0;
   const countLabel = useMemo(() => `${visibleDrafts.length}件`, [visibleDrafts.length]);
   const submitLabel = editingId ? '更新する' : '保存する';
-  const cardBadge = editingId ? '編集中' : '一括削除';
+  const cardBadge = editingId ? '編集中' : '詳細表示';
 
   function persist(nextDrafts: LineDraft[], options?: { previousDrafts?: LineDraft[]; undoLabel?: string }): void {
     setDrafts(nextDrafts);
     lineDraftStore.save(nextDrafts);
 
     if (options?.previousDrafts && options.undoLabel) {
-      setUndoState({
-        drafts: options.previousDrafts,
-        label: options.undoLabel,
-      });
+      setUndoState({ drafts: options.previousDrafts, label: options.undoLabel });
     }
   }
 
   function updateField<K extends keyof FormState>(key: K, value: FormState[K]): void {
-    setForm((current) => ({
-      ...current,
-      [key]: value,
-    }));
+    setForm((current) => ({ ...current, [key]: value }));
   }
 
   function updateFilter<K extends keyof FilterState>(key: K, value: FilterState[K]): void {
-    setFilters((current) => ({
-      ...current,
-      [key]: value,
-    }));
+    setFilters((current) => ({ ...current, [key]: value }));
   }
 
   function resetMessages(): void {
@@ -320,6 +312,7 @@ export function LinesPage(): JSX.Element {
     setUndoState(null);
     setEditingId(null);
     setSelectedIds([]);
+    setExpandedIds([]);
     setForm(initialFormState);
     setErrorMessage(null);
     setSuccessMessage(`直前の操作（${undoState.label}）を元に戻しました。`);
@@ -334,19 +327,21 @@ export function LinesPage(): JSX.Element {
     setSelectedIds((current) => (current.includes(id) ? current.filter((item) => item !== id) : [...current, id]));
   }
 
+  function toggleExpanded(id: string): void {
+    setExpandedIds((current) => (current.includes(id) ? current.filter((item) => item !== id) : [...current, id]));
+  }
+
   function toggleSelectAllVisible(): void {
     setSelectedIds((current) => {
       if (allVisibleSelected) {
         return current.filter((id) => !visibleIds.includes(id));
       }
-
       return Array.from(new Set([...current, ...visibleIds]));
     });
   }
 
   function applyBulkStatus(nextStatus: LineStatus): void {
     resetMessages();
-
     if (selectedIds.length === 0) {
       setErrorMessage('一括変更する回線を選択してください。');
       return;
@@ -377,7 +372,6 @@ export function LinesPage(): JSX.Element {
 
   function handleBulkDelete(): void {
     resetMessages();
-
     if (selectedIds.length === 0) {
       setErrorMessage('一括削除する回線を選択してください。');
       return;
@@ -392,6 +386,7 @@ export function LinesPage(): JSX.Element {
     });
     setSuccessMessage(`${selectedIds.length}件の回線を削除しました。`);
     setSelectedIds([]);
+    setExpandedIds([]);
   }
 
   useEffect(() => {
@@ -400,16 +395,15 @@ export function LinesPage(): JSX.Element {
 
   useEffect(() => {
     setSelectedIds((current) => current.filter((id) => drafts.some((draft) => draft.id === id)));
+    setExpandedIds((current) => current.filter((id) => drafts.some((draft) => draft.id === id)));
   }, [drafts]);
 
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent): void {
       const isUndoShortcut = (event.ctrlKey || event.metaKey) && !event.shiftKey && event.key.toLowerCase() === 'z';
-
       if (!isUndoShortcut || !undoState) {
         return;
       }
-
       if (isEditableElement(event.target)) {
         return;
       }
@@ -462,6 +456,7 @@ export function LinesPage(): JSX.Element {
     resetMessages();
     setEditingId(draft.id);
     setForm(toFormState(draft));
+    setExpandedIds((current) => (current.includes(draft.id) ? current : [...current, draft.id]));
   }
 
   function handleDelete(draftId: string): void {
@@ -474,6 +469,7 @@ export function LinesPage(): JSX.Element {
     });
 
     setSelectedIds((current) => current.filter((id) => id !== draftId));
+    setExpandedIds((current) => current.filter((id) => id !== draftId));
 
     if (editingId === draftId) {
       resetForm();
@@ -494,7 +490,7 @@ export function LinesPage(): JSX.Element {
           <p className="eyebrow">Lines</p>
           <h2>回線一覧</h2>
           <p className="page__lead">
-            回線ドラフトの追加に加えて、検索・絞り込み・並び替え・期限表示・一括更新・一括削除で見たい回線を探しやすくします。保存層は薄い store に切り出し、後で差し替えやすくします。
+            回線ドラフトの追加に加えて、検索・絞り込み・並び替え・期限表示・一括更新・一括削除・詳細表示で見たい回線を探しやすくします。保存層は薄い store に切り出し、後で差し替えやすくします。
           </p>
         </div>
       </header>
@@ -635,6 +631,7 @@ export function LinesPage(): JSX.Element {
               {visibleDrafts.map((draft) => {
                 const deadlineStatus = getDeadlineStatus(draft.nextReviewDate);
                 const isSelected = selectedIds.includes(draft.id);
+                const isExpanded = expandedIds.includes(draft.id);
 
                 return (
                   <li key={draft.id} className={isSelected ? 'list__item--selected' : ''}>
@@ -645,19 +642,44 @@ export function LinesPage(): JSX.Element {
                       </label>
                       <span className={draft.status === '利用中' ? 'badge badge--ok' : 'badge'}>{draft.status}</span>
                     </div>
+                    <div className="list__summary-grid">
+                      <span>{draft.carrier}</span>
+                      <span>回線種別: {draft.lineType}</span>
+                      <span>月額費用: {formatMonthlyCost(draft.monthlyCost)}</span>
+                      <span>次回確認日: {formatReviewDate(draft.nextReviewDate)}</span>
+                    </div>
                     <div className="badge-row">
                       <span className={deadlineStatus.className}>{deadlineStatus.label}</span>
                     </div>
-                    <span>{draft.carrier}</span>
-                    <span>回線種別: {draft.lineType}</span>
-                    <span>月額費用: {formatMonthlyCost(draft.monthlyCost)}</span>
-                    <span>次回確認日: {formatReviewDate(draft.nextReviewDate)}</span>
-                    {draft.memo ? <span>{draft.memo}</span> : null}
-                    <span className="muted">保存日時: {formatCreatedAt(draft.createdAt)}</span>
                     <div className="button-row button-row--tight">
+                      <button type="button" className="button" onClick={() => toggleExpanded(draft.id)}>
+                        {isExpanded ? '詳細を閉じる' : '詳細を開く'}
+                      </button>
                       <button type="button" className="button" onClick={() => handleEdit(draft)}>編集する</button>
                       <button type="button" className="button button--danger" onClick={() => handleDelete(draft.id)}>削除する</button>
                     </div>
+                    {isExpanded ? (
+                      <div className="detail-panel">
+                        <div className="definition-list">
+                          <div>
+                            <dt>メモ</dt>
+                            <dd>{draft.memo || '未設定'}</dd>
+                          </div>
+                          <div>
+                            <dt>保存日時</dt>
+                            <dd>{formatCreatedAt(draft.createdAt)}</dd>
+                          </div>
+                          <div>
+                            <dt>期限ステータス</dt>
+                            <dd>{deadlineStatus.label}</dd>
+                          </div>
+                          <div>
+                            <dt>契約状態</dt>
+                            <dd>{draft.status}</dd>
+                          </div>
+                        </div>
+                      </div>
+                    ) : null}
                   </li>
                 );
               })}
