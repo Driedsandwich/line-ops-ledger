@@ -1,14 +1,19 @@
 export const LINE_STATUS_OPTIONS = ['利用中', '解約予定'] as const;
+export const LINE_TYPE_OPTIONS = ['音声SIM', 'データSIM', 'ホームルーター', '光回線', '未分類'] as const;
+export const DEFAULT_LINE_TYPE = '未分類';
 export const CURRENT_LINE_DRAFT_SCHEMA_VERSION = 2;
 export const LINE_DRAFT_BACKUP_FILENAME_PREFIX = 'line-ops-ledger-backup';
 
 export type LineStatus = (typeof LINE_STATUS_OPTIONS)[number];
+export type LineType = (typeof LINE_TYPE_OPTIONS)[number];
 export type LineDraftStorageFormat = 'empty' | 'legacy-array' | 'versioned-envelope' | 'invalid-data';
 
 export type LineDraft = {
   id: string;
   lineName: string;
   carrier: string;
+  lineType: LineType;
+  monthlyCost: number | null;
   status: LineStatus;
   memo: string;
   nextReviewDate: string;
@@ -41,6 +46,10 @@ function isLineStatus(value: string): value is LineStatus {
   return LINE_STATUS_OPTIONS.includes(value as LineStatus);
 }
 
+function isLineType(value: string): value is LineType {
+  return LINE_TYPE_OPTIONS.includes(value as LineType);
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
 }
@@ -62,6 +71,19 @@ export function normalizeReviewDate(value: string): string {
   return isSameDate ? value : '';
 }
 
+export function normalizeMonthlyCost(value: string | number | null | undefined): number | null {
+  if (value == null || value === '') {
+    return null;
+  }
+
+  const numberValue = typeof value === 'number' ? value : Number(value);
+  if (!Number.isFinite(numberValue) || numberValue < 0 || !Number.isInteger(numberValue)) {
+    return null;
+  }
+
+  return numberValue;
+}
+
 function toLineDraft(value: unknown): LineDraft | null {
   if (!isRecord(value)) {
     return null;
@@ -70,6 +92,8 @@ function toLineDraft(value: unknown): LineDraft | null {
   const id = typeof value.id === 'string' ? value.id : null;
   const lineName = typeof value.lineName === 'string' ? value.lineName : null;
   const carrier = typeof value.carrier === 'string' ? value.carrier : null;
+  const lineType = typeof value.lineType === 'string' && isLineType(value.lineType) ? value.lineType : DEFAULT_LINE_TYPE;
+  const monthlyCost = normalizeMonthlyCost(typeof value.monthlyCost === 'number' || typeof value.monthlyCost === 'string' ? value.monthlyCost : null);
   const status = typeof value.status === 'string' && isLineStatus(value.status) ? value.status : null;
   const memo = typeof value.memo === 'string' ? value.memo : '';
   const nextReviewDate = typeof value.nextReviewDate === 'string' ? normalizeReviewDate(value.nextReviewDate) : '';
@@ -83,6 +107,8 @@ function toLineDraft(value: unknown): LineDraft | null {
     id,
     lineName,
     carrier,
+    lineType,
+    monthlyCost,
     status,
     memo,
     nextReviewDate,
@@ -285,6 +311,8 @@ export const lineDraftStore: LineDraftStore = new LocalStorageLineDraftStore();
 export function createLineDraft(input: {
   lineName: string;
   carrier: string;
+  lineType: LineType;
+  monthlyCost: number | null;
   status: LineStatus;
   memo: string;
   nextReviewDate: string;
@@ -293,6 +321,8 @@ export function createLineDraft(input: {
     id: globalThis.crypto?.randomUUID?.() ?? `${Date.now()}`,
     lineName: input.lineName,
     carrier: input.carrier,
+    lineType: input.lineType,
+    monthlyCost: input.monthlyCost,
     status: input.status,
     memo: input.memo,
     nextReviewDate: normalizeReviewDate(input.nextReviewDate),
@@ -302,12 +332,22 @@ export function createLineDraft(input: {
 
 export function updateLineDraft(
   draft: LineDraft,
-  input: { lineName: string; carrier: string; status: LineStatus; memo: string; nextReviewDate: string },
+  input: {
+    lineName: string;
+    carrier: string;
+    lineType: LineType;
+    monthlyCost: number | null;
+    status: LineStatus;
+    memo: string;
+    nextReviewDate: string;
+  },
 ): LineDraft {
   return {
     ...draft,
     lineName: input.lineName,
     carrier: input.carrier,
+    lineType: input.lineType,
+    monthlyCost: input.monthlyCost,
     status: input.status,
     memo: input.memo,
     nextReviewDate: normalizeReviewDate(input.nextReviewDate),

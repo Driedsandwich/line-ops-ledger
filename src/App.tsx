@@ -6,7 +6,7 @@ const navItems = [
   { to: '/settings', label: '設定' },
 ];
 
-const devProgressLabel = 'DEV / feat/settings-json-backup / PR #13';
+const devProgressLabel = 'DEV / feat/line-type-and-monthly-cost / PR pending';
 
 export function AppLayout(): JSX.Element {
   return (
