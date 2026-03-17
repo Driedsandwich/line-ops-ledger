@@ -23,6 +23,12 @@ type FormState = {
   nextReviewDate: string;
 };
 
+type FilterState = {
+  keyword: string;
+  status: 'all' | LineStatus;
+  lineType: 'all' | LineType;
+};
+
 type UndoState = {
   drafts: LineDraft[];
   label: string;
@@ -36,6 +42,12 @@ const initialFormState: FormState = {
   status: '利用中',
   memo: '',
   nextReviewDate: '',
+};
+
+const initialFilterState: FilterState = {
+  keyword: '',
+  status: 'all',
+  lineType: 'all',
 };
 
 function formatCreatedAt(value: string): string {
@@ -97,16 +109,45 @@ function isEditableElement(target: EventTarget | null): boolean {
   return tagName === 'INPUT' || tagName === 'TEXTAREA' || tagName === 'SELECT' || target.isContentEditable;
 }
 
+function matchesKeyword(draft: LineDraft, keyword: string): boolean {
+  if (!keyword) {
+    return true;
+  }
+
+  const normalized = keyword.trim().toLowerCase();
+  if (!normalized) {
+    return true;
+  }
+
+  return [draft.lineName, draft.carrier, draft.memo].some((value) => value.toLowerCase().includes(normalized));
+}
+
 export function LinesPage(): JSX.Element {
   const [drafts, setDrafts] = useState<LineDraft[]>(() => lineDraftStore.load());
+  const [filters, setFilters] = useState<FilterState>(initialFilterState);
   const [form, setForm] = useState<FormState>(initialFormState);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [undoState, setUndoState] = useState<UndoState | null>(null);
 
-  const hasDrafts = drafts.length > 0;
-  const countLabel = useMemo(() => `${drafts.length}件`, [drafts.length]);
+  const filteredDrafts = useMemo(() => {
+    return drafts.filter((draft) => {
+      if (!matchesKeyword(draft, filters.keyword)) {
+        return false;
+      }
+      if (filters.status !== 'all' && draft.status !== filters.status) {
+        return false;
+      }
+      if (filters.lineType !== 'all' && draft.lineType !== filters.lineType) {
+        return false;
+      }
+      return true;
+    });
+  }, [drafts, filters]);
+
+  const hasDrafts = filteredDrafts.length > 0;
+  const countLabel = useMemo(() => `${filteredDrafts.length}件`, [filteredDrafts.length]);
   const submitLabel = editingId ? '更新する' : '保存する';
   const cardBadge = editingId ? '編集中' : 'スキーマ拡張';
 
@@ -124,6 +165,13 @@ export function LinesPage(): JSX.Element {
 
   function updateField<K extends keyof FormState>(key: K, value: FormState[K]): void {
     setForm((current) => ({
+      ...current,
+      [key]: value,
+    }));
+  }
+
+  function updateFilter<K extends keyof FilterState>(key: K, value: FilterState[K]): void {
+    setFilters((current) => ({
       ...current,
       [key]: value,
     }));
@@ -193,6 +241,10 @@ export function LinesPage(): JSX.Element {
     setSuccessMessage(`直前の操作（${undoState.label}）を元に戻しました。`);
   }
 
+  function resetFilters(): void {
+    setFilters(initialFilterState);
+  }
+
   useEffect(() => {
     lineDraftStore.ensureCurrentVersion();
   }, []);
@@ -233,9 +285,7 @@ export function LinesPage(): JSX.Element {
         return;
       }
 
-      const nextDrafts = drafts.map((draft) =>
-        draft.id === editingId ? updateLineDraft(draft, validated) : draft,
-      );
+      const nextDrafts = drafts.map((draft) => (draft.id === editingId ? updateLineDraft(draft, validated) : draft));
       persist(nextDrafts, {
         previousDrafts: drafts,
         undoLabel: `更新: ${validated.lineName}`,
@@ -289,7 +339,7 @@ export function LinesPage(): JSX.Element {
           <p className="eyebrow">Lines</p>
           <h2>回線一覧</h2>
           <p className="page__lead">
-            回線ドラフトの追加に加えて、編集と削除までをこの段階で扱います。保存層は薄い store に切り出し、後で差し替えやすくします。
+            回線ドラフトの追加に加えて、検索・絞り込みで見たい回線を探しやすくします。保存層は薄い store に切り出し、後で差し替えやすくします。
           </p>
         </div>
       </header>
@@ -406,13 +456,54 @@ export function LinesPage(): JSX.Element {
             <span className="badge">{countLabel}</span>
           </div>
 
+          <div className="form-grid form-grid--filters">
+            <label className="field field--full">
+              <span>キーワード</span>
+              <input
+                value={filters.keyword}
+                onChange={(event) => updateFilter('keyword', event.target.value)}
+                placeholder="回線名・キャリア・メモで検索"
+              />
+            </label>
+
+            <label className="field">
+              <span>契約状態</span>
+              <select value={filters.status} onChange={(event) => updateFilter('status', event.target.value as FilterState['status'])}>
+                <option value="all">すべて</option>
+                {LINE_STATUS_OPTIONS.map((option) => (
+                  <option key={option} value={option}>
+                    {option}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className="field">
+              <span>回線種別</span>
+              <select value={filters.lineType} onChange={(event) => updateFilter('lineType', event.target.value as FilterState['lineType'])}>
+                <option value="all">すべて</option>
+                {LINE_TYPE_OPTIONS.map((option) => (
+                  <option key={option} value={option}>
+                    {option}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <div className="button-row field--full button-row--tight">
+              <button type="button" className="button" onClick={resetFilters}>
+                絞り込みを解除
+              </button>
+            </div>
+          </div>
+
           {!hasDrafts ? (
             <p className="muted">
-              登録された回線はまだありません。フォームから1件追加すると、この一覧に直ちに反映されます。
+              条件に一致する回線はありません。検索条件を見直すか、フォームから1件追加してください。
             </p>
           ) : (
             <ul className="list list--drafts">
-              {drafts.map((draft) => (
+              {filteredDrafts.map((draft) => (
                 <li key={draft.id}>
                   <div className="list__row">
                     <strong>{draft.lineName}</strong>

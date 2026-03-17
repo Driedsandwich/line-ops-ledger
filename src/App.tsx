@@ -6,7 +6,7 @@ const navItems = [
   { to: '/settings', label: '設定' },
 ];
 
-const devProgressLabel = 'DEV / feat/line-type-and-monthly-cost / PR #15';
+const devProgressLabel = 'DEV / feat/lines-search-and-filter / PR pending';
 
 export function AppLayout(): JSX.Element {
   return (
