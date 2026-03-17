@@ -1,4 +1,9 @@
 import { lineDraftStore, normalizeReviewDate, type LineDraft } from '../lib/lineDrafts';
+import {
+  loadNotificationSettings,
+  type NotificationRelaunchPolicy,
+  type NotificationReminderWindow,
+} from '../lib/notificationSettings';
 
 function startOfDay(input: Date): Date {
   const date = new Date(input);
@@ -38,7 +43,48 @@ function formatCurrency(value: number): string {
   return `${new Intl.NumberFormat('ja-JP').format(value)}円/月`;
 }
 
-function buildSummary(drafts: LineDraft[]): {
+function formatReminderWindow(value: NotificationReminderWindow): string {
+  switch (value) {
+    case 'overdue':
+      return '期限超過だけを対象にする';
+    case 'today':
+      return '今日期限までを対象にする';
+    case 'within-3-days':
+      return '3日以内までを対象にする';
+    case 'within-7-days':
+      return '7日以内までを対象にする';
+    default:
+      return '不明';
+  }
+}
+
+function formatRelaunchPolicy(value: NotificationRelaunchPolicy): string {
+  switch (value) {
+    case 'none':
+      return '再通知しない';
+    case 'on-app-launch':
+      return '次回起動時に再表示する';
+    default:
+      return '不明';
+  }
+}
+
+function isNotificationTarget(diff: number, window: NotificationReminderWindow): boolean {
+  switch (window) {
+    case 'overdue':
+      return diff < 0;
+    case 'today':
+      return diff <= 0;
+    case 'within-3-days':
+      return diff <= 3;
+    case 'within-7-days':
+      return diff <= 7;
+    default:
+      return false;
+  }
+}
+
+function buildSummary(drafts: LineDraft[], reminderWindow: NotificationReminderWindow): {
   dangerCount: number;
   todayCount: number;
   within3Days: number;
@@ -46,6 +92,7 @@ function buildSummary(drafts: LineDraft[]): {
   activeCount: number;
   closingCount: number;
   monthlyTotal: number;
+  notificationEligibleCount: number;
   nearest: LineDraft[];
 } {
   const today = new Date();
@@ -56,6 +103,7 @@ function buildSummary(drafts: LineDraft[]): {
   let activeCount = 0;
   let closingCount = 0;
   let monthlyTotal = 0;
+  let notificationEligibleCount = 0;
 
   const nearest = drafts
     .filter((draft) => Boolean(normalizeReviewDate(draft.nextReviewDate)))
@@ -92,6 +140,9 @@ function buildSummary(drafts: LineDraft[]): {
     if (diff >= 0 && diff <= 7) {
       within7Days += 1;
     }
+    if (isNotificationTarget(diff, reminderWindow)) {
+      notificationEligibleCount += 1;
+    }
   }
 
   return {
@@ -102,13 +153,15 @@ function buildSummary(drafts: LineDraft[]): {
     activeCount,
     closingCount,
     monthlyTotal,
+    notificationEligibleCount,
     nearest,
   };
 }
 
 export function DashboardPage(): JSX.Element {
   const drafts = lineDraftStore.load();
-  const summary = buildSummary(drafts);
+  const notificationSettings = loadNotificationSettings();
+  const summary = buildSummary(drafts, notificationSettings.reminderWindow);
 
   return (
     <div className="page">
@@ -117,7 +170,7 @@ export function DashboardPage(): JSX.Element {
           <p className="eyebrow">Dashboard</p>
           <h2>今日やることと危険案件の入口</h2>
           <p className="page__lead">
-            保存済み回線の次回確認日、契約状態、月額費用から、危険案件サマリーと近日期限を集計します。
+            保存済み回線の次回確認日、契約状態、月額費用に加えて、通知方針を見比べながら今日の優先度を確認できます。
           </p>
         </div>
       </header>
@@ -176,6 +229,34 @@ export function DashboardPage(): JSX.Element {
               <strong>{summary.within7Days}件</strong>
             </div>
           </div>
+        </article>
+
+        <article className="card">
+          <div className="card__header">
+            <h3>通知方針サマリー</h3>
+            <span className={notificationSettings.enabled ? 'badge badge--ok' : 'badge'}>
+              {notificationSettings.enabled ? '利用する' : '利用しない'}
+            </span>
+          </div>
+          <dl className="definition-list">
+            <div>
+              <dt>通知対象の期限</dt>
+              <dd>{formatReminderWindow(notificationSettings.reminderWindow)}</dd>
+            </div>
+            <div>
+              <dt>再通知の扱い</dt>
+              <dd>{formatRelaunchPolicy(notificationSettings.relaunchPolicy)}</dd>
+            </div>
+            <div>
+              <dt>現在の通知対象件数</dt>
+              <dd>{notificationSettings.enabled ? `${summary.notificationEligibleCount}件` : '無効'}</dd>
+            </div>
+          </dl>
+          <p className="muted">
+            {notificationSettings.enabled
+              ? '現在の設定と次回確認日から、通知対象になり得る回線件数を表示しています。閉アプリ時通知そのものはこの MVP では保証しません。'
+              : '通知は無効です。`/settings` で有効にすると、現在の設定で通知対象になる件数をここで確認できます。'}
+          </p>
         </article>
       </section>
 
