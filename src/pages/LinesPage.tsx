@@ -29,6 +29,8 @@ type FilterState = {
   lineType: 'all' | LineType;
 };
 
+type SortKey = 'review-date-asc' | 'monthly-cost-desc' | 'monthly-cost-asc' | 'created-at-desc' | 'created-at-asc';
+
 type UndoState = {
   drafts: LineDraft[];
   label: string;
@@ -49,6 +51,8 @@ const initialFilterState: FilterState = {
   status: 'all',
   lineType: 'all',
 };
+
+const initialSortKey: SortKey = 'review-date-asc';
 
 function formatCreatedAt(value: string): string {
   const date = new Date(value);
@@ -122,9 +126,42 @@ function matchesKeyword(draft: LineDraft, keyword: string): boolean {
   return [draft.lineName, draft.carrier, draft.memo].some((value) => value.toLowerCase().includes(normalized));
 }
 
+function reviewDateTimestamp(value: string): number {
+  const normalized = normalizeReviewDate(value);
+  if (!normalized) {
+    return Number.MAX_SAFE_INTEGER;
+  }
+
+  const date = new Date(`${normalized}T00:00:00`);
+  return Number.isNaN(date.getTime()) ? Number.MAX_SAFE_INTEGER : date.getTime();
+}
+
+function compareBySortKey(a: LineDraft, b: LineDraft, sortKey: SortKey): number {
+  switch (sortKey) {
+    case 'review-date-asc':
+      return reviewDateTimestamp(a.nextReviewDate) - reviewDateTimestamp(b.nextReviewDate) || b.createdAt.localeCompare(a.createdAt);
+    case 'monthly-cost-desc': {
+      const left = a.monthlyCost ?? -1;
+      const right = b.monthlyCost ?? -1;
+      return right - left || b.createdAt.localeCompare(a.createdAt);
+    }
+    case 'monthly-cost-asc': {
+      const left = a.monthlyCost ?? Number.MAX_SAFE_INTEGER;
+      const right = b.monthlyCost ?? Number.MAX_SAFE_INTEGER;
+      return left - right || b.createdAt.localeCompare(a.createdAt);
+    }
+    case 'created-at-asc':
+      return a.createdAt.localeCompare(b.createdAt);
+    case 'created-at-desc':
+    default:
+      return b.createdAt.localeCompare(a.createdAt);
+  }
+}
+
 export function LinesPage(): JSX.Element {
   const [drafts, setDrafts] = useState<LineDraft[]>(() => lineDraftStore.load());
   const [filters, setFilters] = useState<FilterState>(initialFilterState);
+  const [sortKey, setSortKey] = useState<SortKey>(initialSortKey);
   const [form, setForm] = useState<FormState>(initialFormState);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -146,8 +183,12 @@ export function LinesPage(): JSX.Element {
     });
   }, [drafts, filters]);
 
-  const hasDrafts = filteredDrafts.length > 0;
-  const countLabel = useMemo(() => `${filteredDrafts.length}件`, [filteredDrafts.length]);
+  const visibleDrafts = useMemo(() => {
+    return [...filteredDrafts].sort((a, b) => compareBySortKey(a, b, sortKey));
+  }, [filteredDrafts, sortKey]);
+
+  const hasDrafts = visibleDrafts.length > 0;
+  const countLabel = useMemo(() => `${visibleDrafts.length}件`, [visibleDrafts.length]);
   const submitLabel = editingId ? '更新する' : '保存する';
   const cardBadge = editingId ? '編集中' : 'スキーマ拡張';
 
@@ -243,6 +284,7 @@ export function LinesPage(): JSX.Element {
 
   function resetFilters(): void {
     setFilters(initialFilterState);
+    setSortKey(initialSortKey);
   }
 
   useEffect(() => {
@@ -339,7 +381,7 @@ export function LinesPage(): JSX.Element {
           <p className="eyebrow">Lines</p>
           <h2>回線一覧</h2>
           <p className="page__lead">
-            回線ドラフトの追加に加えて、検索・絞り込みで見たい回線を探しやすくします。保存層は薄い store に切り出し、後で差し替えやすくします。
+            回線ドラフトの追加に加えて、検索・絞り込み・並び替えで見たい回線を探しやすくします。保存層は薄い store に切り出し、後で差し替えやすくします。
           </p>
         </div>
       </header>
@@ -490,9 +532,20 @@ export function LinesPage(): JSX.Element {
               </select>
             </label>
 
+            <label className="field field--full">
+              <span>並び順</span>
+              <select value={sortKey} onChange={(event) => setSortKey(event.target.value as SortKey)}>
+                <option value="review-date-asc">次回確認日が近い順</option>
+                <option value="monthly-cost-desc">月額費用が高い順</option>
+                <option value="monthly-cost-asc">月額費用が低い順</option>
+                <option value="created-at-desc">作成日時が新しい順</option>
+                <option value="created-at-asc">作成日時が古い順</option>
+              </select>
+            </label>
+
             <div className="button-row field--full button-row--tight">
               <button type="button" className="button" onClick={resetFilters}>
-                絞り込みを解除
+                絞り込みと並び順を解除
               </button>
             </div>
           </div>
@@ -503,7 +556,7 @@ export function LinesPage(): JSX.Element {
             </p>
           ) : (
             <ul className="list list--drafts">
-              {filteredDrafts.map((draft) => (
+              {visibleDrafts.map((draft) => (
                 <li key={draft.id}>
                   <div className="list__row">
                     <strong>{draft.lineName}</strong>
