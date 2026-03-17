@@ -188,6 +188,27 @@ textarea {
   color: #86efac;
 }
 
+.badge--warn {
+  background: rgba(245, 158, 11, 0.18);
+  color: #fcd34d;
+}
+
+.badge--danger {
+  background: rgba(239, 68, 68, 0.18);
+  color: #fca5a5;
+}
+
+.badge--info {
+  background: rgba(59, 130, 246, 0.18);
+  color: #93c5fd;
+}
+
+.badge-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
 .list {
   list-style: none;
   padding: 0;

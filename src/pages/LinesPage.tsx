@@ -36,6 +36,11 @@ type UndoState = {
   label: string;
 };
 
+type DeadlineStatus = {
+  label: string;
+  className: string;
+};
+
 const initialFormState: FormState = {
   lineName: '',
   carrier: '',
@@ -158,6 +163,38 @@ function compareBySortKey(a: LineDraft, b: LineDraft, sortKey: SortKey): number 
   }
 }
 
+function toStartOfDay(date: Date): Date {
+  const next = new Date(date);
+  next.setHours(0, 0, 0, 0);
+  return next;
+}
+
+function getDeadlineStatus(nextReviewDate: string): DeadlineStatus {
+  const normalized = normalizeReviewDate(nextReviewDate);
+  if (!normalized) {
+    return { label: '期限未設定', className: 'badge' };
+  }
+
+  const today = toStartOfDay(new Date()).getTime();
+  const due = new Date(`${normalized}T00:00:00`).getTime();
+  const diffDays = Math.round((due - today) / 86400000);
+
+  if (diffDays < 0) {
+    return { label: '期限超過', className: 'badge badge--danger' };
+  }
+  if (diffDays === 0) {
+    return { label: '今日期限', className: 'badge badge--warn' };
+  }
+  if (diffDays <= 3) {
+    return { label: '3日以内', className: 'badge badge--warn' };
+  }
+  if (diffDays <= 7) {
+    return { label: '7日以内', className: 'badge badge--info' };
+  }
+
+  return { label: '期限あり', className: 'badge badge--ok' };
+}
+
 export function LinesPage(): JSX.Element {
   const [drafts, setDrafts] = useState<LineDraft[]>(() => lineDraftStore.load());
   const [filters, setFilters] = useState<FilterState>(initialFilterState);
@@ -190,7 +227,7 @@ export function LinesPage(): JSX.Element {
   const hasDrafts = visibleDrafts.length > 0;
   const countLabel = useMemo(() => `${visibleDrafts.length}件`, [visibleDrafts.length]);
   const submitLabel = editingId ? '更新する' : '保存する';
-  const cardBadge = editingId ? '編集中' : 'スキーマ拡張';
+  const cardBadge = editingId ? '編集中' : '期限表示';
 
   function persist(nextDrafts: LineDraft[], options?: { previousDrafts?: LineDraft[]; undoLabel?: string }): void {
     setDrafts(nextDrafts);
@@ -381,7 +418,7 @@ export function LinesPage(): JSX.Element {
           <p className="eyebrow">Lines</p>
           <h2>回線一覧</h2>
           <p className="page__lead">
-            回線ドラフトの追加に加えて、検索・絞り込み・並び替えで見たい回線を探しやすくします。保存層は薄い store に切り出し、後で差し替えやすくします。
+            回線ドラフトの追加に加えて、検索・絞り込み・並び替え・期限表示で見たい回線を探しやすくします。保存層は薄い store に切り出し、後で差し替えやすくします。
           </p>
         </div>
       </header>
@@ -396,73 +433,45 @@ export function LinesPage(): JSX.Element {
           <form className="form-grid" onSubmit={handleSubmit}>
             <label className="field">
               <span>回線名 *</span>
-              <input
-                value={form.lineName}
-                onChange={(event) => updateField('lineName', event.target.value)}
-                placeholder="例: 楽天モバイル メイン"
-              />
+              <input value={form.lineName} onChange={(event) => updateField('lineName', event.target.value)} placeholder="例: 楽天モバイル メイン" />
             </label>
 
             <label className="field">
               <span>キャリア *</span>
-              <input
-                value={form.carrier}
-                onChange={(event) => updateField('carrier', event.target.value)}
-                placeholder="例: 楽天モバイル"
-              />
+              <input value={form.carrier} onChange={(event) => updateField('carrier', event.target.value)} placeholder="例: 楽天モバイル" />
             </label>
 
             <label className="field">
               <span>回線種別 *</span>
               <select value={form.lineType} onChange={(event) => updateField('lineType', event.target.value as LineType)}>
                 {LINE_TYPE_OPTIONS.map((option) => (
-                  <option key={option} value={option}>
-                    {option}
-                  </option>
+                  <option key={option} value={option}>{option}</option>
                 ))}
               </select>
             </label>
 
             <label className="field">
               <span>月額費用</span>
-              <input
-                inputMode="numeric"
-                value={form.monthlyCost}
-                onChange={(event) => updateField('monthlyCost', event.target.value)}
-                placeholder="例: 2980"
-              />
+              <input inputMode="numeric" value={form.monthlyCost} onChange={(event) => updateField('monthlyCost', event.target.value)} placeholder="例: 2980" />
             </label>
 
             <label className="field">
               <span>契約状態 *</span>
               <select value={form.status} onChange={(event) => updateField('status', event.target.value as LineStatus)}>
                 {LINE_STATUS_OPTIONS.map((option) => (
-                  <option key={option} value={option}>
-                    {option}
-                  </option>
+                  <option key={option} value={option}>{option}</option>
                 ))}
               </select>
             </label>
 
             <label className="field">
               <span>次回確認日</span>
-              <input
-                type="date"
-                min="2000-01-01"
-                max="9999-12-31"
-                value={form.nextReviewDate}
-                onChange={(event) => updateField('nextReviewDate', event.target.value)}
-              />
+              <input type="date" min="2000-01-01" max="9999-12-31" value={form.nextReviewDate} onChange={(event) => updateField('nextReviewDate', event.target.value)} />
             </label>
 
             <label className="field field--full">
               <span>メモ</span>
-              <textarea
-                value={form.memo}
-                onChange={(event) => updateField('memo', event.target.value)}
-                rows={4}
-                placeholder="任意。次回確認したいことを残せます。"
-              />
+              <textarea value={form.memo} onChange={(event) => updateField('memo', event.target.value)} rows={4} placeholder="任意。次回確認したいことを残せます。" />
             </label>
 
             {errorMessage ? <p className="notice notice--warn field--full">{errorMessage}</p> : null}
@@ -473,21 +482,13 @@ export function LinesPage(): JSX.Element {
                   <strong>直前の操作を戻せます</strong>
                   <p className="muted">{undoState.label} / `Ctrl+Z` または `⌘Z` でも戻せます</p>
                 </div>
-                <button type="button" className="button" onClick={handleUndo}>
-                  操作を戻す
-                </button>
+                <button type="button" className="button" onClick={handleUndo}>操作を戻す</button>
               </div>
             ) : null}
 
             <div className="button-row field--full">
-              <button type="submit" className="button button--primary">
-                {submitLabel}
-              </button>
-              {editingId ? (
-                <button type="button" className="button" onClick={handleCancelEdit}>
-                  編集をやめる
-                </button>
-              ) : null}
+              <button type="submit" className="button button--primary">{submitLabel}</button>
+              {editingId ? <button type="button" className="button" onClick={handleCancelEdit}>編集をやめる</button> : null}
             </div>
           </form>
         </article>
@@ -501,11 +502,7 @@ export function LinesPage(): JSX.Element {
           <div className="form-grid form-grid--filters">
             <label className="field field--full">
               <span>キーワード</span>
-              <input
-                value={filters.keyword}
-                onChange={(event) => updateFilter('keyword', event.target.value)}
-                placeholder="回線名・キャリア・メモで検索"
-              />
+              <input value={filters.keyword} onChange={(event) => updateFilter('keyword', event.target.value)} placeholder="回線名・キャリア・メモで検索" />
             </label>
 
             <label className="field">
@@ -513,9 +510,7 @@ export function LinesPage(): JSX.Element {
               <select value={filters.status} onChange={(event) => updateFilter('status', event.target.value as FilterState['status'])}>
                 <option value="all">すべて</option>
                 {LINE_STATUS_OPTIONS.map((option) => (
-                  <option key={option} value={option}>
-                    {option}
-                  </option>
+                  <option key={option} value={option}>{option}</option>
                 ))}
               </select>
             </label>
@@ -525,9 +520,7 @@ export function LinesPage(): JSX.Element {
               <select value={filters.lineType} onChange={(event) => updateFilter('lineType', event.target.value as FilterState['lineType'])}>
                 <option value="all">すべて</option>
                 {LINE_TYPE_OPTIONS.map((option) => (
-                  <option key={option} value={option}>
-                    {option}
-                  </option>
+                  <option key={option} value={option}>{option}</option>
                 ))}
               </select>
             </label>
@@ -544,40 +537,39 @@ export function LinesPage(): JSX.Element {
             </label>
 
             <div className="button-row field--full button-row--tight">
-              <button type="button" className="button" onClick={resetFilters}>
-                絞り込みと並び順を解除
-              </button>
+              <button type="button" className="button" onClick={resetFilters}>絞り込みと並び順を解除</button>
             </div>
           </div>
 
           {!hasDrafts ? (
-            <p className="muted">
-              条件に一致する回線はありません。検索条件を見直すか、フォームから1件追加してください。
-            </p>
+            <p className="muted">条件に一致する回線はありません。検索条件を見直すか、フォームから1件追加してください。</p>
           ) : (
             <ul className="list list--drafts">
-              {visibleDrafts.map((draft) => (
-                <li key={draft.id}>
-                  <div className="list__row">
-                    <strong>{draft.lineName}</strong>
-                    <span className={draft.status === '利用中' ? 'badge badge--ok' : 'badge'}>{draft.status}</span>
-                  </div>
-                  <span>{draft.carrier}</span>
-                  <span>回線種別: {draft.lineType}</span>
-                  <span>月額費用: {formatMonthlyCost(draft.monthlyCost)}</span>
-                  <span>次回確認日: {formatReviewDate(draft.nextReviewDate)}</span>
-                  {draft.memo ? <span>{draft.memo}</span> : null}
-                  <span className="muted">保存日時: {formatCreatedAt(draft.createdAt)}</span>
-                  <div className="button-row button-row--tight">
-                    <button type="button" className="button" onClick={() => handleEdit(draft)}>
-                      編集する
-                    </button>
-                    <button type="button" className="button button--danger" onClick={() => handleDelete(draft.id)}>
-                      削除する
-                    </button>
-                  </div>
-                </li>
-              ))}
+              {visibleDrafts.map((draft) => {
+                const deadlineStatus = getDeadlineStatus(draft.nextReviewDate);
+
+                return (
+                  <li key={draft.id}>
+                    <div className="list__row">
+                      <strong>{draft.lineName}</strong>
+                      <span className={draft.status === '利用中' ? 'badge badge--ok' : 'badge'}>{draft.status}</span>
+                    </div>
+                    <div className="badge-row">
+                      <span className={deadlineStatus.className}>{deadlineStatus.label}</span>
+                    </div>
+                    <span>{draft.carrier}</span>
+                    <span>回線種別: {draft.lineType}</span>
+                    <span>月額費用: {formatMonthlyCost(draft.monthlyCost)}</span>
+                    <span>次回確認日: {formatReviewDate(draft.nextReviewDate)}</span>
+                    {draft.memo ? <span>{draft.memo}</span> : null}
+                    <span className="muted">保存日時: {formatCreatedAt(draft.createdAt)}</span>
+                    <div className="button-row button-row--tight">
+                      <button type="button" className="button" onClick={() => handleEdit(draft)}>編集する</button>
+                      <button type="button" className="button button--danger" onClick={() => handleDelete(draft.id)}>削除する</button>
+                    </div>
+                  </li>
+                );
+              })}
             </ul>
           )}
         </article>
