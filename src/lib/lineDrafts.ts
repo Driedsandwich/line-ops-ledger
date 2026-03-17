@@ -1,6 +1,8 @@
 export const LINE_STATUS_OPTIONS = ['利用中', '解約予定'] as const;
+export const CURRENT_LINE_DRAFT_SCHEMA_VERSION = 2;
 
 export type LineStatus = (typeof LINE_STATUS_OPTIONS)[number];
+export type LineDraftStorageFormat = 'empty' | 'legacy-array' | 'versioned-envelope' | 'invalid-data';
 
 export type LineDraft = {
   id: string;
@@ -10,6 +12,25 @@ export type LineDraft = {
   memo: string;
   nextReviewDate: string;
   createdAt: string;
+};
+
+export type LineDraftStorageInfo = {
+  schemaVersion: number | null;
+  itemCount: number;
+  updatedAt: string | null;
+  format: LineDraftStorageFormat;
+};
+
+type LineDraftStorageEnvelope = {
+  schemaVersion: number;
+  updatedAt: string;
+  items: LineDraft[];
+};
+
+type StorageSnapshot = {
+  drafts: LineDraft[];
+  info: LineDraftStorageInfo;
+  needsMigration: boolean;
 };
 
 const STORAGE_KEY = 'line-ops-ledger.line-drafts';
@@ -68,38 +89,120 @@ function toLineDraft(value: unknown): LineDraft | null {
   };
 }
 
+function readStorageSnapshot(): StorageSnapshot {
+  if (typeof window === 'undefined') {
+    return {
+      drafts: [],
+      info: {
+        schemaVersion: CURRENT_LINE_DRAFT_SCHEMA_VERSION,
+        itemCount: 0,
+        updatedAt: null,
+        format: 'empty',
+      },
+      needsMigration: false,
+    };
+  }
+
+  const raw = window.localStorage.getItem(STORAGE_KEY);
+
+  if (!raw) {
+    return {
+      drafts: [],
+      info: {
+        schemaVersion: CURRENT_LINE_DRAFT_SCHEMA_VERSION,
+        itemCount: 0,
+        updatedAt: null,
+        format: 'empty',
+      },
+      needsMigration: false,
+    };
+  }
+
+  try {
+    const parsed: unknown = JSON.parse(raw);
+
+    if (Array.isArray(parsed)) {
+      const drafts = parsed
+        .map(toLineDraft)
+        .filter((draft): draft is LineDraft => draft !== null)
+        .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+
+      return {
+        drafts,
+        info: {
+          schemaVersion: 1,
+          itemCount: drafts.length,
+          updatedAt: null,
+          format: 'legacy-array',
+        },
+        needsMigration: true,
+      };
+    }
+
+    if (isRecord(parsed) && Array.isArray(parsed.items)) {
+      const items = parsed.items as unknown[];
+      const drafts = items
+        .map(toLineDraft)
+        .filter((draft): draft is LineDraft => draft !== null)
+        .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+      const schemaVersion = typeof parsed.schemaVersion === 'number' ? parsed.schemaVersion : CURRENT_LINE_DRAFT_SCHEMA_VERSION;
+      const updatedAt = typeof parsed.updatedAt === 'string' ? parsed.updatedAt : null;
+
+      return {
+        drafts,
+        info: {
+          schemaVersion,
+          itemCount: drafts.length,
+          updatedAt,
+          format: 'versioned-envelope',
+        },
+        needsMigration: schemaVersion !== CURRENT_LINE_DRAFT_SCHEMA_VERSION || !updatedAt,
+      };
+    }
+
+    return {
+      drafts: [],
+      info: {
+        schemaVersion: null,
+        itemCount: 0,
+        updatedAt: null,
+        format: 'invalid-data',
+      },
+      needsMigration: false,
+    };
+  } catch (error) {
+    console.error('failed to read line draft storage', error);
+    return {
+      drafts: [],
+      info: {
+        schemaVersion: null,
+        itemCount: 0,
+        updatedAt: null,
+        format: 'invalid-data',
+      },
+      needsMigration: false,
+    };
+  }
+}
+
+function createEnvelope(drafts: LineDraft[]): LineDraftStorageEnvelope {
+  return {
+    schemaVersion: CURRENT_LINE_DRAFT_SCHEMA_VERSION,
+    updatedAt: new Date().toISOString(),
+    items: drafts,
+  };
+}
+
 export interface LineDraftStore {
   load(): LineDraft[];
   save(drafts: LineDraft[]): void;
+  getInfo(): LineDraftStorageInfo;
+  ensureCurrentVersion(): void;
 }
 
 class LocalStorageLineDraftStore implements LineDraftStore {
   load(): LineDraft[] {
-    if (typeof window === 'undefined') {
-      return [];
-    }
-
-    try {
-      const raw = window.localStorage.getItem(STORAGE_KEY);
-
-      if (!raw) {
-        return [];
-      }
-
-      const parsed: unknown = JSON.parse(raw);
-
-      if (!Array.isArray(parsed)) {
-        return [];
-      }
-
-      return parsed
-        .map(toLineDraft)
-        .filter((draft): draft is LineDraft => draft !== null)
-        .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-    } catch (error) {
-      console.error('failed to load line drafts', error);
-      return [];
-    }
+    return readStorageSnapshot().drafts;
   }
 
   save(drafts: LineDraft[]): void {
@@ -107,7 +210,19 @@ class LocalStorageLineDraftStore implements LineDraftStore {
       return;
     }
 
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(drafts));
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(createEnvelope(drafts)));
+  }
+
+  getInfo(): LineDraftStorageInfo {
+    return readStorageSnapshot().info;
+  }
+
+  ensureCurrentVersion(): void {
+    const snapshot = readStorageSnapshot();
+
+    if (snapshot.needsMigration) {
+      this.save(snapshot.drafts);
+    }
   }
 }
 

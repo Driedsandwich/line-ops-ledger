@@ -6,7 +6,7 @@ const navItems = [
   { to: '/settings', label: '設定' },
 ];
 
-const devProgressLabel = 'DEV / feat/dashboard-deadline-rollup / PR #9';
+const devProgressLabel = 'DEV / feat/storage-version-envelope / PR #11';
 
 export function AppLayout(): JSX.Element {
   return (
