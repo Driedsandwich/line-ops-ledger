@@ -20,3 +20,5 @@
 - Issue #14 の実装として、回線種別と月額費用、ダッシュボード月額合計を追加
 - PR #15 をユーザー側で squash merge + branch delete
 - Issue #16 の実装として、`/lines` の検索・絞り込みを追加
+- PR #17 をユーザー側で squash merge + branch delete
+- Issue #18 の実装として、`/lines` の並び替えを追加
