@@ -16,4 +16,5 @@
 ## 2026-03-18
 - PR #21 をユーザー側で squash merge + branch delete
 - PR #23 をユーザー側で squash merge + branch delete
-- Issue #24 の実装として、`/lines` の一括削除を追加
+- PR #25 をユーザー側で squash merge + branch delete
+- Issue #26 の実装として、`/lines` の行詳細の開閉を追加

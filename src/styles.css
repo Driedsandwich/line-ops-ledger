@@ -252,6 +252,17 @@ textarea {
   align-items: flex-start;
 }
 
+.list__summary-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px 12px;
+}
+
+.detail-panel {
+  border-top: 1px solid rgba(148, 163, 184, 0.16);
+  padding-top: 8px;
+}
+
 .stats-row {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -414,7 +425,8 @@ textarea {
     padding: 20px;
   }
 
-  .card-grid--lines {
+  .card-grid--lines,
+  .list__summary-grid {
     grid-template-columns: 1fr;
   }
 
