@@ -84,7 +84,7 @@ function isNotificationTarget(diff: number, window: NotificationReminderWindow):
   }
 }
 
-function buildSummary(drafts: LineDraft[], reminderWindow: NotificationReminderWindow): {
+type DashboardSummary = {
   dangerCount: number;
   todayCount: number;
   within3Days: number;
@@ -93,8 +93,11 @@ function buildSummary(drafts: LineDraft[], reminderWindow: NotificationReminderW
   closingCount: number;
   monthlyTotal: number;
   notificationEligibleCount: number;
+  notificationTargets: LineDraft[];
   nearest: LineDraft[];
-} {
+};
+
+function buildSummary(drafts: LineDraft[], reminderWindow: NotificationReminderWindow): DashboardSummary {
   const today = new Date();
   let dangerCount = 0;
   let todayCount = 0;
@@ -107,6 +110,19 @@ function buildSummary(drafts: LineDraft[], reminderWindow: NotificationReminderW
 
   const nearest = drafts
     .filter((draft) => Boolean(normalizeReviewDate(draft.nextReviewDate)))
+    .sort((a, b) => a.nextReviewDate.localeCompare(b.nextReviewDate))
+    .slice(0, 5);
+
+  const notificationTargets = drafts
+    .filter((draft) => {
+      const reviewDate = parseReviewDate(draft.nextReviewDate);
+      if (!reviewDate) {
+        return false;
+      }
+
+      const diff = diffInDays(today, reviewDate);
+      return isNotificationTarget(diff, reminderWindow);
+    })
     .sort((a, b) => a.nextReviewDate.localeCompare(b.nextReviewDate))
     .slice(0, 5);
 
@@ -154,6 +170,7 @@ function buildSummary(drafts: LineDraft[], reminderWindow: NotificationReminderW
     closingCount,
     monthlyTotal,
     notificationEligibleCount,
+    notificationTargets,
     nearest,
   };
 }
@@ -261,6 +278,33 @@ export function DashboardPage(): JSX.Element {
       </section>
 
       <section className="card-grid card-grid--single">
+        <article className="card">
+          <div className="card__header">
+            <h3>通知対象の回線一覧</h3>
+            <span className={notificationSettings.enabled ? 'badge badge--ok' : 'badge'}>
+              {notificationSettings.enabled ? `最大${summary.notificationTargets.length}件` : '無効'}
+            </span>
+          </div>
+          {!notificationSettings.enabled ? (
+            <p className="muted">通知は無効です。`/settings` で通知を有効にすると、ここに対象回線が表示されます。</p>
+          ) : summary.notificationTargets.length === 0 ? (
+            <p className="muted">現在の設定では通知対象になる回線はありません。期限設定か次回確認日を見直すと、ここに候補が表示されます。</p>
+          ) : (
+            <ul className="list list--drafts">
+              {summary.notificationTargets.map((draft) => (
+                <li key={draft.id}>
+                  <div className="list__row">
+                    <strong>{draft.lineName}</strong>
+                    <span className={draft.status === '利用中' ? 'badge badge--ok' : 'badge'}>{draft.status}</span>
+                  </div>
+                  <span>{draft.carrier}</span>
+                  <span>次回確認日: {formatReviewDate(draft.nextReviewDate)}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </article>
+
         <article className="card">
           <div className="card__header">
             <h3>月額費用サマリー</h3>
