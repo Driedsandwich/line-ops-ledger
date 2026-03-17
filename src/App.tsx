@@ -6,7 +6,7 @@ const navItems = [
   { to: '/settings', label: '設定' },
 ];
 
-const devProgressLabel = 'DEV / feat/storage-version-envelope / PR #11';
+const devProgressLabel = 'DEV / feat/settings-json-backup / PR pending';
 
 export function AppLayout(): JSX.Element {
   return (

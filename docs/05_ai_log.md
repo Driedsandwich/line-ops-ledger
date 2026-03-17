@@ -14,3 +14,5 @@
 - Issue #8 の実装として、次回確認日とダッシュボード実データ集計を追加
 - PR #9 をユーザー側で squash merge + branch delete
 - Issue #10 の実装として、保存データの versioned envelope 化と settings 可視化を追加
+- PR #11 をユーザー側で squash merge + branch delete
+- Issue #12 の実装として、JSON バックアップのエクスポート / インポートを追加

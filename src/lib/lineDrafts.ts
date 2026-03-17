@@ -1,5 +1,6 @@
 export const LINE_STATUS_OPTIONS = ['利用中', '解約予定'] as const;
 export const CURRENT_LINE_DRAFT_SCHEMA_VERSION = 2;
+export const LINE_DRAFT_BACKUP_FILENAME_PREFIX = 'line-ops-ledger-backup';
 
 export type LineStatus = (typeof LINE_STATUS_OPTIONS)[number];
 export type LineDraftStorageFormat = 'empty' | 'legacy-array' | 'versioned-envelope' | 'invalid-data';
@@ -89,44 +90,69 @@ function toLineDraft(value: unknown): LineDraft | null {
   };
 }
 
+function createEmptySnapshot(): StorageSnapshot {
+  return {
+    drafts: [],
+    info: {
+      schemaVersion: CURRENT_LINE_DRAFT_SCHEMA_VERSION,
+      itemCount: 0,
+      updatedAt: null,
+      format: 'empty',
+    },
+    needsMigration: false,
+  };
+}
+
+function toEnvelope(value: unknown): LineDraftStorageEnvelope | null {
+  if (Array.isArray(value)) {
+    const drafts = value
+      .map(toLineDraft)
+      .filter((draft): draft is LineDraft => draft !== null)
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+
+    return {
+      schemaVersion: 1,
+      updatedAt: '',
+      items: drafts,
+    };
+  }
+
+  if (!isRecord(value) || !Array.isArray(value.items)) {
+    return null;
+  }
+
+  const items = value.items as unknown[];
+  const drafts = items
+    .map(toLineDraft)
+    .filter((draft): draft is LineDraft => draft !== null)
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  const schemaVersion = typeof value.schemaVersion === 'number' ? value.schemaVersion : CURRENT_LINE_DRAFT_SCHEMA_VERSION;
+  const updatedAt = typeof value.updatedAt === 'string' ? value.updatedAt : '';
+
+  return {
+    schemaVersion,
+    updatedAt,
+    items: drafts,
+  };
+}
+
 function readStorageSnapshot(): StorageSnapshot {
   if (typeof window === 'undefined') {
-    return {
-      drafts: [],
-      info: {
-        schemaVersion: CURRENT_LINE_DRAFT_SCHEMA_VERSION,
-        itemCount: 0,
-        updatedAt: null,
-        format: 'empty',
-      },
-      needsMigration: false,
-    };
+    return createEmptySnapshot();
   }
 
   const raw = window.localStorage.getItem(STORAGE_KEY);
 
   if (!raw) {
-    return {
-      drafts: [],
-      info: {
-        schemaVersion: CURRENT_LINE_DRAFT_SCHEMA_VERSION,
-        itemCount: 0,
-        updatedAt: null,
-        format: 'empty',
-      },
-      needsMigration: false,
-    };
+    return createEmptySnapshot();
   }
 
   try {
     const parsed: unknown = JSON.parse(raw);
 
     if (Array.isArray(parsed)) {
-      const drafts = parsed
-        .map(toLineDraft)
-        .filter((draft): draft is LineDraft => draft !== null)
-        .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-
+      const envelope = toEnvelope(parsed);
+      const drafts = envelope?.items ?? [];
       return {
         drafts,
         info: {
@@ -140,13 +166,10 @@ function readStorageSnapshot(): StorageSnapshot {
     }
 
     if (isRecord(parsed) && Array.isArray(parsed.items)) {
-      const items = parsed.items as unknown[];
-      const drafts = items
-        .map(toLineDraft)
-        .filter((draft): draft is LineDraft => draft !== null)
-        .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-      const schemaVersion = typeof parsed.schemaVersion === 'number' ? parsed.schemaVersion : CURRENT_LINE_DRAFT_SCHEMA_VERSION;
-      const updatedAt = typeof parsed.updatedAt === 'string' ? parsed.updatedAt : null;
+      const envelope = toEnvelope(parsed);
+      const drafts = envelope?.items ?? [];
+      const schemaVersion = envelope?.schemaVersion ?? CURRENT_LINE_DRAFT_SCHEMA_VERSION;
+      const updatedAt = envelope?.updatedAt || null;
 
       return {
         drafts,
@@ -198,6 +221,9 @@ export interface LineDraftStore {
   save(drafts: LineDraft[]): void;
   getInfo(): LineDraftStorageInfo;
   ensureCurrentVersion(): void;
+  exportBackupJson(): string;
+  importBackupJson(raw: string): { importedCount: number };
+  buildBackupFilename(): string;
 }
 
 class LocalStorageLineDraftStore implements LineDraftStore {
@@ -223,6 +249,34 @@ class LocalStorageLineDraftStore implements LineDraftStore {
     if (snapshot.needsMigration) {
       this.save(snapshot.drafts);
     }
+  }
+
+  exportBackupJson(): string {
+    const snapshot = readStorageSnapshot();
+    return JSON.stringify(createEnvelope(snapshot.drafts), null, 2);
+  }
+
+  importBackupJson(raw: string): { importedCount: number } {
+    let parsed: unknown;
+
+    try {
+      parsed = JSON.parse(raw);
+    } catch {
+      throw new Error('JSON の読み取りに失敗しました。');
+    }
+
+    const envelope = toEnvelope(parsed);
+    if (!envelope) {
+      throw new Error('バックアップ形式が不正です。');
+    }
+
+    this.save(envelope.items);
+    return { importedCount: envelope.items.length };
+  }
+
+  buildBackupFilename(): string {
+    const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+    return `${LINE_DRAFT_BACKUP_FILENAME_PREFIX}-${stamp}.json`;
   }
 }
 
