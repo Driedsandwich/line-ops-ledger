@@ -84,6 +84,11 @@ function isNotificationTarget(diff: number, window: NotificationReminderWindow):
   }
 }
 
+type NotificationTargetItem = {
+  draft: LineDraft;
+  reasonLabel: string;
+};
+
 type DashboardSummary = {
   dangerCount: number;
   todayCount: number;
@@ -93,9 +98,22 @@ type DashboardSummary = {
   closingCount: number;
   monthlyTotal: number;
   notificationEligibleCount: number;
-  notificationTargets: LineDraft[];
+  notificationTargets: NotificationTargetItem[];
   nearest: LineDraft[];
 };
+
+function buildReasonLabel(diff: number): string {
+  if (diff < 0) {
+    return '期限超過';
+  }
+  if (diff === 0) {
+    return '今日期限';
+  }
+  if (diff <= 3) {
+    return '3日以内';
+  }
+  return '7日以内';
+}
 
 function buildSummary(drafts: LineDraft[], reminderWindow: NotificationReminderWindow): DashboardSummary {
   const today = new Date();
@@ -114,16 +132,23 @@ function buildSummary(drafts: LineDraft[], reminderWindow: NotificationReminderW
     .slice(0, 5);
 
   const notificationTargets = drafts
-    .filter((draft) => {
+    .flatMap((draft) => {
       const reviewDate = parseReviewDate(draft.nextReviewDate);
       if (!reviewDate) {
-        return false;
+        return [];
       }
 
       const diff = diffInDays(today, reviewDate);
-      return isNotificationTarget(diff, reminderWindow);
+      if (!isNotificationTarget(diff, reminderWindow)) {
+        return [];
+      }
+
+      return [{
+        draft,
+        reasonLabel: buildReasonLabel(diff),
+      } satisfies NotificationTargetItem];
     })
-    .sort((a, b) => a.nextReviewDate.localeCompare(b.nextReviewDate))
+    .sort((a, b) => a.draft.nextReviewDate.localeCompare(b.draft.nextReviewDate))
     .slice(0, 5);
 
   for (const draft of drafts) {
@@ -290,18 +315,26 @@ export function DashboardPage(): JSX.Element {
           ) : summary.notificationTargets.length === 0 ? (
             <p className="muted">現在の設定では通知対象になる回線はありません。期限設定か次回確認日を見直すと、ここに候補が表示されます。</p>
           ) : (
-            <ul className="list list--drafts">
-              {summary.notificationTargets.map((draft) => (
-                <li key={draft.id}>
-                  <div className="list__row">
-                    <strong>{draft.lineName}</strong>
-                    <span className={draft.status === '利用中' ? 'badge badge--ok' : 'badge'}>{draft.status}</span>
-                  </div>
-                  <span>{draft.carrier}</span>
-                  <span>次回確認日: {formatReviewDate(draft.nextReviewDate)}</span>
-                </li>
-              ))}
-            </ul>
+            <>
+              <ul className="list list--drafts">
+                {summary.notificationTargets.map((item) => (
+                  <li key={item.draft.id}>
+                    <div className="list__row">
+                      <strong>{item.draft.lineName}</strong>
+                      <span className={item.draft.status === '利用中' ? 'badge badge--ok' : 'badge'}>{item.draft.status}</span>
+                    </div>
+                    <span>{item.draft.carrier}</span>
+                    <span>次回確認日: {formatReviewDate(item.draft.nextReviewDate)}</span>
+                    <span className="badge">{item.reasonLabel}</span>
+                  </li>
+                ))}
+              </ul>
+              <div className="button-row">
+                <a className="button" href="/lines">
+                  回線一覧で確認する
+                </a>
+              </div>
+            </>
           )}
         </article>
 
