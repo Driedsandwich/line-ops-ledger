@@ -155,6 +155,10 @@ export function LinesPage(): JSX.Element {
   }
 
   useEffect(() => {
+    lineDraftStore.ensureCurrentVersion();
+  }, []);
+
+  useEffect(() => {
     function onKeyDown(event: KeyboardEvent): void {
       const isUndoShortcut = (event.ctrlKey || event.metaKey) && !event.shiftKey && event.key.toLowerCase() === 'z';
 
