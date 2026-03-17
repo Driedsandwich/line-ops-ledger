@@ -6,7 +6,7 @@ const navItems = [
   { to: '/settings', label: '設定' },
 ];
 
-const devProgressLabel = 'DEV / feat/dashboard-notification-target-list / PR #33';
+const devProgressLabel = 'DEV / feat/dashboard-notification-reasons-and-link / pending PR';
 
 export function AppLayout(): JSX.Element {
   return (
