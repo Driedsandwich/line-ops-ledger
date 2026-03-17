@@ -84,9 +84,18 @@ function isNotificationTarget(diff: number, window: NotificationReminderWindow):
   }
 }
 
+type NotificationReasonLabel = '期限超過' | '今日期限' | '3日以内' | '7日以内';
+
+type NotificationReasonSummary = {
+  overdue: number;
+  today: number;
+  within3Days: number;
+  within7Days: number;
+};
+
 type NotificationTargetItem = {
   draft: LineDraft;
-  reasonLabel: string;
+  reasonLabel: NotificationReasonLabel;
 };
 
 type DashboardSummary = {
@@ -98,11 +107,21 @@ type DashboardSummary = {
   closingCount: number;
   monthlyTotal: number;
   notificationEligibleCount: number;
+  notificationReasonSummary: NotificationReasonSummary;
   notificationTargets: NotificationTargetItem[];
   nearest: LineDraft[];
 };
 
-function buildReasonLabel(diff: number): string {
+function createEmptyNotificationReasonSummary(): NotificationReasonSummary {
+  return {
+    overdue: 0,
+    today: 0,
+    within3Days: 0,
+    within7Days: 0,
+  };
+}
+
+function buildReasonLabel(diff: number): NotificationReasonLabel {
   if (diff < 0) {
     return '期限超過';
   }
@@ -115,6 +134,23 @@ function buildReasonLabel(diff: number): string {
   return '7日以内';
 }
 
+function incrementReasonSummary(summary: NotificationReasonSummary, reasonLabel: NotificationReasonLabel): void {
+  switch (reasonLabel) {
+    case '期限超過':
+      summary.overdue += 1;
+      return;
+    case '今日期限':
+      summary.today += 1;
+      return;
+    case '3日以内':
+      summary.within3Days += 1;
+      return;
+    case '7日以内':
+      summary.within7Days += 1;
+      return;
+  }
+}
+
 function buildSummary(drafts: LineDraft[], reminderWindow: NotificationReminderWindow): DashboardSummary {
   const today = new Date();
   let dangerCount = 0;
@@ -125,6 +161,7 @@ function buildSummary(drafts: LineDraft[], reminderWindow: NotificationReminderW
   let closingCount = 0;
   let monthlyTotal = 0;
   let notificationEligibleCount = 0;
+  const notificationReasonSummary = createEmptyNotificationReasonSummary();
 
   const nearest = drafts
     .filter((draft) => Boolean(normalizeReviewDate(draft.nextReviewDate)))
@@ -182,7 +219,9 @@ function buildSummary(drafts: LineDraft[], reminderWindow: NotificationReminderW
       within7Days += 1;
     }
     if (isNotificationTarget(diff, reminderWindow)) {
+      const reasonLabel = buildReasonLabel(diff);
       notificationEligibleCount += 1;
+      incrementReasonSummary(notificationReasonSummary, reasonLabel);
     }
   }
 
@@ -195,6 +234,7 @@ function buildSummary(drafts: LineDraft[], reminderWindow: NotificationReminderW
     closingCount,
     monthlyTotal,
     notificationEligibleCount,
+    notificationReasonSummary,
     notificationTargets,
     nearest,
   };
@@ -303,6 +343,37 @@ export function DashboardPage(): JSX.Element {
       </section>
 
       <section className="card-grid card-grid--single">
+        <article className="card">
+          <div className="card__header">
+            <h3>通知理由別件数</h3>
+            <span className={notificationSettings.enabled ? 'badge badge--ok' : 'badge'}>
+              {notificationSettings.enabled ? '理由別集計' : '無効'}
+            </span>
+          </div>
+          {!notificationSettings.enabled ? (
+            <p className="muted">通知は無効です。`/settings` で通知を有効にすると、理由別件数をここで確認できます。</p>
+          ) : (
+            <div className="stats-row">
+              <div className="stat-box">
+                <span>期限超過</span>
+                <strong>{summary.notificationReasonSummary.overdue}件</strong>
+              </div>
+              <div className="stat-box">
+                <span>今日期限</span>
+                <strong>{summary.notificationReasonSummary.today}件</strong>
+              </div>
+              <div className="stat-box">
+                <span>3日以内</span>
+                <strong>{summary.notificationReasonSummary.within3Days}件</strong>
+              </div>
+              <div className="stat-box">
+                <span>7日以内</span>
+                <strong>{summary.notificationReasonSummary.within7Days}件</strong>
+              </div>
+            </div>
+          )}
+        </article>
+
         <article className="card">
           <div className="card__header">
             <h3>通知対象の回線一覧</h3>
