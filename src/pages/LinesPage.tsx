@@ -199,6 +199,7 @@ export function LinesPage(): JSX.Element {
   const [drafts, setDrafts] = useState<LineDraft[]>(() => lineDraftStore.load());
   const [filters, setFilters] = useState<FilterState>(initialFilterState);
   const [sortKey, setSortKey] = useState<SortKey>(initialSortKey);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [form, setForm] = useState<FormState>(initialFormState);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -224,10 +225,14 @@ export function LinesPage(): JSX.Element {
     return [...filteredDrafts].sort((a, b) => compareBySortKey(a, b, sortKey));
   }, [filteredDrafts, sortKey]);
 
+  const visibleIds = useMemo(() => visibleDrafts.map((draft) => draft.id), [visibleDrafts]);
+  const selectedVisibleCount = useMemo(() => visibleIds.filter((id) => selectedIds.includes(id)).length, [visibleIds, selectedIds]);
+  const allVisibleSelected = visibleIds.length > 0 && selectedVisibleCount === visibleIds.length;
+
   const hasDrafts = visibleDrafts.length > 0;
   const countLabel = useMemo(() => `${visibleDrafts.length}件`, [visibleDrafts.length]);
   const submitLabel = editingId ? '更新する' : '保存する';
-  const cardBadge = editingId ? '編集中' : '期限表示';
+  const cardBadge = editingId ? '編集中' : '一括更新';
 
   function persist(nextDrafts: LineDraft[], options?: { previousDrafts?: LineDraft[]; undoLabel?: string }): void {
     setDrafts(nextDrafts);
@@ -314,6 +319,7 @@ export function LinesPage(): JSX.Element {
     setDrafts(undoState.drafts);
     setUndoState(null);
     setEditingId(null);
+    setSelectedIds([]);
     setForm(initialFormState);
     setErrorMessage(null);
     setSuccessMessage(`直前の操作（${undoState.label}）を元に戻しました。`);
@@ -324,9 +330,58 @@ export function LinesPage(): JSX.Element {
     setSortKey(initialSortKey);
   }
 
+  function toggleSelected(id: string): void {
+    setSelectedIds((current) => (current.includes(id) ? current.filter((item) => item !== id) : [...current, id]));
+  }
+
+  function toggleSelectAllVisible(): void {
+    setSelectedIds((current) => {
+      if (allVisibleSelected) {
+        return current.filter((id) => !visibleIds.includes(id));
+      }
+
+      return Array.from(new Set([...current, ...visibleIds]));
+    });
+  }
+
+  function applyBulkStatus(nextStatus: LineStatus): void {
+    resetMessages();
+
+    if (selectedIds.length === 0) {
+      setErrorMessage('一括変更する回線を選択してください。');
+      return;
+    }
+
+    const selectedSet = new Set(selectedIds);
+    const nextDrafts = drafts.map((draft) =>
+      selectedSet.has(draft.id)
+        ? updateLineDraft(draft, {
+            lineName: draft.lineName,
+            carrier: draft.carrier,
+            lineType: draft.lineType,
+            monthlyCost: draft.monthlyCost,
+            status: nextStatus,
+            memo: draft.memo,
+            nextReviewDate: draft.nextReviewDate,
+          })
+        : draft,
+    );
+
+    persist(nextDrafts, {
+      previousDrafts: drafts,
+      undoLabel: `一括変更: ${selectedIds.length}件を${nextStatus}へ更新`,
+    });
+    setSelectedIds([]);
+    setSuccessMessage(`${selectedIds.length}件の契約状態を「${nextStatus}」へ更新しました。`);
+  }
+
   useEffect(() => {
     lineDraftStore.ensureCurrentVersion();
   }, []);
+
+  useEffect(() => {
+    setSelectedIds((current) => current.filter((id) => drafts.some((draft) => draft.id === id)));
+  }, [drafts]);
 
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent): void {
@@ -399,6 +454,8 @@ export function LinesPage(): JSX.Element {
       undoLabel: target ? `削除: ${target.lineName}` : '削除',
     });
 
+    setSelectedIds((current) => current.filter((id) => id !== draftId));
+
     if (editingId === draftId) {
       resetForm();
     }
@@ -418,7 +475,7 @@ export function LinesPage(): JSX.Element {
           <p className="eyebrow">Lines</p>
           <h2>回線一覧</h2>
           <p className="page__lead">
-            回線ドラフトの追加に加えて、検索・絞り込み・並び替え・期限表示で見たい回線を探しやすくします。保存層は薄い store に切り出し、後で差し替えやすくします。
+            回線ドラフトの追加に加えて、検索・絞り込み・並び替え・期限表示・一括更新で見たい回線を探しやすくします。保存層は薄い store に切り出し、後で差し替えやすくします。
           </p>
         </div>
       </header>
@@ -536,7 +593,21 @@ export function LinesPage(): JSX.Element {
               </select>
             </label>
 
+            <div className="bulk-toolbar field--full">
+              <label className="bulk-checkbox">
+                <input type="checkbox" checked={allVisibleSelected} onChange={toggleSelectAllVisible} disabled={visibleIds.length === 0} />
+                <span>表示中をすべて選択</span>
+              </label>
+              <span className="badge">選択中 {selectedIds.length}件</span>
+            </div>
+
             <div className="button-row field--full button-row--tight">
+              <button type="button" className="button button--primary" onClick={() => applyBulkStatus('利用中')}>
+                選択中を利用中へ
+              </button>
+              <button type="button" className="button" onClick={() => applyBulkStatus('解約予定')}>
+                選択中を解約予定へ
+              </button>
               <button type="button" className="button" onClick={resetFilters}>絞り込みと並び順を解除</button>
             </div>
           </div>
@@ -547,11 +618,15 @@ export function LinesPage(): JSX.Element {
             <ul className="list list--drafts">
               {visibleDrafts.map((draft) => {
                 const deadlineStatus = getDeadlineStatus(draft.nextReviewDate);
+                const isSelected = selectedIds.includes(draft.id);
 
                 return (
-                  <li key={draft.id}>
-                    <div className="list__row">
-                      <strong>{draft.lineName}</strong>
+                  <li key={draft.id} className={isSelected ? 'list__item--selected' : ''}>
+                    <div className="list__row list__row--selectable">
+                      <label className="bulk-checkbox">
+                        <input type="checkbox" checked={isSelected} onChange={() => toggleSelected(draft.id)} />
+                        <strong>{draft.lineName}</strong>
+                      </label>
                       <span className={draft.status === '利用中' ? 'badge badge--ok' : 'badge'}>{draft.status}</span>
                     </div>
                     <div className="badge-row">

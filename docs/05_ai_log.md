@@ -12,4 +12,7 @@
 - PR #15 をユーザー側で squash merge + branch delete
 - PR #17 をユーザー側で squash merge + branch delete
 - PR #19 をユーザー側で squash merge + branch delete
-- Issue #20 の実装として、`/lines` の期限ステータス表示を追加
+
+## 2026-03-18
+- PR #21 をユーザー側で squash merge + branch delete
+- Issue #22 の実装として、`/lines` の複数選択と一括ステータス変更を追加

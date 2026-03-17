@@ -209,6 +209,21 @@ textarea {
   flex-wrap: wrap;
 }
 
+.bulk-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.bulk-checkbox {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  color: #e2e8f0;
+}
+
 .list {
   list-style: none;
   padding: 0;
@@ -225,8 +240,16 @@ textarea {
   background: rgba(2, 6, 23, 0.45);
 }
 
+.list__item--selected {
+  border: 1px solid rgba(96, 165, 250, 0.35);
+}
+
 .list--drafts li {
   gap: 8px;
+}
+
+.list__row--selectable {
+  align-items: flex-start;
 }
 
 .stats-row {
@@ -395,7 +418,8 @@ textarea {
     grid-template-columns: 1fr;
   }
 
-  .notice--undo {
+  .notice--undo,
+  .bulk-toolbar {
     flex-direction: column;
     align-items: flex-start;
   }
