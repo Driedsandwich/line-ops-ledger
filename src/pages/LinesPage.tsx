@@ -5,6 +5,7 @@ import {
   lineDraftStore,
   LINE_STATUS_OPTIONS,
   LINE_TYPE_OPTIONS,
+  normalizeLast4,
   normalizeMonthlyCost,
   normalizeReviewDate,
   updateLineDraft,
@@ -18,6 +19,8 @@ type FormState = {
   carrier: string;
   lineType: LineType;
   monthlyCost: string;
+  last4: string;
+  contractHolderNote: string;
   status: LineStatus;
   memo: string;
   nextReviewDate: string;
@@ -29,16 +32,17 @@ type FilterState = {
   lineType: 'all' | LineType;
 };
 
-type SortKey = 'review-date-asc' | 'monthly-cost-desc' | 'monthly-cost-asc' | 'created-at-desc' | 'created-at-asc';
-
 type UndoState = {
   drafts: LineDraft[];
   label: string;
 };
 
+type SortKey = 'nextReviewDate' | 'monthlyCostHigh' | 'monthlyCostLow' | 'createdAtDesc' | 'createdAtAsc';
+
 type DeadlineStatus = {
   label: string;
   className: string;
+  rank: number;
 };
 
 const initialFormState: FormState = {
@@ -46,6 +50,8 @@ const initialFormState: FormState = {
   carrier: '',
   lineType: DEFAULT_LINE_TYPE,
   monthlyCost: '',
+  last4: '',
+  contractHolderNote: '',
   status: '利用中',
   memo: '',
   nextReviewDate: '',
@@ -57,11 +63,18 @@ const initialFilterState: FilterState = {
   lineType: 'all',
 };
 
-const initialSortKey: SortKey = 'review-date-asc';
+const initialSortKey: SortKey = 'nextReviewDate';
+
+function isEditableElement(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) {
+    return false;
+  }
+
+  return ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName) || target.isContentEditable;
+}
 
 function formatCreatedAt(value: string): string {
   const date = new Date(value);
-
   if (Number.isNaN(date.getTime())) {
     return value;
   }
@@ -103,96 +116,39 @@ function toFormState(draft: LineDraft): FormState {
     carrier: draft.carrier,
     lineType: draft.lineType,
     monthlyCost: draft.monthlyCost == null ? '' : String(draft.monthlyCost),
+    last4: draft.last4,
+    contractHolderNote: draft.contractHolderNote,
     status: draft.status,
     memo: draft.memo,
     nextReviewDate: draft.nextReviewDate,
   };
 }
 
-function isEditableElement(target: EventTarget | null): boolean {
-  if (!(target instanceof HTMLElement)) {
-    return false;
-  }
-
-  const tagName = target.tagName;
-  return tagName === 'INPUT' || tagName === 'TEXTAREA' || tagName === 'SELECT' || target.isContentEditable;
-}
-
-function matchesKeyword(draft: LineDraft, keyword: string): boolean {
-  if (!keyword) {
-    return true;
-  }
-
-  const normalized = keyword.trim().toLowerCase();
-  if (!normalized) {
-    return true;
-  }
-
-  return [draft.lineName, draft.carrier, draft.memo].some((value) => value.toLowerCase().includes(normalized));
-}
-
-function reviewDateTimestamp(value: string): number {
+function getDeadlineStatus(value: string): DeadlineStatus {
   const normalized = normalizeReviewDate(value);
   if (!normalized) {
-    return Number.MAX_SAFE_INTEGER;
+    return { label: '期限未設定', className: 'badge', rank: 5 };
   }
 
-  const date = new Date(`${normalized}T00:00:00`);
-  return Number.isNaN(date.getTime()) ? Number.MAX_SAFE_INTEGER : date.getTime();
-}
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const reviewDate = new Date(`${normalized}T00:00:00`);
+  const diff = Math.round((reviewDate.getTime() - today.getTime()) / 86400000);
 
-function compareBySortKey(a: LineDraft, b: LineDraft, sortKey: SortKey): number {
-  switch (sortKey) {
-    case 'review-date-asc':
-      return reviewDateTimestamp(a.nextReviewDate) - reviewDateTimestamp(b.nextReviewDate) || b.createdAt.localeCompare(a.createdAt);
-    case 'monthly-cost-desc': {
-      const left = a.monthlyCost ?? -1;
-      const right = b.monthlyCost ?? -1;
-      return right - left || b.createdAt.localeCompare(a.createdAt);
-    }
-    case 'monthly-cost-asc': {
-      const left = a.monthlyCost ?? Number.MAX_SAFE_INTEGER;
-      const right = b.monthlyCost ?? Number.MAX_SAFE_INTEGER;
-      return left - right || b.createdAt.localeCompare(a.createdAt);
-    }
-    case 'created-at-asc':
-      return a.createdAt.localeCompare(b.createdAt);
-    case 'created-at-desc':
-    default:
-      return b.createdAt.localeCompare(a.createdAt);
+  if (diff < 0) {
+    return { label: '期限超過', className: 'badge', rank: 0 };
   }
-}
-
-function toStartOfDay(date: Date): Date {
-  const next = new Date(date);
-  next.setHours(0, 0, 0, 0);
-  return next;
-}
-
-function getDeadlineStatus(nextReviewDate: string): DeadlineStatus {
-  const normalized = normalizeReviewDate(nextReviewDate);
-  if (!normalized) {
-    return { label: '期限未設定', className: 'badge' };
+  if (diff === 0) {
+    return { label: '今日期限', className: 'badge', rank: 1 };
+  }
+  if (diff <= 3) {
+    return { label: '3日以内', className: 'badge badge--ok', rank: 2 };
+  }
+  if (diff <= 7) {
+    return { label: '7日以内', className: 'badge badge--ok', rank: 3 };
   }
 
-  const today = toStartOfDay(new Date()).getTime();
-  const due = new Date(`${normalized}T00:00:00`).getTime();
-  const diffDays = Math.round((due - today) / 86400000);
-
-  if (diffDays < 0) {
-    return { label: '期限超過', className: 'badge badge--danger' };
-  }
-  if (diffDays === 0) {
-    return { label: '今日期限', className: 'badge badge--warn' };
-  }
-  if (diffDays <= 3) {
-    return { label: '3日以内', className: 'badge badge--warn' };
-  }
-  if (diffDays <= 7) {
-    return { label: '7日以内', className: 'badge badge--info' };
-  }
-
-  return { label: '期限あり', className: 'badge badge--ok' };
+  return { label: '期限あり', className: 'badge badge--ok', rank: 4 };
 }
 
 export function LinesPage(): JSX.Element {
@@ -203,37 +159,14 @@ export function LinesPage(): JSX.Element {
   const [expandedIds, setExpandedIds] = useState<string[]>([]);
   const [form, setForm] = useState<FormState>(initialFormState);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [undoState, setUndoState] = useState<UndoState | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
-  const [undoState, setUndoState] = useState<UndoState | null>(null);
 
-  const filteredDrafts = useMemo(() => {
-    return drafts.filter((draft) => {
-      if (!matchesKeyword(draft, filters.keyword)) {
-        return false;
-      }
-      if (filters.status !== 'all' && draft.status !== filters.status) {
-        return false;
-      }
-      if (filters.lineType !== 'all' && draft.lineType !== filters.lineType) {
-        return false;
-      }
-      return true;
-    });
-  }, [drafts, filters]);
-
-  const visibleDrafts = useMemo(() => {
-    return [...filteredDrafts].sort((a, b) => compareBySortKey(a, b, sortKey));
-  }, [filteredDrafts, sortKey]);
-
-  const visibleIds = useMemo(() => visibleDrafts.map((draft) => draft.id), [visibleDrafts]);
-  const selectedVisibleCount = useMemo(() => visibleIds.filter((id) => selectedIds.includes(id)).length, [visibleIds, selectedIds]);
-  const allVisibleSelected = visibleIds.length > 0 && selectedVisibleCount === visibleIds.length;
-
-  const hasDrafts = visibleDrafts.length > 0;
-  const countLabel = useMemo(() => `${visibleDrafts.length}件`, [visibleDrafts.length]);
-  const submitLabel = editingId ? '更新する' : '保存する';
-  const cardBadge = editingId ? '編集中' : '詳細表示';
+  function resetMessages(): void {
+    setErrorMessage(null);
+    setSuccessMessage(null);
+  }
 
   function persist(nextDrafts: LineDraft[], options?: { previousDrafts?: LineDraft[]; undoLabel?: string }): void {
     setDrafts(nextDrafts);
@@ -252,11 +185,6 @@ export function LinesPage(): JSX.Element {
     setFilters((current) => ({ ...current, [key]: value }));
   }
 
-  function resetMessages(): void {
-    setErrorMessage(null);
-    setSuccessMessage(null);
-  }
-
   function resetForm(): void {
     setForm(initialFormState);
     setEditingId(null);
@@ -267,6 +195,8 @@ export function LinesPage(): JSX.Element {
     carrier: string;
     lineType: LineType;
     monthlyCost: number | null;
+    last4: string;
+    contractHolderNote: string;
     status: LineStatus;
     memo: string;
     nextReviewDate: string;
@@ -274,7 +204,9 @@ export function LinesPage(): JSX.Element {
     const lineName = form.lineName.trim();
     const carrier = form.carrier.trim();
     const memo = form.memo.trim();
+    const contractHolderNote = form.contractHolderNote.trim();
     const nextReviewDate = form.nextReviewDate;
+    const normalizedLast4 = normalizeLast4(form.last4);
 
     if (!lineName || !carrier || !form.status || !form.lineType) {
       setErrorMessage('回線名、キャリア、回線種別、契約状態は必須です。');
@@ -291,11 +223,18 @@ export function LinesPage(): JSX.Element {
       return null;
     }
 
+    if (form.last4 && !normalizedLast4) {
+      setErrorMessage('回線番号下4桁は数字4桁だけ保存できます。');
+      return null;
+    }
+
     return {
       lineName,
       carrier,
       lineType: form.lineType,
       monthlyCost: normalizeMonthlyCost(form.monthlyCost),
+      last4: normalizedLast4,
+      contractHolderNote,
       status: form.status,
       memo,
       nextReviewDate,
@@ -307,8 +246,8 @@ export function LinesPage(): JSX.Element {
       return;
     }
 
-    lineDraftStore.save(undoState.drafts);
     setDrafts(undoState.drafts);
+    lineDraftStore.save(undoState.drafts);
     setUndoState(null);
     setEditingId(null);
     setSelectedIds([]);
@@ -318,9 +257,59 @@ export function LinesPage(): JSX.Element {
     setSuccessMessage(`直前の操作（${undoState.label}）を元に戻しました。`);
   }
 
-  function resetFilters(): void {
-    setFilters(initialFilterState);
-    setSortKey(initialSortKey);
+  function handleSubmit(event: React.FormEvent<HTMLFormElement>): void {
+    event.preventDefault();
+    resetMessages();
+
+    const validated = validateForm();
+    if (!validated) {
+      return;
+    }
+
+    if (editingId) {
+      const nextDrafts = drafts.map((draft) => (draft.id === editingId ? updateLineDraft(draft, validated) : draft));
+      persist(nextDrafts, {
+        previousDrafts: drafts,
+        undoLabel: '回線更新',
+      });
+      setSuccessMessage('回線を更新しました。');
+      resetForm();
+      return;
+    }
+
+    const nextDraft = createLineDraft(validated);
+    const nextDrafts = [nextDraft, ...drafts];
+    persist(nextDrafts, {
+      previousDrafts: drafts,
+      undoLabel: '回線追加',
+    });
+    setSuccessMessage('回線を追加しました。');
+    resetForm();
+  }
+
+  function handleEdit(draft: LineDraft): void {
+    resetMessages();
+    setEditingId(draft.id);
+    setForm(toFormState(draft));
+    setExpandedIds((current) => (current.includes(draft.id) ? current : [...current, draft.id]));
+  }
+
+  function handleDelete(draftId: string): void {
+    resetMessages();
+    const nextDrafts = drafts.filter((draft) => draft.id !== draftId);
+    persist(nextDrafts, {
+      previousDrafts: drafts,
+      undoLabel: '回線削除',
+    });
+
+    setSelectedIds((current) => current.filter((id) => id !== draftId));
+    setExpandedIds((current) => current.filter((id) => id !== draftId));
+
+    if (editingId === draftId) {
+      resetForm();
+    }
+
+    setSuccessMessage('回線を削除しました。');
   }
 
   function toggleSelected(id: string): void {
@@ -330,6 +319,68 @@ export function LinesPage(): JSX.Element {
   function toggleExpanded(id: string): void {
     setExpandedIds((current) => (current.includes(id) ? current.filter((item) => item !== id) : [...current, id]));
   }
+
+  const visibleDrafts = useMemo(() => {
+    const keyword = filters.keyword.trim().toLowerCase();
+    const filtered = drafts.filter((draft) => {
+      if (filters.status !== 'all' && draft.status !== filters.status) {
+        return false;
+      }
+      if (filters.lineType !== 'all' && draft.lineType !== filters.lineType) {
+        return false;
+      }
+      if (!keyword) {
+        return true;
+      }
+
+      const haystack = [
+        draft.lineName,
+        draft.carrier,
+        draft.memo,
+        draft.lineType,
+        draft.last4,
+        draft.contractHolderNote,
+      ]
+        .join(' ')
+        .toLowerCase();
+
+      return haystack.includes(keyword);
+    });
+
+    return filtered.sort((a, b) => {
+      switch (sortKey) {
+        case 'monthlyCostHigh':
+          return (b.monthlyCost ?? -1) - (a.monthlyCost ?? -1);
+        case 'monthlyCostLow':
+          return (a.monthlyCost ?? Number.MAX_SAFE_INTEGER) - (b.monthlyCost ?? Number.MAX_SAFE_INTEGER);
+        case 'createdAtDesc':
+          return b.createdAt.localeCompare(a.createdAt);
+        case 'createdAtAsc':
+          return a.createdAt.localeCompare(b.createdAt);
+        case 'nextReviewDate': {
+          const aDate = normalizeReviewDate(a.nextReviewDate);
+          const bDate = normalizeReviewDate(b.nextReviewDate);
+          if (!aDate && !bDate) {
+            return b.createdAt.localeCompare(a.createdAt);
+          }
+          if (!aDate) {
+            return 1;
+          }
+          if (!bDate) {
+            return -1;
+          }
+          return aDate.localeCompare(bDate);
+        }
+      }
+    });
+  }, [drafts, filters, sortKey]);
+
+  const visibleIds = useMemo(() => visibleDrafts.map((draft) => draft.id), [visibleDrafts]);
+  const allVisibleSelected = visibleIds.length > 0 && visibleIds.every((id) => selectedIds.includes(id));
+  const hasDrafts = visibleDrafts.length > 0;
+  const countLabel = useMemo(() => `${visibleDrafts.length}件`, [visibleDrafts.length]);
+  const submitLabel = editingId ? '更新する' : '保存する';
+  const cardBadge = editingId ? '編集中' : '詳細表示';
 
   function toggleSelectAllVisible(): void {
     setSelectedIds((current) => {
@@ -347,27 +398,20 @@ export function LinesPage(): JSX.Element {
       return;
     }
 
-    const selectedSet = new Set(selectedIds);
     const nextDrafts = drafts.map((draft) =>
-      selectedSet.has(draft.id)
-        ? updateLineDraft(draft, {
-            lineName: draft.lineName,
-            carrier: draft.carrier,
-            lineType: draft.lineType,
-            monthlyCost: draft.monthlyCost,
+      selectedIds.includes(draft.id)
+        ? {
+            ...draft,
             status: nextStatus,
-            memo: draft.memo,
-            nextReviewDate: draft.nextReviewDate,
-          })
+          }
         : draft,
     );
 
     persist(nextDrafts, {
       previousDrafts: drafts,
-      undoLabel: `一括変更: ${selectedIds.length}件を${nextStatus}へ更新`,
+      undoLabel: '一括ステータス変更',
     });
-    setSelectedIds([]);
-    setSuccessMessage(`${selectedIds.length}件の契約状態を「${nextStatus}」へ更新しました。`);
+    setSuccessMessage(`${selectedIds.length}件の契約状態を更新しました。`);
   }
 
   function handleBulkDelete(): void {
@@ -377,21 +421,15 @@ export function LinesPage(): JSX.Element {
       return;
     }
 
-    const selectedSet = new Set(selectedIds);
-    const nextDrafts = drafts.filter((draft) => !selectedSet.has(draft.id));
-
+    const nextDrafts = drafts.filter((draft) => !selectedIds.includes(draft.id));
     persist(nextDrafts, {
       previousDrafts: drafts,
-      undoLabel: `一括削除: ${selectedIds.length}件を削除`,
+      undoLabel: '一括削除',
     });
     setSuccessMessage(`${selectedIds.length}件の回線を削除しました。`);
     setSelectedIds([]);
     setExpandedIds([]);
   }
-
-  useEffect(() => {
-    lineDraftStore.ensureCurrentVersion();
-  }, []);
 
   useEffect(() => {
     setSelectedIds((current) => current.filter((id) => drafts.some((draft) => draft.id === id)));
@@ -416,73 +454,6 @@ export function LinesPage(): JSX.Element {
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [undoState]);
 
-  function handleSubmit(event: React.FormEvent<HTMLFormElement>): void {
-    event.preventDefault();
-    resetMessages();
-
-    const validated = validateForm();
-    if (!validated) {
-      return;
-    }
-
-    if (editingId) {
-      const current = drafts.find((draft) => draft.id === editingId);
-      if (!current) {
-        setErrorMessage('編集対象が見つかりませんでした。もう一度選び直してください。');
-        return;
-      }
-
-      const nextDrafts = drafts.map((draft) => (draft.id === editingId ? updateLineDraft(draft, validated) : draft));
-      persist(nextDrafts, {
-        previousDrafts: drafts,
-        undoLabel: `更新: ${validated.lineName}`,
-      });
-      setSuccessMessage(`回線ドラフト「${validated.lineName}」を更新しました。`);
-      resetForm();
-      return;
-    }
-
-    const nextDraft = createLineDraft(validated);
-    const nextDrafts = [nextDraft, ...drafts];
-    persist(nextDrafts, {
-      previousDrafts: drafts,
-      undoLabel: `追加: ${validated.lineName}`,
-    });
-    setSuccessMessage(`回線ドラフト「${validated.lineName}」を保存しました。`);
-    resetForm();
-  }
-
-  function handleEdit(draft: LineDraft): void {
-    resetMessages();
-    setEditingId(draft.id);
-    setForm(toFormState(draft));
-    setExpandedIds((current) => (current.includes(draft.id) ? current : [...current, draft.id]));
-  }
-
-  function handleDelete(draftId: string): void {
-    resetMessages();
-    const target = drafts.find((draft) => draft.id === draftId);
-    const nextDrafts = drafts.filter((draft) => draft.id !== draftId);
-    persist(nextDrafts, {
-      previousDrafts: drafts,
-      undoLabel: target ? `削除: ${target.lineName}` : '削除',
-    });
-
-    setSelectedIds((current) => current.filter((id) => id !== draftId));
-    setExpandedIds((current) => current.filter((id) => id !== draftId));
-
-    if (editingId === draftId) {
-      resetForm();
-    }
-
-    setSuccessMessage(target ? `回線ドラフト「${target.lineName}」を削除しました。` : '回線ドラフトを削除しました。');
-  }
-
-  function handleCancelEdit(): void {
-    resetMessages();
-    resetForm();
-  }
-
   return (
     <div className="page">
       <header className="page__header">
@@ -498,26 +469,28 @@ export function LinesPage(): JSX.Element {
       <section className="card-grid card-grid--lines">
         <article className="card">
           <div className="card__header">
-            <h3>回線ドラフトを追加・編集</h3>
+            <h3>回線フォーム</h3>
             <span className="badge">{cardBadge}</span>
           </div>
 
           <form className="form-grid" onSubmit={handleSubmit}>
             <label className="field">
               <span>回線名 *</span>
-              <input value={form.lineName} onChange={(event) => updateField('lineName', event.target.value)} placeholder="例: 楽天モバイル メイン" />
+              <input value={form.lineName} onChange={(event) => updateField('lineName', event.target.value)} placeholder="例: 自宅用メイン回線" />
             </label>
 
             <label className="field">
               <span>キャリア *</span>
-              <input value={form.carrier} onChange={(event) => updateField('carrier', event.target.value)} placeholder="例: 楽天モバイル" />
+              <input value={form.carrier} onChange={(event) => updateField('carrier', event.target.value)} placeholder="例: NTTドコモ" />
             </label>
 
             <label className="field">
               <span>回線種別 *</span>
               <select value={form.lineType} onChange={(event) => updateField('lineType', event.target.value as LineType)}>
                 {LINE_TYPE_OPTIONS.map((option) => (
-                  <option key={option} value={option}>{option}</option>
+                  <option key={option} value={option}>
+                    {option}
+                  </option>
                 ))}
               </select>
             </label>
@@ -528,53 +501,69 @@ export function LinesPage(): JSX.Element {
             </label>
 
             <label className="field">
+              <span>回線番号下4桁</span>
+              <input inputMode="numeric" value={form.last4} onChange={(event) => updateField('last4', event.target.value)} placeholder="例: 1234" />
+            </label>
+
+            <label className="field">
+              <span>契約名義メモ</span>
+              <input value={form.contractHolderNote} onChange={(event) => updateField('contractHolderNote', event.target.value)} placeholder="例: 本人 / 家族名義 など" />
+            </label>
+
+            <label className="field">
               <span>契約状態 *</span>
               <select value={form.status} onChange={(event) => updateField('status', event.target.value as LineStatus)}>
                 {LINE_STATUS_OPTIONS.map((option) => (
-                  <option key={option} value={option}>{option}</option>
+                  <option key={option} value={option}>
+                    {option}
+                  </option>
                 ))}
               </select>
             </label>
 
             <label className="field">
               <span>次回確認日</span>
-              <input type="date" min="2000-01-01" max="9999-12-31" value={form.nextReviewDate} onChange={(event) => updateField('nextReviewDate', event.target.value)} />
+              <input
+                type="date"
+                min="2000-01-01"
+                max="9999-12-31"
+                value={form.nextReviewDate}
+                onChange={(event) => updateField('nextReviewDate', event.target.value)}
+              />
             </label>
 
             <label className="field field--full">
               <span>メモ</span>
-              <textarea value={form.memo} onChange={(event) => updateField('memo', event.target.value)} rows={4} placeholder="任意。次回確認したいことを残せます。" />
+              <textarea value={form.memo} onChange={(event) => updateField('memo', event.target.value)} rows={4} placeholder="特典期限や確認メモなど" />
             </label>
 
-            {errorMessage ? <p className="notice notice--warn field--full">{errorMessage}</p> : null}
-            {successMessage ? <p className="notice field--full">{successMessage}</p> : null}
-            {undoState ? (
-              <div className="notice notice--undo field--full">
-                <div>
-                  <strong>直前の操作を戻せます</strong>
-                  <p className="muted">{undoState.label} / `Ctrl+Z` または `⌘Z` でも戻せます</p>
-                </div>
-                <button type="button" className="button" onClick={handleUndo}>操作を戻す</button>
-              </div>
-            ) : null}
+            {errorMessage ? <p className="notice notice--warn">{errorMessage}</p> : null}
+            {successMessage ? <p className="notice">{successMessage}</p> : null}
 
             <div className="button-row field--full">
-              <button type="submit" className="button button--primary">{submitLabel}</button>
-              {editingId ? <button type="button" className="button" onClick={handleCancelEdit}>編集をやめる</button> : null}
+              <button type="submit" className="button button--primary">
+                {submitLabel}
+              </button>
+              <button type="button" className="button" onClick={resetForm}>
+                入力をリセット
+              </button>
+              <button type="button" className="button" onClick={handleUndo} disabled={!undoState}>
+                操作を戻す
+              </button>
             </div>
           </form>
         </article>
 
         <article className="card">
           <div className="card__header">
-            <h3>保存済みの回線</h3>
+            <h3>検索と絞り込み</h3>
             <span className="badge">{countLabel}</span>
           </div>
 
-          <div className="form-grid form-grid--filters">
+          <div className="form-grid">
             <label className="field field--full">
               <span>キーワード</span>
-              <input value={filters.keyword} onChange={(event) => updateFilter('keyword', event.target.value)} placeholder="回線名・キャリア・メモで検索" />
+              <input value={filters.keyword} onChange={(event) => updateFilter('keyword', event.target.value)} placeholder="回線名 / キャリア / メモ / 下4桁 / 契約名義メモ" />
             </label>
 
             <label className="field">
@@ -582,7 +571,9 @@ export function LinesPage(): JSX.Element {
               <select value={filters.status} onChange={(event) => updateFilter('status', event.target.value as FilterState['status'])}>
                 <option value="all">すべて</option>
                 {LINE_STATUS_OPTIONS.map((option) => (
-                  <option key={option} value={option}>{option}</option>
+                  <option key={option} value={option}>
+                    {option}
+                  </option>
                 ))}
               </select>
             </label>
@@ -592,40 +583,51 @@ export function LinesPage(): JSX.Element {
               <select value={filters.lineType} onChange={(event) => updateFilter('lineType', event.target.value as FilterState['lineType'])}>
                 <option value="all">すべて</option>
                 {LINE_TYPE_OPTIONS.map((option) => (
-                  <option key={option} value={option}>{option}</option>
+                  <option key={option} value={option}>
+                    {option}
+                  </option>
                 ))}
               </select>
             </label>
 
-            <label className="field field--full">
+            <label className="field">
               <span>並び順</span>
               <select value={sortKey} onChange={(event) => setSortKey(event.target.value as SortKey)}>
-                <option value="review-date-asc">次回確認日が近い順</option>
-                <option value="monthly-cost-desc">月額費用が高い順</option>
-                <option value="monthly-cost-asc">月額費用が低い順</option>
-                <option value="created-at-desc">作成日時が新しい順</option>
-                <option value="created-at-asc">作成日時が古い順</option>
+                <option value="nextReviewDate">次回確認日が近い順</option>
+                <option value="monthlyCostHigh">月額費用が高い順</option>
+                <option value="monthlyCostLow">月額費用が低い順</option>
+                <option value="createdAtDesc">作成日時が新しい順</option>
+                <option value="createdAtAsc">作成日時が古い順</option>
               </select>
             </label>
+          </div>
 
-            <div className="bulk-toolbar field--full">
-              <label className="bulk-checkbox">
-                <input type="checkbox" checked={allVisibleSelected} onChange={toggleSelectAllVisible} disabled={visibleIds.length === 0} />
-                <span>表示中をすべて選択</span>
-              </label>
-              <span className="badge">選択中 {selectedIds.length}件</span>
-            </div>
+          <div className="button-row">
+            <button type="button" className="button" onClick={toggleSelectAllVisible} disabled={!hasDrafts}>
+              {allVisibleSelected ? '表示中の選択を解除' : '表示中をすべて選択'}
+            </button>
+            <button type="button" className="button" onClick={() => applyBulkStatus('利用中')}>
+              選択中を利用中へ
+            </button>
+            <button type="button" className="button" onClick={() => applyBulkStatus('解約予定')}>
+              選択中を解約予定へ
+            </button>
+            <button type="button" className="button button--danger" onClick={handleBulkDelete}>
+              選択中を削除
+            </button>
+          </div>
+        </article>
+      </section>
 
-            <div className="button-row field--full button-row--tight">
-              <button type="button" className="button button--primary" onClick={() => applyBulkStatus('利用中')}>選択中を利用中へ</button>
-              <button type="button" className="button" onClick={() => applyBulkStatus('解約予定')}>選択中を解約予定へ</button>
-              <button type="button" className="button button--danger" onClick={handleBulkDelete}>選択中を削除</button>
-              <button type="button" className="button" onClick={resetFilters}>絞り込みと並び順を解除</button>
-            </div>
+      <section className="card-grid card-grid--single">
+        <article className="card">
+          <div className="card__header">
+            <h3>保存済み回線</h3>
+            <span className="badge">{countLabel}</span>
           </div>
 
           {!hasDrafts ? (
-            <p className="muted">条件に一致する回線はありません。検索条件を見直すか、フォームから1件追加してください。</p>
+            <p className="muted">保存済み回線はまだありません。上のフォームから追加するとここに表示されます。</p>
           ) : (
             <ul className="list list--drafts">
               {visibleDrafts.map((draft) => {
@@ -635,8 +637,8 @@ export function LinesPage(): JSX.Element {
 
                 return (
                   <li key={draft.id} className={isSelected ? 'list__item--selected' : ''}>
-                    <div className="list__row list__row--selectable">
-                      <label className="bulk-checkbox">
+                    <div className="list__row">
+                      <label className="checkbox-row">
                         <input type="checkbox" checked={isSelected} onChange={() => toggleSelected(draft.id)} />
                         <strong>{draft.lineName}</strong>
                       </label>
@@ -650,17 +652,30 @@ export function LinesPage(): JSX.Element {
                     </div>
                     <div className="badge-row">
                       <span className={deadlineStatus.className}>{deadlineStatus.label}</span>
+                      {draft.last4 ? <span className="badge">下4桁: {draft.last4}</span> : null}
                     </div>
                     <div className="button-row button-row--tight">
                       <button type="button" className="button" onClick={() => toggleExpanded(draft.id)}>
                         {isExpanded ? '詳細を閉じる' : '詳細を開く'}
                       </button>
-                      <button type="button" className="button" onClick={() => handleEdit(draft)}>編集する</button>
-                      <button type="button" className="button button--danger" onClick={() => handleDelete(draft.id)}>削除する</button>
+                      <button type="button" className="button" onClick={() => handleEdit(draft)}>
+                        編集する
+                      </button>
+                      <button type="button" className="button button--danger" onClick={() => handleDelete(draft.id)}>
+                        削除する
+                      </button>
                     </div>
                     {isExpanded ? (
                       <div className="detail-panel">
                         <div className="definition-list">
+                          <div>
+                            <dt>回線番号下4桁</dt>
+                            <dd>{draft.last4 || '未設定'}</dd>
+                          </div>
+                          <div>
+                            <dt>契約名義メモ</dt>
+                            <dd>{draft.contractHolderNote || '未設定'}</dd>
+                          </div>
                           <div>
                             <dt>メモ</dt>
                             <dd>{draft.memo || '未設定'}</dd>
