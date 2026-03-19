@@ -396,6 +396,8 @@ export function DashboardPage(): JSX.Element {
                     </div>
                     <span>{item.draft.carrier}</span>
                     <span>次回確認日: {formatReviewDate(item.draft.nextReviewDate)}</span>
+                    <span>下4桁: {item.draft.last4 || '未設定'}</span>
+                    <span>契約名義メモ: {item.draft.contractHolderNote || '未設定'}</span>
                     <span className="badge">{item.reasonLabel}</span>
                   </li>
                 ))}
