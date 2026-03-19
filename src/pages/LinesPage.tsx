@@ -83,6 +83,10 @@ function getNotificationReasonParam(label: NotificationReasonLabel | 'all'): Not
   return (Object.entries(notificationReasonParamMap).find(([, mappedLabel]) => mappedLabel === label)?.[0] ?? null) as NotificationReasonParam | null;
 }
 
+function getNotificationTargetOnlyFromParam(value: string | null): boolean {
+  return value === 'true';
+}
+
 const initialFormState: FormState = {
   lineName: '',
   carrier: '',
@@ -164,19 +168,6 @@ function getNotificationReasonLabel(diff: number, window: NotificationReminderWi
     return '3日以内';
   }
   return '7日以内';
-}
-
-function matchesNotificationTarget(draft: LineDraft, reminderWindow: NotificationReminderWindow, enabled: boolean): boolean {
-  if (!enabled) {
-    return false;
-  }
-
-  const reviewDate = parseReviewDate(draft.nextReviewDate);
-  if (!reviewDate) {
-    return false;
-  }
-
-  return isNotificationTarget(diffInDays(new Date(), reviewDate), reminderWindow);
 }
 
 function getNotificationReasonForDraft(
@@ -289,7 +280,8 @@ export function LinesPage(): JSX.Element {
 
   const notificationSettings = loadNotificationSettings();
   const notificationReasonFromQuery = getNotificationReasonLabelFromParam(searchParams.get('notificationReason'));
-  const devPullRequestLabel = import.meta.env.DEV ? 'PR #49' : null;
+  const notificationTargetOnlyFromQuery = getNotificationTargetOnlyFromParam(searchParams.get('notificationTargetOnly'));
+  const devPullRequestLabel = import.meta.env.DEV ? 'PR #51' : null;
 
   function resetMessages(): void {
     setErrorMessage(null);
@@ -328,6 +320,23 @@ export function LinesPage(): JSX.Element {
       nextParams.set('notificationReason', nextReasonParam);
     } else {
       nextParams.delete('notificationReason');
+    }
+
+    setSearchParams(nextParams, { replace: true });
+  }
+
+  function setNotificationTargetOnlyFilter(enabled: boolean): void {
+    setFilters((current) => ({
+      ...current,
+      notificationTargetOnly: enabled,
+    }));
+
+    const nextParams = new URLSearchParams(searchParams);
+
+    if (enabled) {
+      nextParams.set('notificationTargetOnly', 'true');
+    } else {
+      nextParams.delete('notificationTargetOnly');
     }
 
     setSearchParams(nextParams, { replace: true });
@@ -656,16 +665,20 @@ export function LinesPage(): JSX.Element {
 
   useEffect(() => {
     setFilters((current) => {
-      if (current.notificationReason === notificationReasonFromQuery) {
+      if (
+        current.notificationReason === notificationReasonFromQuery &&
+        current.notificationTargetOnly === notificationTargetOnlyFromQuery
+      ) {
         return current;
       }
 
       return {
         ...current,
         notificationReason: notificationReasonFromQuery,
+        notificationTargetOnly: notificationTargetOnlyFromQuery,
       };
     });
-  }, [notificationReasonFromQuery]);
+  }, [notificationReasonFromQuery, notificationTargetOnlyFromQuery]);
 
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent): void {
@@ -837,7 +850,7 @@ export function LinesPage(): JSX.Element {
               <input
                 type="checkbox"
                 checked={filters.notificationTargetOnly}
-                onChange={(event) => updateFilter('notificationTargetOnly', event.target.checked)}
+                onChange={(event) => setNotificationTargetOnlyFilter(event.target.checked)}
               />
               <span>通知対象のみ</span>
             </label>

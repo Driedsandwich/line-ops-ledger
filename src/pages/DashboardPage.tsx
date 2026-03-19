@@ -96,10 +96,14 @@ const notificationReasonLinkMap: Record<NotificationReasonLabel, NotificationRea
   '7日以内': 'within-7-days',
 };
 
-function buildNotificationReasonLink(reasonLabel: NotificationReasonLabel): string {
+function buildLinesLink(options: { reasonLabel: NotificationReasonLabel; notificationTargetOnly?: boolean }): string {
   const params = new URLSearchParams({
-    notificationReason: notificationReasonLinkMap[reasonLabel],
+    notificationReason: notificationReasonLinkMap[options.reasonLabel],
   });
+
+  if (options.notificationTargetOnly) {
+    params.set('notificationTargetOnly', 'true');
+  }
 
   return `/lines?${params.toString()}`;
 }
@@ -372,19 +376,19 @@ export function DashboardPage(): JSX.Element {
             <p className="muted">通知は無効です。`/settings` で通知を有効にすると、理由別件数をここで確認できます。</p>
           ) : (
             <div className="stats-row">
-              <Link className="stat-box" to={buildNotificationReasonLink('期限超過')}>
+              <Link className="stat-box" to={buildLinesLink({ reasonLabel: '期限超過' })}>
                 <span>期限超過</span>
                 <strong>{summary.notificationReasonSummary.overdue}件</strong>
               </Link>
-              <Link className="stat-box" to={buildNotificationReasonLink('今日期限')}>
+              <Link className="stat-box" to={buildLinesLink({ reasonLabel: '今日期限' })}>
                 <span>今日期限</span>
                 <strong>{summary.notificationReasonSummary.today}件</strong>
               </Link>
-              <Link className="stat-box" to={buildNotificationReasonLink('3日以内')}>
+              <Link className="stat-box" to={buildLinesLink({ reasonLabel: '3日以内' })}>
                 <span>3日以内</span>
                 <strong>{summary.notificationReasonSummary.within3Days}件</strong>
               </Link>
-              <Link className="stat-box" to={buildNotificationReasonLink('7日以内')}>
+              <Link className="stat-box" to={buildLinesLink({ reasonLabel: '7日以内' })}>
                 <span>7日以内</span>
                 <strong>{summary.notificationReasonSummary.within7Days}件</strong>
               </Link>
@@ -417,6 +421,11 @@ export function DashboardPage(): JSX.Element {
                     <span>下4桁: {item.draft.last4 || '未設定'}</span>
                     <span>契約名義メモ: {item.draft.contractHolderNote || '未設定'}</span>
                     <span className="badge">{item.reasonLabel}</span>
+                    <div className="button-row button-row--tight">
+                      <Link className="button" to={buildLinesLink({ reasonLabel: item.reasonLabel, notificationTargetOnly: true })}>
+                        この条件で回線一覧を開く
+                      </Link>
+                    </div>
                   </li>
                 ))}
               </ul>
