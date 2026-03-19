@@ -13,6 +13,10 @@ import {
   type LineStatus,
   type LineType,
 } from '../lib/lineDrafts';
+import {
+  loadNotificationSettings,
+  type NotificationReminderWindow,
+} from '../lib/notificationSettings';
 
 type FormState = {
   lineName: string;
@@ -30,6 +34,7 @@ type FilterState = {
   keyword: string;
   status: 'all' | LineStatus;
   lineType: 'all' | LineType;
+  notificationTargetOnly: boolean;
 };
 
 type UndoState = {
@@ -61,6 +66,7 @@ const initialFilterState: FilterState = {
   keyword: '',
   status: 'all',
   lineType: 'all',
+  notificationTargetOnly: false,
 };
 
 const initialSortKey: SortKey = 'nextReviewDate';
@@ -71,6 +77,55 @@ function isEditableElement(target: EventTarget | null): boolean {
   }
 
   return ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName) || target.isContentEditable;
+}
+
+function startOfDay(input: Date): Date {
+  const date = new Date(input);
+  date.setHours(0, 0, 0, 0);
+  return date;
+}
+
+function diffInDays(from: Date, to: Date): number {
+  const ms = startOfDay(to).getTime() - startOfDay(from).getTime();
+  return Math.round(ms / 86400000);
+}
+
+function parseReviewDate(value: string): Date | null {
+  const normalized = normalizeReviewDate(value);
+  if (!normalized) {
+    return null;
+  }
+
+  const parsed = new Date(`${normalized}T00:00:00`);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+function isNotificationTarget(diff: number, window: NotificationReminderWindow): boolean {
+  switch (window) {
+    case 'overdue':
+      return diff < 0;
+    case 'today':
+      return diff <= 0;
+    case 'within-3-days':
+      return diff <= 3;
+    case 'within-7-days':
+      return diff <= 7;
+    default:
+      return false;
+  }
+}
+
+function matchesNotificationTarget(draft: LineDraft, reminderWindow: NotificationReminderWindow, enabled: boolean): boolean {
+  if (!enabled) {
+    return false;
+  }
+
+  const reviewDate = parseReviewDate(draft.nextReviewDate);
+  if (!reviewDate) {
+    return false;
+  }
+
+  return isNotificationTarget(diffInDays(new Date(), reviewDate), reminderWindow);
 }
 
 function formatCreatedAt(value: string): string {
@@ -162,6 +217,8 @@ export function LinesPage(): JSX.Element {
   const [undoState, setUndoState] = useState<UndoState | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
+  const notificationSettings = loadNotificationSettings();
 
   function resetMessages(): void {
     setErrorMessage(null);
@@ -323,6 +380,17 @@ export function LinesPage(): JSX.Element {
   const visibleDrafts = useMemo(() => {
     const keyword = filters.keyword.trim().toLowerCase();
     const filtered = drafts.filter((draft) => {
+      if (filters.notificationTargetOnly) {
+        const match = matchesNotificationTarget(
+          draft,
+          notificationSettings.reminderWindow,
+          notificationSettings.enabled,
+        );
+        if (!match) {
+          return false;
+        }
+      }
+
       if (filters.status !== 'all' && draft.status !== filters.status) {
         return false;
       }
@@ -373,7 +441,7 @@ export function LinesPage(): JSX.Element {
         }
       }
     });
-  }, [drafts, filters, sortKey]);
+  }, [drafts, filters, sortKey, notificationSettings]);
 
   const visibleIds = useMemo(() => visibleDrafts.map((draft) => draft.id), [visibleDrafts]);
   const allVisibleSelected = visibleIds.length > 0 && visibleIds.every((id) => selectedIds.includes(id));
@@ -599,6 +667,15 @@ export function LinesPage(): JSX.Element {
                 <option value="createdAtDesc">作成日時が新しい順</option>
                 <option value="createdAtAsc">作成日時が古い順</option>
               </select>
+            </label>
+
+            <label className="field checkbox-row">
+              <input
+                type="checkbox"
+                checked={filters.notificationTargetOnly}
+                onChange={(event) => updateFilter('notificationTargetOnly', event.target.checked)}
+              />
+              <span>通知対象のみ</span>
             </label>
           </div>
 
