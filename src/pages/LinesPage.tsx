@@ -74,6 +74,7 @@ const initialFilterState: FilterState = {
 };
 
 const initialSortKey: SortKey = 'nextReviewDate';
+const devPullRequestLabel = import.meta.env.DEV ? 'PR #47' : null;
 
 function isEditableElement(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) {
@@ -635,6 +636,7 @@ export function LinesPage(): JSX.Element {
           <p className="page__lead">
             回線ドラフトの追加に加えて、検索・絞り込み・並び替え・期限表示・一括更新・一括削除・詳細表示で見たい回線を探しやすくします。保存層は薄い store に切り出し、後で差し替えやすくします。
           </p>
+          {devPullRequestLabel ? <p className="notice">開発中表示: {devPullRequestLabel}</p> : null}
         </div>
       </header>
 
