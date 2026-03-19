@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
   createLineDraft,
   DEFAULT_LINE_TYPE,
@@ -53,6 +54,35 @@ type DeadlineStatus = {
 
 type NotificationReasonLabel = '期限超過' | '今日期限' | '3日以内' | '7日以内';
 
+type NotificationReasonParam = 'overdue' | 'today' | 'within-3-days' | 'within-7-days';
+
+const notificationReasonParamMap: Record<NotificationReasonParam, NotificationReasonLabel> = {
+  overdue: '期限超過',
+  today: '今日期限',
+  'within-3-days': '3日以内',
+  'within-7-days': '7日以内',
+};
+
+function getNotificationReasonLabelFromParam(value: string | null): NotificationReasonLabel | 'all' {
+  if (!value) {
+    return 'all';
+  }
+
+  if (value in notificationReasonParamMap) {
+    return notificationReasonParamMap[value as NotificationReasonParam];
+  }
+
+  return 'all';
+}
+
+function getNotificationReasonParam(label: NotificationReasonLabel | 'all'): NotificationReasonParam | null {
+  if (label === 'all') {
+    return null;
+  }
+
+  return (Object.entries(notificationReasonParamMap).find(([, mappedLabel]) => mappedLabel === label)?.[0] ?? null) as NotificationReasonParam | null;
+}
+
 const initialFormState: FormState = {
   lineName: '',
   carrier: '',
@@ -74,7 +104,6 @@ const initialFilterState: FilterState = {
 };
 
 const initialSortKey: SortKey = 'nextReviewDate';
-const devPullRequestLabel = import.meta.env.DEV ? 'PR #47' : null;
 
 function isEditableElement(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) {
@@ -246,6 +275,7 @@ function getDeadlineStatus(value: string): DeadlineStatus {
 }
 
 export function LinesPage(): JSX.Element {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [drafts, setDrafts] = useState<LineDraft[]>(() => lineDraftStore.load());
   const [filters, setFilters] = useState<FilterState>(initialFilterState);
   const [sortKey, setSortKey] = useState<SortKey>(initialSortKey);
@@ -258,6 +288,8 @@ export function LinesPage(): JSX.Element {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   const notificationSettings = loadNotificationSettings();
+  const notificationReasonFromQuery = getNotificationReasonLabelFromParam(searchParams.get('notificationReason'));
+  const devPullRequestLabel = import.meta.env.DEV ? 'PR #47' : null;
 
   function resetMessages(): void {
     setErrorMessage(null);
@@ -282,10 +314,23 @@ export function LinesPage(): JSX.Element {
   }
 
   function setNotificationReasonFilter(reason: FilterState['notificationReason']): void {
+    const nextReason = filters.notificationReason === reason ? 'all' : reason;
+
     setFilters((current) => ({
       ...current,
-      notificationReason: current.notificationReason === reason ? 'all' : reason,
+      notificationReason: nextReason,
     }));
+
+    const nextParams = new URLSearchParams(searchParams);
+    const nextReasonParam = getNotificationReasonParam(nextReason);
+
+    if (nextReasonParam) {
+      nextParams.set('notificationReason', nextReasonParam);
+    } else {
+      nextParams.delete('notificationReason');
+    }
+
+    setSearchParams(nextParams, { replace: true });
   }
 
   function resetForm(): void {
@@ -610,6 +655,19 @@ export function LinesPage(): JSX.Element {
   }, [drafts]);
 
   useEffect(() => {
+    setFilters((current) => {
+      if (current.notificationReason === notificationReasonFromQuery) {
+        return current;
+      }
+
+      return {
+        ...current,
+        notificationReason: notificationReasonFromQuery,
+      };
+    });
+  }, [notificationReasonFromQuery]);
+
+  useEffect(() => {
     function onKeyDown(event: KeyboardEvent): void {
       const isUndoShortcut = (event.ctrlKey || event.metaKey) && !event.shiftKey && event.key.toLowerCase() === 'z';
       if (!isUndoShortcut || !undoState) {
@@ -795,7 +853,7 @@ export function LinesPage(): JSX.Element {
               <button
                 type="button"
                 className={filters.notificationReason === 'all' ? 'button button--primary' : 'button'}
-                onClick={() => updateFilter('notificationReason', 'all')}
+                onClick={() => setNotificationReasonFilter('all')}
               >
                 通知対象合計 {notificationSummary.total}件
               </button>
