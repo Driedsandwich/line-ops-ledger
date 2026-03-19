@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import { lineDraftStore, normalizeReviewDate, type LineDraft } from '../lib/lineDrafts';
 import {
   loadNotificationSettings,
@@ -85,6 +86,23 @@ function isNotificationTarget(diff: number, window: NotificationReminderWindow):
 }
 
 type NotificationReasonLabel = '期限超過' | '今日期限' | '3日以内' | '7日以内';
+
+type NotificationReasonParam = 'overdue' | 'today' | 'within-3-days' | 'within-7-days';
+
+const notificationReasonLinkMap: Record<NotificationReasonLabel, NotificationReasonParam> = {
+  '期限超過': 'overdue',
+  '今日期限': 'today',
+  '3日以内': 'within-3-days',
+  '7日以内': 'within-7-days',
+};
+
+function buildNotificationReasonLink(reasonLabel: NotificationReasonLabel): string {
+  const params = new URLSearchParams({
+    notificationReason: notificationReasonLinkMap[reasonLabel],
+  });
+
+  return `/lines?${params.toString()}`;
+}
 
 type NotificationReasonSummary = {
   overdue: number;
@@ -354,22 +372,22 @@ export function DashboardPage(): JSX.Element {
             <p className="muted">通知は無効です。`/settings` で通知を有効にすると、理由別件数をここで確認できます。</p>
           ) : (
             <div className="stats-row">
-              <div className="stat-box">
+              <Link className="stat-box" to={buildNotificationReasonLink('期限超過')}>
                 <span>期限超過</span>
                 <strong>{summary.notificationReasonSummary.overdue}件</strong>
-              </div>
-              <div className="stat-box">
+              </Link>
+              <Link className="stat-box" to={buildNotificationReasonLink('今日期限')}>
                 <span>今日期限</span>
                 <strong>{summary.notificationReasonSummary.today}件</strong>
-              </div>
-              <div className="stat-box">
+              </Link>
+              <Link className="stat-box" to={buildNotificationReasonLink('3日以内')}>
                 <span>3日以内</span>
                 <strong>{summary.notificationReasonSummary.within3Days}件</strong>
-              </div>
-              <div className="stat-box">
+              </Link>
+              <Link className="stat-box" to={buildNotificationReasonLink('7日以内')}>
                 <span>7日以内</span>
                 <strong>{summary.notificationReasonSummary.within7Days}件</strong>
-              </div>
+              </Link>
             </div>
           )}
         </article>
@@ -403,9 +421,9 @@ export function DashboardPage(): JSX.Element {
                 ))}
               </ul>
               <div className="button-row">
-                <a className="button" href="/lines">
+                <Link className="button" to="/lines">
                   回線一覧で確認する
-                </a>
+                </Link>
               </div>
             </>
           )}

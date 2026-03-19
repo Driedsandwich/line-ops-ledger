@@ -6,7 +6,7 @@ const navItems = [
   { to: '/settings', label: '設定' },
 ];
 
-const devProgressLabel = 'DEV / feat/lines-notification-summary-and-reason-filter / PR #47';
+const devProgressLabel = 'DEV / feat/dashboard-reason-links-to-lines / PR #49';
 
 export function AppLayout(): JSX.Element {
   return (
