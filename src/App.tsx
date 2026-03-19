@@ -6,7 +6,7 @@ const navItems = [
   { to: '/settings', label: '設定' },
 ];
 
-const devProgressLabel = 'DEV / feat/line-history-and-timeline / PR #53';
+const devProgressLabel = 'DEV / feat/line-history-json-backup / PR #53';
 
 export function AppLayout(): JSX.Element {
   return (

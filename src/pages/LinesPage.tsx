@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import {
   createLineDraft,
@@ -290,6 +290,16 @@ function maskPhoneNumber(phoneNumber: string): string {
   return `${phoneNumber.slice(0, 3)}-****-${phoneNumber.slice(-4)}`;
 }
 
+function downloadJson(filename: string, content: string): void {
+  const blob = new Blob([content], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.download = filename;
+  anchor.click();
+  URL.revokeObjectURL(url);
+}
+
 function toFormState(draft: LineDraft): FormState {
   return {
     lineName: draft.lineName,
@@ -394,6 +404,7 @@ export function LinesPage(): JSX.Element {
   const [undoState, setUndoState] = useState<UndoState | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const historyImportInputRef = useRef<HTMLInputElement | null>(null);
 
   const notificationSettings = loadNotificationSettings();
   const notificationReasonFromQuery = getNotificationReasonLabelFromParam(searchParams.get('notificationReason'));
@@ -475,6 +486,32 @@ export function LinesPage(): JSX.Element {
 
   function resetLineHistoryForm(): void {
     setLineHistoryForm(initialLineHistoryFormState);
+  }
+
+  function handleExportLineHistory(): void {
+    resetMessages();
+    downloadJson('line-history-backup.json', lineHistoryStore.exportJson());
+    setSuccessMessage('契約履歴の JSON をエクスポートしました。');
+  }
+
+  async function handleImportLineHistory(event: React.ChangeEvent<HTMLInputElement>): Promise<void> {
+    const file = event.target.files?.[0];
+    if (!file) {
+      return;
+    }
+
+    resetMessages();
+
+    try {
+      const raw = await file.text();
+      const imported = lineHistoryStore.importJson(raw);
+      setLineHistoryEntries(imported);
+      setSuccessMessage(`契約履歴を ${imported.length} 件読み込みました。`);
+    } catch {
+      setErrorMessage('契約履歴 JSON の読み込みに失敗しました。形式を確認してください。');
+    } finally {
+      event.target.value = '';
+    }
   }
 
   function validateForm(): {
@@ -1188,6 +1225,9 @@ export function LinesPage(): JSX.Element {
             <div className="button-row field--full">
               <button type="submit" className="button button--primary">履歴を保存する</button>
               <button type="button" className="button" onClick={resetLineHistoryForm}>入力をリセット</button>
+              <button type="button" className="button" onClick={handleExportLineHistory}>履歴 JSON をエクスポート</button>
+              <button type="button" className="button" onClick={() => historyImportInputRef.current?.click()}>履歴 JSON をインポート</button>
+              <input ref={historyImportInputRef} type="file" accept="application/json,.json" style={{ display: 'none' }} onChange={handleImportLineHistory} />
             </div>
           </form>
         </article>
