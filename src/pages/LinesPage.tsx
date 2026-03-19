@@ -398,7 +398,7 @@ export function LinesPage(): JSX.Element {
   const notificationSettings = loadNotificationSettings();
   const notificationReasonFromQuery = getNotificationReasonLabelFromParam(searchParams.get('notificationReason'));
   const notificationTargetOnlyFromQuery = getNotificationTargetOnlyFromParam(searchParams.get('notificationTargetOnly'));
-  const devPullRequestLabel = import.meta.env.DEV ? 'PR #51' : null;
+  const devPullRequestLabel = import.meta.env.DEV ? 'PR #53' : null;
 
   function resetMessages(): void {
     setErrorMessage(null);
