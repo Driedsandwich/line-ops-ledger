@@ -15,6 +15,13 @@ import {
   type LineType,
 } from '../lib/lineDrafts';
 import {
+  createLineHistoryEntry,
+  lineHistoryStore,
+  LINE_HISTORY_STATUS_OPTIONS,
+  type LineHistoryEntry,
+  type LineHistoryStatus,
+} from '../lib/lineHistory';
+import {
   loadNotificationSettings,
   type NotificationReminderWindow,
 } from '../lib/notificationSettings';
@@ -29,6 +36,15 @@ type FormState = {
   status: LineStatus;
   memo: string;
   nextReviewDate: string;
+};
+
+type LineHistoryFormState = {
+  phoneNumber: string;
+  carrier: string;
+  status: LineHistoryStatus;
+  contractStartDate: string;
+  contractEndDate: string;
+  memo: string;
 };
 
 type FilterState = {
@@ -55,6 +71,14 @@ type DeadlineStatus = {
 type NotificationReasonLabel = '期限超過' | '今日期限' | '3日以内' | '7日以内';
 
 type NotificationReasonParam = 'overdue' | 'today' | 'within-3-days' | 'within-7-days';
+
+type LineHistoryGroup = {
+  phoneNumber: string;
+  maskedPhoneNumber: string;
+  entries: LineHistoryEntry[];
+  earliestDate: string;
+  latestDate: string;
+};
 
 const notificationReasonParamMap: Record<NotificationReasonParam, NotificationReasonLabel> = {
   overdue: '期限超過',
@@ -99,6 +123,15 @@ const initialFormState: FormState = {
   nextReviewDate: '',
 };
 
+const initialLineHistoryFormState: LineHistoryFormState = {
+  phoneNumber: '',
+  carrier: '',
+  status: '利用中',
+  contractStartDate: '',
+  contractEndDate: '',
+  memo: '',
+};
+
 const initialFilterState: FilterState = {
   keyword: '',
   status: 'all',
@@ -135,6 +168,14 @@ function parseReviewDate(value: string): Date | null {
   }
 
   const parsed = new Date(`${normalized}T00:00:00`);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+function parseDate(value: string): Date | null {
+  if (!value) {
+    return null;
+  }
+  const parsed = new Date(`${value}T00:00:00`);
   return Number.isNaN(parsed.getTime()) ? null : parsed;
 }
 
@@ -216,12 +257,37 @@ function formatReviewDate(value: string): string {
   }).format(date);
 }
 
+function formatDate(value: string): string {
+  if (!value) {
+    return '未設定';
+  }
+
+  const date = new Date(`${value}T00:00:00`);
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+
+  return new Intl.DateTimeFormat('ja-JP', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(date);
+}
+
 function formatMonthlyCost(value: number | null): string {
   if (value == null) {
     return '未設定';
   }
 
   return `${new Intl.NumberFormat('ja-JP').format(value)}円/月`;
+}
+
+function maskPhoneNumber(phoneNumber: string): string {
+  if (phoneNumber.length < 4) {
+    return phoneNumber;
+  }
+
+  return `${phoneNumber.slice(0, 3)}-****-${phoneNumber.slice(-4)}`;
 }
 
 function toFormState(draft: LineDraft): FormState {
@@ -265,14 +331,65 @@ function getDeadlineStatus(value: string): DeadlineStatus {
   return { label: '期限あり', className: 'badge badge--ok', rank: 4 };
 }
 
+function buildLineHistoryGroups(entries: LineHistoryEntry[]): LineHistoryGroup[] {
+  const groups = new Map<string, LineHistoryEntry[]>();
+
+  for (const entry of entries) {
+    const current = groups.get(entry.phoneNumber) ?? [];
+    current.push(entry);
+    groups.set(entry.phoneNumber, current);
+  }
+
+  return [...groups.entries()]
+    .map(([phoneNumber, groupedEntries]) => {
+      const entriesSorted = [...groupedEntries].sort((a, b) => a.contractStartDate.localeCompare(b.contractStartDate));
+      const earliestDate = entriesSorted[0]?.contractStartDate ?? '';
+      const latestDate = entriesSorted.reduce((latest, entry) => {
+        const candidate = entry.contractEndDate || entry.contractStartDate;
+        return candidate > latest ? candidate : latest;
+      }, earliestDate);
+
+      return {
+        phoneNumber,
+        maskedPhoneNumber: maskPhoneNumber(phoneNumber),
+        entries: entriesSorted,
+        earliestDate,
+        latestDate,
+      } satisfies LineHistoryGroup;
+    })
+    .sort((a, b) => a.phoneNumber.localeCompare(b.phoneNumber));
+}
+
+function calculateTimelineStyle(group: LineHistoryGroup, entry: LineHistoryEntry): { left: string; width: string } {
+  const groupStart = parseDate(group.earliestDate);
+  const groupEnd = parseDate(group.latestDate || group.earliestDate);
+  const entryStart = parseDate(entry.contractStartDate);
+  const entryEnd = parseDate(entry.contractEndDate || group.latestDate || entry.contractStartDate);
+
+  if (!groupStart || !groupEnd || !entryStart || !entryEnd) {
+    return { left: '0%', width: '100%' };
+  }
+
+  const totalDays = Math.max(diffInDays(groupStart, groupEnd) + 1, 1);
+  const offsetDays = Math.max(diffInDays(groupStart, entryStart), 0);
+  const durationDays = Math.max(diffInDays(entryStart, entryEnd) + 1, 1);
+
+  return {
+    left: `${(offsetDays / totalDays) * 100}%`,
+    width: `${Math.max((durationDays / totalDays) * 100, 8)}%`,
+  };
+}
+
 export function LinesPage(): JSX.Element {
   const [searchParams, setSearchParams] = useSearchParams();
   const [drafts, setDrafts] = useState<LineDraft[]>(() => lineDraftStore.load());
+  const [lineHistoryEntries, setLineHistoryEntries] = useState<LineHistoryEntry[]>(() => lineHistoryStore.load());
   const [filters, setFilters] = useState<FilterState>(initialFilterState);
   const [sortKey, setSortKey] = useState<SortKey>(initialSortKey);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [expandedIds, setExpandedIds] = useState<string[]>([]);
   const [form, setForm] = useState<FormState>(initialFormState);
+  const [lineHistoryForm, setLineHistoryForm] = useState<LineHistoryFormState>(initialLineHistoryFormState);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [undoState, setUndoState] = useState<UndoState | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -297,8 +414,17 @@ export function LinesPage(): JSX.Element {
     }
   }
 
+  function persistLineHistory(nextEntries: LineHistoryEntry[]): void {
+    setLineHistoryEntries(nextEntries);
+    lineHistoryStore.save(nextEntries);
+  }
+
   function updateField<K extends keyof FormState>(key: K, value: FormState[K]): void {
     setForm((current) => ({ ...current, [key]: value }));
+  }
+
+  function updateLineHistoryField<K extends keyof LineHistoryFormState>(key: K, value: LineHistoryFormState[K]): void {
+    setLineHistoryForm((current) => ({ ...current, [key]: value }));
   }
 
   function updateFilter<K extends keyof FilterState>(key: K, value: FilterState[K]): void {
@@ -345,6 +471,10 @@ export function LinesPage(): JSX.Element {
   function resetForm(): void {
     setForm(initialFormState);
     setEditingId(null);
+  }
+
+  function resetLineHistoryForm(): void {
+    setLineHistoryForm(initialLineHistoryFormState);
   }
 
   function validateForm(): {
@@ -396,6 +526,27 @@ export function LinesPage(): JSX.Element {
       memo,
       nextReviewDate,
     };
+  }
+
+  function handleLineHistorySubmit(event: React.FormEvent<HTMLFormElement>): void {
+    event.preventDefault();
+    resetMessages();
+
+    try {
+      const nextEntry = createLineHistoryEntry({
+        phoneNumber: lineHistoryForm.phoneNumber,
+        carrier: lineHistoryForm.carrier,
+        status: lineHistoryForm.status,
+        contractStartDate: lineHistoryForm.contractStartDate,
+        contractEndDate: lineHistoryForm.contractEndDate,
+        memo: lineHistoryForm.memo,
+      });
+      persistLineHistory([nextEntry, ...lineHistoryEntries]);
+      resetLineHistoryForm();
+      setSuccessMessage('契約履歴を追加しました。');
+    } catch {
+      setErrorMessage('電話番号・キャリア・契約開始日は必須です。電話番号は 10〜11 桁で入力してください。');
+    }
   }
 
   function handleUndo(): void {
@@ -602,6 +753,7 @@ export function LinesPage(): JSX.Element {
     });
   }, [filteredDrafts, sortKey]);
 
+  const lineHistoryGroups = useMemo(() => buildLineHistoryGroups(lineHistoryEntries), [lineHistoryEntries]);
   const visibleIds = useMemo(() => visibleDrafts.map((draft) => draft.id), [visibleDrafts]);
   const allVisibleSelected = visibleIds.length > 0 && visibleIds.every((id) => selectedIds.includes(id));
   const hasDrafts = visibleDrafts.length > 0;
@@ -993,6 +1145,93 @@ export function LinesPage(): JSX.Element {
                 );
               })}
             </ul>
+          )}
+        </article>
+      </section>
+
+      <section className="card-grid card-grid--single">
+        <article className="card">
+          <div className="card__header">
+            <h3>契約履歴の登録</h3>
+            <span className="badge">電話番号単位</span>
+          </div>
+          <p className="muted">過去契約や MNP 転出済みの履歴は、現在の回線一覧とは別に軽量な契約エピソードとして記録します。</p>
+          <form className="form-grid" onSubmit={handleLineHistorySubmit}>
+            <label className="field">
+              <span>電話番号 *</span>
+              <input value={lineHistoryForm.phoneNumber} onChange={(event) => updateLineHistoryField('phoneNumber', event.target.value)} placeholder="例: 09012345678" />
+            </label>
+            <label className="field">
+              <span>キャリア *</span>
+              <input value={lineHistoryForm.carrier} onChange={(event) => updateLineHistoryField('carrier', event.target.value)} placeholder="例: NTTドコモ" />
+            </label>
+            <label className="field">
+              <span>契約状態 *</span>
+              <select value={lineHistoryForm.status} onChange={(event) => updateLineHistoryField('status', event.target.value as LineHistoryStatus)}>
+                {LINE_HISTORY_STATUS_OPTIONS.map((option) => (
+                  <option key={option} value={option}>{option}</option>
+                ))}
+              </select>
+            </label>
+            <label className="field">
+              <span>契約開始日 *</span>
+              <input type="date" value={lineHistoryForm.contractStartDate} onChange={(event) => updateLineHistoryField('contractStartDate', event.target.value)} />
+            </label>
+            <label className="field">
+              <span>契約終了日</span>
+              <input type="date" value={lineHistoryForm.contractEndDate} onChange={(event) => updateLineHistoryField('contractEndDate', event.target.value)} />
+            </label>
+            <label className="field field--full">
+              <span>メモ</span>
+              <textarea value={lineHistoryForm.memo} onChange={(event) => updateLineHistoryField('memo', event.target.value)} rows={3} placeholder="例: au から LINEMO へ MNP など" />
+            </label>
+            <div className="button-row field--full">
+              <button type="submit" className="button button--primary">履歴を保存する</button>
+              <button type="button" className="button" onClick={resetLineHistoryForm}>入力をリセット</button>
+            </div>
+          </form>
+        </article>
+      </section>
+
+      <section className="card-grid card-grid--single">
+        <article className="card">
+          <div className="card__header">
+            <h3>電話番号単位の履歴タイムライン</h3>
+            <span className="badge">{lineHistoryGroups.length}番号</span>
+          </div>
+          {lineHistoryGroups.length === 0 ? (
+            <p className="muted">契約履歴はまだありません。上のフォームから過去契約や MNP 転出済みの履歴を追加すると、ここに電話番号単位の履歴が表示されます。</p>
+          ) : (
+            <div className="stack">
+              {lineHistoryGroups.map((group) => (
+                <div key={group.phoneNumber} className="detail-panel">
+                  <div className="card__header">
+                    <h3>{group.maskedPhoneNumber}</h3>
+                    <span className="badge">{group.entries.length}件</span>
+                  </div>
+                  <p className="muted">{formatDate(group.earliestDate)} 〜 {formatDate(group.latestDate)}</p>
+                  <div className="definition-list">
+                    {group.entries.map((entry, index) => {
+                      const timelineStyle = calculateTimelineStyle(group, entry);
+                      const previousEntry = index > 0 ? group.entries[index - 1] : null;
+                      return (
+                        <div key={entry.id}>
+                          <dt>{entry.carrier} / {entry.status}</dt>
+                          <dd>
+                            <div>{formatDate(entry.contractStartDate)} 〜 {entry.contractEndDate ? formatDate(entry.contractEndDate) : '継続中'}</div>
+                            {previousEntry ? <div>MNP / 契約移行: {previousEntry.carrier} → {entry.carrier}</div> : null}
+                            {entry.memo ? <div>{entry.memo}</div> : null}
+                            <div style={{ position: 'relative', marginTop: '0.5rem', height: '1.5rem', background: 'rgba(148, 163, 184, 0.2)', borderRadius: '999px' }}>
+                              <div style={{ position: 'absolute', top: 0, bottom: 0, left: timelineStyle.left, width: timelineStyle.width, borderRadius: '999px', background: 'rgba(59, 130, 246, 0.8)' }} />
+                            </div>
+                          </dd>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
           )}
         </article>
       </section>
