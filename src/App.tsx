@@ -6,7 +6,7 @@ const navItems = [
   { to: '/settings', label: '設定' },
 ];
 
-const devProgressLabel = 'DEV / feat/lines-notification-target-filter / pending PR';
+const devProgressLabel = 'DEV / feat/lines-notification-target-filter / PR #43';
 
 export function AppLayout(): JSX.Element {
   return (
