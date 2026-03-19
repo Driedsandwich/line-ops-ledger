@@ -50,6 +50,8 @@ type DeadlineStatus = {
   rank: number;
 };
 
+type NotificationReasonLabel = '期限超過' | '今日期限' | '3日以内' | '7日以内';
+
 const initialFormState: FormState = {
   lineName: '',
   carrier: '',
@@ -115,6 +117,23 @@ function isNotificationTarget(diff: number, window: NotificationReminderWindow):
   }
 }
 
+function getNotificationReasonLabel(diff: number, window: NotificationReminderWindow): NotificationReasonLabel | null {
+  if (!isNotificationTarget(diff, window)) {
+    return null;
+  }
+
+  if (diff < 0) {
+    return '期限超過';
+  }
+  if (diff === 0) {
+    return '今日期限';
+  }
+  if (diff <= 3) {
+    return '3日以内';
+  }
+  return '7日以内';
+}
+
 function matchesNotificationTarget(draft: LineDraft, reminderWindow: NotificationReminderWindow, enabled: boolean): boolean {
   if (!enabled) {
     return false;
@@ -126,6 +145,23 @@ function matchesNotificationTarget(draft: LineDraft, reminderWindow: Notificatio
   }
 
   return isNotificationTarget(diffInDays(new Date(), reviewDate), reminderWindow);
+}
+
+function getNotificationReasonForDraft(
+  draft: LineDraft,
+  reminderWindow: NotificationReminderWindow,
+  enabled: boolean,
+): NotificationReasonLabel | null {
+  if (!enabled) {
+    return null;
+  }
+
+  const reviewDate = parseReviewDate(draft.nextReviewDate);
+  if (!reviewDate) {
+    return null;
+  }
+
+  return getNotificationReasonLabel(diffInDays(new Date(), reviewDate), reminderWindow);
 }
 
 function formatCreatedAt(value: string): string {
@@ -709,6 +745,11 @@ export function LinesPage(): JSX.Element {
             <ul className="list list--drafts">
               {visibleDrafts.map((draft) => {
                 const deadlineStatus = getDeadlineStatus(draft.nextReviewDate);
+                const notificationReason = getNotificationReasonForDraft(
+                  draft,
+                  notificationSettings.reminderWindow,
+                  notificationSettings.enabled,
+                );
                 const isSelected = selectedIds.includes(draft.id);
                 const isExpanded = expandedIds.includes(draft.id);
 
@@ -729,6 +770,7 @@ export function LinesPage(): JSX.Element {
                     </div>
                     <div className="badge-row">
                       <span className={deadlineStatus.className}>{deadlineStatus.label}</span>
+                      {notificationReason ? <span className="badge badge--ok">通知理由: {notificationReason}</span> : null}
                       {draft.last4 ? <span className="badge">下4桁: {draft.last4}</span> : null}
                     </div>
                     <div className="button-row button-row--tight">
@@ -752,6 +794,10 @@ export function LinesPage(): JSX.Element {
                           <div>
                             <dt>契約名義メモ</dt>
                             <dd>{draft.contractHolderNote || '未設定'}</dd>
+                          </div>
+                          <div>
+                            <dt>通知理由</dt>
+                            <dd>{notificationReason || '対象外'}</dd>
                           </div>
                           <div>
                             <dt>メモ</dt>
