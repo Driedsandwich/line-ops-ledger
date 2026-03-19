@@ -35,6 +35,7 @@ type FilterState = {
   status: 'all' | LineStatus;
   lineType: 'all' | LineType;
   notificationTargetOnly: boolean;
+  notificationReason: 'all' | NotificationReasonLabel;
 };
 
 type UndoState = {
@@ -69,9 +70,11 @@ const initialFilterState: FilterState = {
   status: 'all',
   lineType: 'all',
   notificationTargetOnly: false,
+  notificationReason: 'all',
 };
 
 const initialSortKey: SortKey = 'nextReviewDate';
+const devPullRequestLabel = import.meta.env.DEV ? 'PR #47' : null;
 
 function isEditableElement(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) {
@@ -278,6 +281,13 @@ export function LinesPage(): JSX.Element {
     setFilters((current) => ({ ...current, [key]: value }));
   }
 
+  function setNotificationReasonFilter(reason: FilterState['notificationReason']): void {
+    setFilters((current) => ({
+      ...current,
+      notificationReason: current.notificationReason === reason ? 'all' : reason,
+    }));
+  }
+
   function resetForm(): void {
     setForm(initialFormState);
     setEditingId(null);
@@ -413,18 +423,22 @@ export function LinesPage(): JSX.Element {
     setExpandedIds((current) => (current.includes(id) ? current.filter((item) => item !== id) : [...current, id]));
   }
 
-  const visibleDrafts = useMemo(() => {
+  const filteredDrafts = useMemo(() => {
     const keyword = filters.keyword.trim().toLowerCase();
-    const filtered = drafts.filter((draft) => {
-      if (filters.notificationTargetOnly) {
-        const match = matchesNotificationTarget(
-          draft,
-          notificationSettings.reminderWindow,
-          notificationSettings.enabled,
-        );
-        if (!match) {
-          return false;
-        }
+
+    return drafts.filter((draft) => {
+      const notificationReason = getNotificationReasonForDraft(
+        draft,
+        notificationSettings.reminderWindow,
+        notificationSettings.enabled,
+      );
+
+      if (filters.notificationTargetOnly && !notificationReason) {
+        return false;
+      }
+
+      if (filters.notificationReason !== 'all' && notificationReason !== filters.notificationReason) {
+        return false;
       }
 
       if (filters.status !== 'all' && draft.status !== filters.status) {
@@ -450,8 +464,63 @@ export function LinesPage(): JSX.Element {
 
       return haystack.includes(keyword);
     });
+  }, [drafts, filters, notificationSettings]);
 
-    return filtered.sort((a, b) => {
+  const notificationSummary = useMemo(() => {
+    const summaryDrafts = drafts.filter((draft) => {
+      const keyword = filters.keyword.trim().toLowerCase();
+
+      if (filters.status !== 'all' && draft.status !== filters.status) {
+        return false;
+      }
+      if (filters.lineType !== 'all' && draft.lineType !== filters.lineType) {
+        return false;
+      }
+      if (!keyword) {
+        return true;
+      }
+
+      const haystack = [
+        draft.lineName,
+        draft.carrier,
+        draft.memo,
+        draft.lineType,
+        draft.last4,
+        draft.contractHolderNote,
+      ]
+        .join(' ')
+        .toLowerCase();
+
+      return haystack.includes(keyword);
+    });
+
+    const counts: Record<NotificationReasonLabel, number> = {
+      '期限超過': 0,
+      '今日期限': 0,
+      '3日以内': 0,
+      '7日以内': 0,
+    };
+
+    for (const draft of summaryDrafts) {
+      const reason = getNotificationReasonForDraft(
+        draft,
+        notificationSettings.reminderWindow,
+        notificationSettings.enabled,
+      );
+
+      if (reason) {
+        counts[reason] += 1;
+      }
+    }
+
+    return {
+      total: Object.values(counts).reduce((sum, count) => sum + count, 0),
+      counts,
+    };
+  }, [drafts, filters.keyword, filters.lineType, filters.status, notificationSettings]);
+
+  const visibleDrafts = useMemo(() => {
+    return [...filteredDrafts].sort((a, b) => {
       switch (sortKey) {
         case 'monthlyCostHigh':
           return (b.monthlyCost ?? -1) - (a.monthlyCost ?? -1);
@@ -477,7 +546,7 @@ export function LinesPage(): JSX.Element {
         }
       }
     });
-  }, [drafts, filters, sortKey, notificationSettings]);
+  }, [filteredDrafts, sortKey]);
 
   const visibleIds = useMemo(() => visibleDrafts.map((draft) => draft.id), [visibleDrafts]);
   const allVisibleSelected = visibleIds.length > 0 && visibleIds.every((id) => selectedIds.includes(id));
@@ -567,6 +636,7 @@ export function LinesPage(): JSX.Element {
           <p className="page__lead">
             回線ドラフトの追加に加えて、検索・絞り込み・並び替え・期限表示・一括更新・一括削除・詳細表示で見たい回線を探しやすくします。保存層は薄い store に切り出し、後で差し替えやすくします。
           </p>
+          {devPullRequestLabel ? <p className="notice">開発中表示: {devPullRequestLabel}</p> : null}
         </div>
       </header>
 
@@ -713,6 +783,36 @@ export function LinesPage(): JSX.Element {
               />
               <span>通知対象のみ</span>
             </label>
+          </div>
+
+          <div className="detail-panel">
+            <div className="card__header">
+              <h3>通知対象サマリー</h3>
+              <span className="badge">{notificationSummary.total}件</span>
+            </div>
+            <p className="muted">現在の検索・契約状態・回線種別条件に対して、通知対象を理由別にすばやく絞り込めます。</p>
+            <div className="button-row">
+              <button
+                type="button"
+                className={filters.notificationReason === 'all' ? 'button button--primary' : 'button'}
+                onClick={() => updateFilter('notificationReason', 'all')}
+              >
+                通知対象合計 {notificationSummary.total}件
+              </button>
+              {(['期限超過', '今日期限', '3日以内', '7日以内'] as const).map((reason) => (
+                <button
+                  key={reason}
+                  type="button"
+                  className={filters.notificationReason === reason ? 'button button--primary' : 'button'}
+                  onClick={() => setNotificationReasonFilter(reason)}
+                >
+                  {reason} {notificationSummary.counts[reason]}件
+                </button>
+              ))}
+            </div>
+            {filters.notificationReason !== 'all' ? (
+              <p className="notice">通知理由: {filters.notificationReason} で絞り込み中です。</p>
+            ) : null}
           </div>
 
           <div className="button-row">
