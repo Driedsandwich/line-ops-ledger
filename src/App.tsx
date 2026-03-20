@@ -6,7 +6,7 @@ const navItems = [
   { to: '/settings', label: '設定' },
 ];
 
-const devProgressLabel = 'DEV / feat/history-entry-edit-and-delete / PR #63';
+const devProgressLabel = 'DEV / feat/link-ledger-and-history-records / PR #65';
 
 export function AppLayout(): JSX.Element {
   return (
