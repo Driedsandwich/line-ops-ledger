@@ -93,6 +93,7 @@ type LineHistoryGroup = {
 
 type VisibleLineHistoryGroup = LineHistoryGroup & {
   visibleEntries: LineHistoryEntry[];
+  relatedDrafts: LineDraft[];
 };
 
 const notificationReasonParamMap: Record<NotificationReasonParam, NotificationReasonLabel> = {
@@ -431,6 +432,28 @@ function maskPhoneNumber(phoneNumber: string): string {
   return `${phoneNumber.slice(0, 3)}-****-${phoneNumber.slice(-4)}`;
 }
 
+function getPhoneLast4(phoneNumber: string): string {
+  const digits = phoneNumber.replace(/\D/g, '');
+  return digits.length >= 4 ? digits.slice(-4) : '';
+}
+
+function findRelatedHistoryEntries(draft: LineDraft, entries: LineHistoryEntry[]): LineHistoryEntry[] {
+  if (!draft.last4) {
+    return [];
+  }
+
+  return entries.filter((entry) => getPhoneLast4(entry.phoneNumber) === draft.last4);
+}
+
+function findRelatedDrafts(entry: LineHistoryEntry, drafts: LineDraft[]): LineDraft[] {
+  const last4 = getPhoneLast4(entry.phoneNumber);
+  if (!last4) {
+    return [];
+  }
+
+  return drafts.filter((draft) => draft.last4 === last4);
+}
+
 function downloadJson(filename: string, content: string): void {
   const blob = new Blob([content], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
@@ -537,6 +560,7 @@ export function LinesPage(): JSX.Element {
   const [sortKey, setSortKey] = useState<SortKey>(initialSortKey);
   const [timelineWindow, setTimelineWindow] = useState<TimelineWindowKey>('6m');
   const [timelineViewMode, setTimelineViewMode] = useState<TimelineViewMode>('all');
+  const [timelinePhoneFilter, setTimelinePhoneFilter] = useState<string[] | null>(null);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [expandedIds, setExpandedIds] = useState<string[]>([]);
   const [form, setForm] = useState<FormState>(initialFormState);
@@ -622,6 +646,14 @@ export function LinesPage(): JSX.Element {
     setSearchParams(nextParams, { replace: true });
   }
 
+  function focusRelatedHistory(phoneNumbers: string[]): void {
+    setTimelinePhoneFilter(phoneNumbers);
+  }
+
+  function clearTimelinePhoneFilter(): void {
+    setTimelinePhoneFilter(null);
+  }
+
   function resetForm(): void {
     setForm(initialFormState);
     setEditingId(null);
@@ -651,6 +683,7 @@ export function LinesPage(): JSX.Element {
       const imported = lineHistoryStore.importJson(raw);
       setLineHistoryEntries(imported);
       setEditingHistoryId(null);
+      setTimelinePhoneFilter(null);
       setSuccessMessage(`契約履歴を ${imported.length} 件読み込みました。`);
     } catch {
       setErrorMessage('契約履歴 JSON の読み込みに失敗しました。形式を確認してください。');
@@ -1037,6 +1070,7 @@ export function LinesPage(): JSX.Element {
   const lineHistoryGroups = useMemo(() => buildLineHistoryGroups(lineHistoryEntries), [lineHistoryEntries]);
   const visibleLineHistoryGroups = useMemo(() => {
     return lineHistoryGroups
+      .filter((group) => !timelinePhoneFilter || timelinePhoneFilter.includes(group.phoneNumber))
       .map((group) => {
         const visibleEntries = group.entries.filter((entry) =>
           isEntryVisibleInTimeline(entry, timelineWindow, timelineViewMode, today),
@@ -1045,10 +1079,11 @@ export function LinesPage(): JSX.Element {
         return {
           ...group,
           visibleEntries,
+          relatedDrafts: findRelatedDrafts(group.entries[0], drafts),
         } satisfies VisibleLineHistoryGroup;
       })
       .filter((group) => group.visibleEntries.length > 0);
-  }, [lineHistoryGroups, timelineViewMode, timelineWindow, today]);
+  }, [drafts, lineHistoryGroups, timelinePhoneFilter, timelineViewMode, timelineWindow, today]);
   const totalVisibleTimelineEntries = useMemo(
     () => visibleLineHistoryGroups.reduce((sum, group) => sum + group.visibleEntries.length, 0),
     [visibleLineHistoryGroups],
@@ -1429,6 +1464,8 @@ export function LinesPage(): JSX.Element {
                 const isSelected = selectedIds.includes(draft.id);
                 const isExpanded = expandedIds.includes(draft.id);
                 const elapsedDays = calculateElapsedDays(draft.contractStartDate);
+                const relatedHistoryEntries = findRelatedHistoryEntries(draft, lineHistoryEntries);
+                const relatedPhoneNumbers = Array.from(new Set(relatedHistoryEntries.map((entry) => entry.phoneNumber)));
 
                 return (
                   <li key={draft.id} className={isSelected ? 'list__item--selected' : ''}>
@@ -1455,6 +1492,7 @@ export function LinesPage(): JSX.Element {
                       {draft.last4 ? <span className="badge">下4桁: {draft.last4}</span> : null}
                       {elapsedDays != null ? <span className="badge">契約経過: {elapsedDays}日</span> : null}
                       {draft.contractEndDate ? <span className="badge">契約終了: {formatDate(draft.contractEndDate)}</span> : null}
+                      {relatedHistoryEntries.length > 0 ? <span className="badge badge--ok">関連履歴: {relatedHistoryEntries.length}件</span> : null}
                     </div>
                     <div className="button-row button-row--tight">
                       <button type="button" className="button" onClick={() => toggleExpanded(draft.id)}>
@@ -1531,6 +1569,28 @@ export function LinesPage(): JSX.Element {
                             <dd>{draft.status}</dd>
                           </div>
                         </div>
+                        <div className="detail-panel" style={{ marginTop: '1rem' }}>
+                          <div className="card__header">
+                            <h3>関連履歴候補</h3>
+                            <span className="badge">{relatedHistoryEntries.length}件</span>
+                          </div>
+                          <p className="muted">現在は回線番号下4桁の一致を基準に、関連しそうな履歴候補を表示します。下4桁未設定の回線は関連付けできません。</p>
+                          {relatedHistoryEntries.length === 0 ? (
+                            <p className="muted">関連履歴候補はまだありません。</p>
+                          ) : (
+                            <>
+                              <div className="badge-row">
+                                {relatedHistoryEntries.map((entry) => (
+                                  <span key={entry.id} className="badge">{entry.carrier} / {maskPhoneNumber(entry.phoneNumber)}</span>
+                                ))}
+                              </div>
+                              <div className="button-row button-row--tight" style={{ marginTop: '0.75rem' }}>
+                                <button type="button" className="button" onClick={() => focusRelatedHistory(relatedPhoneNumbers)}>関連履歴だけ表示</button>
+                                <button type="button" className="button" onClick={clearTimelinePhoneFilter}>履歴絞り込み解除</button>
+                              </div>
+                            </>
+                          )}
+                        </div>
                       </div>
                     ) : null}
                   </li>
@@ -1545,7 +1605,7 @@ export function LinesPage(): JSX.Element {
         <article className="card">
           <div className="card__header">
             <h3>契約履歴の登録</h3>
-            <span className="badge">{historyCardBadge}</span>
+            <span className="badge">{editingHistoryId ? '履歴編集中' : '電話番号単位'}</span>
           </div>
           <p className="muted">過去契約や MNP 転出済みの履歴は、現在の回線一覧とは別に軽量な契約エピソードとして記録します。</p>
           <form className="form-grid" onSubmit={handleLineHistorySubmit}>
@@ -1613,6 +1673,12 @@ export function LinesPage(): JSX.Element {
             </label>
           </div>
           <p className="muted">表示期間: {getTimelineRangeLabel(timelineWindow)} / 表示対象: {TIMELINE_VIEW_OPTIONS.find((option) => option.key === timelineViewMode)?.label}</p>
+          {timelinePhoneFilter ? (
+            <div className="button-row button-row--tight" style={{ marginBottom: '0.75rem' }}>
+              <span className="badge badge--ok">関連履歴に絞り込み中: {timelinePhoneFilter.length}番号</span>
+              <button type="button" className="button" onClick={clearTimelinePhoneFilter}>絞り込み解除</button>
+            </div>
+          ) : null}
           {visibleLineHistoryGroups.length === 0 ? (
             <p className="muted">現在の表示条件に一致する履歴はありません。期間または表示対象を切り替えて確認してください。</p>
           ) : (
@@ -1624,6 +1690,19 @@ export function LinesPage(): JSX.Element {
                     <span className="badge">表示 {group.visibleEntries.length}件 / 全 {group.entries.length}件</span>
                   </div>
                   <p className="muted">履歴全体: {formatDate(group.earliestDate)} 〜 {formatDate(group.latestDate)}</p>
+                  {group.relatedDrafts.length > 0 ? (
+                    <div className="detail-panel" style={{ marginBottom: '0.75rem' }}>
+                      <div className="card__header">
+                        <h3>関連主台帳候補</h3>
+                        <span className="badge">{group.relatedDrafts.length}件</span>
+                      </div>
+                      <div className="badge-row">
+                        {group.relatedDrafts.map((draft) => (
+                          <span key={draft.id} className="badge badge--ok">{draft.lineName} / 下4桁 {draft.last4 || '未設定'}</span>
+                        ))}
+                      </div>
+                    </div>
+                  ) : null}
                   <div className="stack" style={{ gap: '0.75rem' }}>
                     {group.visibleEntries.map((entry, index) => {
                       const timelineStyle = calculateTimelineStyleForWindow(entry, timelineWindow, today, group.earliestDate, group.latestDate);
@@ -1640,6 +1719,9 @@ export function LinesPage(): JSX.Element {
                           </div>
                           {previousEntry ? <p className="muted">直前の移動: {previousEntry.carrier} → {entry.carrier}</p> : null}
                           {entry.memo ? <p className="muted">{entry.memo}</p> : null}
+                          {group.relatedDrafts.length > 0 ? (
+                            <p className="muted">関連主台帳候補: {group.relatedDrafts.map((draft) => draft.lineName).join(' / ')}</p>
+                          ) : null}
                           <div style={{ position: 'relative', marginTop: '0.5rem', height: '1.5rem', background: 'rgba(148, 163, 184, 0.2)', borderRadius: '999px', overflow: 'hidden' }}>
                             <div style={{ position: 'absolute', top: 0, bottom: 0, left: timelineStyle.left, width: timelineStyle.width, borderRadius: '999px', background: 'rgba(59, 130, 246, 0.8)' }} />
                           </div>
