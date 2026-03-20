@@ -1,12 +1,10 @@
-export const LINE_STATUS_OPTIONS = ['利用中', '解約予定'] as const;
-export const LINE_TYPE_OPTIONS = ['音声SIM', 'データSIM', 'ホームルーター', '光回線', '未分類'] as const;
-export const DEFAULT_LINE_TYPE = '未分類';
-export const CURRENT_LINE_DRAFT_SCHEMA_VERSION = 3;
-export const LINE_DRAFT_BACKUP_FILENAME_PREFIX = 'line-ops-ledger-backup';
-
-export type LineStatus = (typeof LINE_STATUS_OPTIONS)[number];
+export const LINE_TYPE_OPTIONS = ['音声SIM', 'データSIM', 'ホームルーター', '光回線'] as const;
 export type LineType = (typeof LINE_TYPE_OPTIONS)[number];
-export type LineDraftStorageFormat = 'empty' | 'legacy-array' | 'versioned-envelope' | 'invalid-data';
+
+export const LINE_STATUS_OPTIONS = ['利用中', '解約予定'] as const;
+export type LineStatus = (typeof LINE_STATUS_OPTIONS)[number];
+
+export const DEFAULT_LINE_TYPE: LineType = '音声SIM';
 
 export type LineDraft = {
   id: string;
@@ -16,6 +14,12 @@ export type LineDraft = {
   monthlyCost: number | null;
   last4: string;
   contractHolderNote: string;
+  contractStartDate: string;
+  contractHolder: string;
+  serviceUser: string;
+  paymentMethod: string;
+  planName: string;
+  deviceName: string;
   status: LineStatus;
   memo: string;
   nextReviewDate: string;
@@ -28,58 +32,37 @@ type LineDraftEnvelope = {
   items: LineDraft[];
 };
 
-export type LineDraftStorageInfo = {
-  schemaVersion: number | null;
-  itemCount: number;
-  updatedAt: string | null;
-  format: LineDraftStorageFormat;
+type LineDraftInput = {
+  lineName: string;
+  carrier: string;
+  lineType: LineType;
+  monthlyCost: number | null;
+  last4: string;
+  contractHolderNote: string;
+  contractStartDate?: string;
+  contractHolder?: string;
+  serviceUser?: string;
+  paymentMethod?: string;
+  planName?: string;
+  deviceName?: string;
+  status: LineStatus;
+  memo: string;
+  nextReviewDate: string;
 };
 
-export type ImportBackupResult = {
-  importedCount: number;
-};
+const STORAGE_KEY = 'line-ops-ledger.lines';
+const SCHEMA_VERSION = 2;
 
-export type LineDraftStore = {
-  load: () => LineDraft[];
-  save: (drafts: LineDraft[]) => void;
-  ensureCurrentVersion: () => void;
-  getInfo: () => LineDraftStorageInfo;
-  exportBackupJson: () => string;
-  buildBackupFilename: () => string;
-  importBackupJson: (raw: string) => ImportBackupResult;
-};
-
-const STORAGE_KEY = 'line-ops-ledger.line-drafts';
-const REVIEW_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
-const LAST4_PATTERN = /^\d{4}$/;
-
-function isLineStatus(value: string): value is LineStatus {
-  return LINE_STATUS_OPTIONS.includes(value as LineStatus);
+function createId(): string {
+  return `line_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
 }
 
 function isLineType(value: string): value is LineType {
-  return LINE_TYPE_OPTIONS.includes(value as LineType);
+  return (LINE_TYPE_OPTIONS as readonly string[]).includes(value);
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null;
-}
-
-export function normalizeReviewDate(value: string): string {
-  if (!REVIEW_DATE_PATTERN.test(value)) {
-    return '';
-  }
-
-  const date = new Date(`${value}T00:00:00`);
-  if (Number.isNaN(date.getTime())) {
-    return '';
-  }
-
-  const [year, month, day] = value.split('-').map((part) => Number(part));
-  const isSameDate =
-    date.getFullYear() === year && date.getMonth() + 1 === month && date.getDate() === day;
-
-  return isSameDate ? value : '';
+function isLineStatus(value: string): value is LineStatus {
+  return (LINE_STATUS_OPTIONS as readonly string[]).includes(value);
 }
 
 export function normalizeMonthlyCost(value: string | number | null | undefined): number | null {
@@ -87,50 +70,77 @@ export function normalizeMonthlyCost(value: string | number | null | undefined):
     return null;
   }
 
-  const numberValue = typeof value === 'number' ? value : Number(value);
-  if (!Number.isFinite(numberValue) || numberValue < 0 || !Number.isInteger(numberValue)) {
+  const normalized = typeof value === 'number' ? value : Number(String(value).trim());
+  if (!Number.isInteger(normalized) || normalized < 0) {
     return null;
   }
 
-  return numberValue;
+  return normalized;
 }
 
-export function normalizeLast4(value: string): string {
-  const digits = value.replace(/\D/g, '').slice(-4);
-  return LAST4_PATTERN.test(digits) ? digits : '';
-}
-
-function toLineDraft(value: unknown): LineDraft | null {
-  if (!isRecord(value)) {
-    return null;
+export function normalizeLast4(value: string | null | undefined): string {
+  if (!value) {
+    return '';
   }
 
-  const id = typeof value.id === 'string' ? value.id : null;
-  const lineName = typeof value.lineName === 'string' ? value.lineName : null;
-  const carrier = typeof value.carrier === 'string' ? value.carrier : null;
-  const lineType = typeof value.lineType === 'string' && isLineType(value.lineType) ? value.lineType : DEFAULT_LINE_TYPE;
-  const monthlyCost = normalizeMonthlyCost(
-    typeof value.monthlyCost === 'number' || typeof value.monthlyCost === 'string' ? value.monthlyCost : null,
-  );
-  const last4 = typeof value.last4 === 'string' ? normalizeLast4(value.last4) : '';
-  const contractHolderNote = typeof value.contractHolderNote === 'string' ? value.contractHolderNote : '';
-  const status = typeof value.status === 'string' && isLineStatus(value.status) ? value.status : null;
-  const memo = typeof value.memo === 'string' ? value.memo : '';
-  const nextReviewDate = typeof value.nextReviewDate === 'string' ? normalizeReviewDate(value.nextReviewDate) : '';
-  const createdAt = typeof value.createdAt === 'string' ? value.createdAt : null;
+  const digits = String(value).replace(/\D/g, '');
+  return digits.length === 4 ? digits : '';
+}
 
-  if (!id || !lineName || !carrier || !status || !createdAt) {
+export function normalizeReviewDate(value: string | null | undefined): string {
+  if (!value) {
+    return '';
+  }
+
+  const trimmed = String(value).trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+    return '';
+  }
+
+  const date = new Date(`${trimmed}T00:00:00`);
+  if (Number.isNaN(date.getTime())) {
+    return '';
+  }
+
+  return trimmed;
+}
+
+function normalizeLineDraft(input: Partial<LineDraft> & { lineName: string; carrier: string }): LineDraft | null {
+  const lineName = input.lineName.trim();
+  const carrier = input.carrier.trim();
+  const lineType = isLineType(String(input.lineType ?? '')) ? (input.lineType as LineType) : DEFAULT_LINE_TYPE;
+  const monthlyCost = normalizeMonthlyCost(input.monthlyCost ?? null);
+  const last4 = normalizeLast4(input.last4);
+  const contractHolderNote = (input.contractHolderNote ?? '').trim();
+  const contractStartDate = normalizeReviewDate(input.contractStartDate);
+  const contractHolder = (input.contractHolder ?? '').trim();
+  const serviceUser = (input.serviceUser ?? '').trim();
+  const paymentMethod = (input.paymentMethod ?? '').trim();
+  const planName = (input.planName ?? '').trim();
+  const deviceName = (input.deviceName ?? '').trim();
+  const status = isLineStatus(String(input.status ?? '')) ? (input.status as LineStatus) : '利用中';
+  const memo = (input.memo ?? '').trim();
+  const nextReviewDate = normalizeReviewDate(input.nextReviewDate);
+  const createdAt = input.createdAt && !Number.isNaN(new Date(input.createdAt).getTime()) ? input.createdAt : new Date().toISOString();
+
+  if (!lineName || !carrier) {
     return null;
   }
 
   return {
-    id,
+    id: input.id ?? createId(),
     lineName,
     carrier,
     lineType,
     monthlyCost,
     last4,
     contractHolderNote,
+    contractStartDate,
+    contractHolder,
+    serviceUser,
+    paymentMethod,
+    planName,
+    deviceName,
     status,
     memo,
     nextReviewDate,
@@ -138,223 +148,129 @@ function toLineDraft(value: unknown): LineDraft | null {
   };
 }
 
-function toEnvelope(value: unknown): LineDraftEnvelope | null {
-  if (!isRecord(value)) {
-    return null;
-  }
-
-  const schemaVersion = typeof value.schemaVersion === 'number' ? value.schemaVersion : null;
-  const updatedAt = typeof value.updatedAt === 'string' ? value.updatedAt : null;
-  const items = Array.isArray(value.items) ? value.items.map(toLineDraft).filter((item): item is LineDraft => item != null) : null;
-
-  if (schemaVersion == null || !updatedAt || items == null) {
-    return null;
-  }
-
+function buildEnvelope(items: LineDraft[]): LineDraftEnvelope {
   return {
-    schemaVersion,
-    updatedAt,
+    schemaVersion: SCHEMA_VERSION,
+    updatedAt: new Date().toISOString(),
     items,
   };
 }
 
-function createEnvelope(drafts: LineDraft[]): LineDraftEnvelope {
-  return {
-    schemaVersion: CURRENT_LINE_DRAFT_SCHEMA_VERSION,
-    updatedAt: new Date().toISOString(),
-    items: drafts,
-  };
-}
-
-function readRawStorage(): string | null {
-  if (typeof window === 'undefined') {
-    return null;
-  }
-
-  return window.localStorage.getItem(STORAGE_KEY);
-}
-
-function writeEnvelope(drafts: LineDraft[]): void {
-  if (typeof window === 'undefined') {
-    return;
-  }
-
-  const envelope = createEnvelope(drafts);
-  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(envelope));
-}
-
-function parseStoredDrafts(raw: string | null): { drafts: LineDraft[]; info: LineDraftStorageInfo } {
+function parseDrafts(raw: string | null): LineDraft[] {
   if (!raw) {
-    return {
-      drafts: [],
-      info: {
-        schemaVersion: CURRENT_LINE_DRAFT_SCHEMA_VERSION,
-        itemCount: 0,
-        updatedAt: null,
-        format: 'empty',
-      },
-    };
+    return [];
   }
 
   try {
-    const parsed: unknown = JSON.parse(raw);
+    const parsed = JSON.parse(raw) as unknown;
 
     if (Array.isArray(parsed)) {
-      const drafts = parsed.map(toLineDraft).filter((item): item is LineDraft => item != null);
-      return {
-        drafts,
-        info: {
-          schemaVersion: null,
-          itemCount: drafts.length,
-          updatedAt: null,
-          format: 'legacy-array',
-        },
-      };
+      return parsed
+        .map((item) => {
+          if (!item || typeof item !== 'object') {
+            return null;
+          }
+          return normalizeLineDraft(item as Partial<LineDraft> & { lineName: string; carrier: string });
+        })
+        .filter((item): item is LineDraft => Boolean(item));
     }
 
-    const envelope = toEnvelope(parsed);
-    if (envelope) {
-      return {
-        drafts: envelope.items,
-        info: {
-          schemaVersion: envelope.schemaVersion,
-          itemCount: envelope.items.length,
-          updatedAt: envelope.updatedAt,
-          format: 'versioned-envelope',
-        },
-      };
+    if (parsed && typeof parsed === 'object' && Array.isArray((parsed as LineDraftEnvelope).items)) {
+      return (parsed as LineDraftEnvelope).items
+        .map((item) => normalizeLineDraft(item))
+        .filter((item): item is LineDraft => Boolean(item));
     }
-
-    return {
-      drafts: [],
-      info: {
-        schemaVersion: null,
-        itemCount: 0,
-        updatedAt: null,
-        format: 'invalid-data',
-      },
-    };
   } catch {
-    return {
-      drafts: [],
-      info: {
-        schemaVersion: null,
-        itemCount: 0,
-        updatedAt: null,
-        format: 'invalid-data',
-      },
-    };
+    return [];
   }
+
+  return [];
 }
 
-class LocalStorageLineDraftStore implements LineDraftStore {
-  load(): LineDraft[] {
-    const { drafts } = parseStoredDrafts(readRawStorage());
-    return drafts;
+function readDrafts(): LineDraft[] {
+  if (typeof window === 'undefined') {
+    return [];
   }
-
-  save(drafts: LineDraft[]): void {
-    writeEnvelope(drafts);
-  }
-
-  ensureCurrentVersion(): void {
-    const raw = readRawStorage();
-    const parsed = parseStoredDrafts(raw);
-
-    if (parsed.info.format !== 'versioned-envelope' || parsed.info.schemaVersion !== CURRENT_LINE_DRAFT_SCHEMA_VERSION) {
-      writeEnvelope(parsed.drafts);
-    }
-  }
-
-  getInfo(): LineDraftStorageInfo {
-    return parseStoredDrafts(readRawStorage()).info;
-  }
-
-  exportBackupJson(): string {
-    return JSON.stringify(createEnvelope(this.load()), null, 2);
-  }
-
-  buildBackupFilename(): string {
-    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-    return `${LINE_DRAFT_BACKUP_FILENAME_PREFIX}-${timestamp}.json`;
-  }
-
-  importBackupJson(raw: string): ImportBackupResult {
-    let parsed: unknown;
-    try {
-      parsed = JSON.parse(raw);
-    } catch {
-      throw new Error('JSON バックアップの形式が不正です。');
-    }
-
-    let drafts: LineDraft[];
-    if (Array.isArray(parsed)) {
-      drafts = parsed.map(toLineDraft).filter((item): item is LineDraft => item != null);
-    } else {
-      const envelope = toEnvelope(parsed);
-      if (!envelope) {
-        throw new Error('JSON バックアップの形式が不正です。');
-      }
-      drafts = envelope.items;
-    }
-
-    writeEnvelope(drafts);
-    return { importedCount: drafts.length };
-  }
+  return parseDrafts(window.localStorage.getItem(STORAGE_KEY));
 }
 
-export const lineDraftStore: LineDraftStore = new LocalStorageLineDraftStore();
-
-export function createLineDraft(input: {
-  lineName: string;
-  carrier: string;
-  lineType: LineType;
-  monthlyCost: number | null;
-  last4: string;
-  contractHolderNote: string;
-  status: LineStatus;
-  memo: string;
-  nextReviewDate: string;
-}): LineDraft {
-  return {
-    id: globalThis.crypto?.randomUUID?.() ?? `${Date.now()}`,
-    lineName: input.lineName,
-    carrier: input.carrier,
-    lineType: input.lineType,
-    monthlyCost: input.monthlyCost,
-    last4: normalizeLast4(input.last4),
-    contractHolderNote: input.contractHolderNote,
-    status: input.status,
-    memo: input.memo,
-    nextReviewDate: normalizeReviewDate(input.nextReviewDate),
-    createdAt: new Date().toISOString(),
-  };
+function writeDrafts(items: LineDraft[]): void {
+  if (typeof window === 'undefined') {
+    return;
+  }
+  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(buildEnvelope(items)));
 }
 
-export function updateLineDraft(
-  draft: LineDraft,
-  input: {
-    lineName: string;
-    carrier: string;
-    lineType: LineType;
-    monthlyCost: number | null;
-    last4: string;
-    contractHolderNote: string;
-    status: LineStatus;
-    memo: string;
-    nextReviewDate: string;
-  },
-): LineDraft {
-  return {
+export function createLineDraft(input: LineDraftInput): LineDraft {
+  const normalized = normalizeLineDraft(input);
+  if (!normalized) {
+    throw new Error('invalid line draft');
+  }
+  return normalized;
+}
+
+export function updateLineDraft(draft: LineDraft, input: LineDraftInput): LineDraft {
+  const normalized = normalizeLineDraft({
     ...draft,
-    lineName: input.lineName,
-    carrier: input.carrier,
-    lineType: input.lineType,
-    monthlyCost: input.monthlyCost,
-    last4: normalizeLast4(input.last4),
-    contractHolderNote: input.contractHolderNote,
-    status: input.status,
-    memo: input.memo,
-    nextReviewDate: normalizeReviewDate(input.nextReviewDate),
-  };
+    ...input,
+    id: draft.id,
+    createdAt: draft.createdAt,
+  });
+
+  if (!normalized) {
+    throw new Error('invalid line draft');
+  }
+
+  return normalized;
 }
+
+export const lineDraftStore = {
+  load(): LineDraft[] {
+    return readDrafts();
+  },
+  save(items: LineDraft[]): void {
+    writeDrafts(items);
+  },
+  exportJson(): string {
+    return JSON.stringify(buildEnvelope(readDrafts()), null, 2);
+  },
+  importJson(raw: string): LineDraft[] {
+    const items = parseDrafts(raw);
+    writeDrafts(items);
+    return items;
+  },
+  getMetadata(): { schemaVersion: number; itemCount: number; updatedAt: string | null; storageFormat: string } {
+    if (typeof window === 'undefined') {
+      return { schemaVersion: SCHEMA_VERSION, itemCount: 0, updatedAt: null, storageFormat: 'json-envelope' };
+    }
+
+    const raw = window.localStorage.getItem(STORAGE_KEY);
+    if (!raw) {
+      return { schemaVersion: SCHEMA_VERSION, itemCount: 0, updatedAt: null, storageFormat: 'json-envelope' };
+    }
+
+    try {
+      const parsed = JSON.parse(raw) as unknown;
+      if (parsed && typeof parsed === 'object' && Array.isArray((parsed as LineDraftEnvelope).items)) {
+        return {
+          schemaVersion: Number((parsed as LineDraftEnvelope).schemaVersion ?? SCHEMA_VERSION),
+          itemCount: (parsed as LineDraftEnvelope).items.length,
+          updatedAt: typeof (parsed as LineDraftEnvelope).updatedAt === 'string' ? (parsed as LineDraftEnvelope).updatedAt : null,
+          storageFormat: 'json-envelope',
+        };
+      }
+      if (Array.isArray(parsed)) {
+        return {
+          schemaVersion: 0,
+          itemCount: parsed.length,
+          updatedAt: null,
+          storageFormat: 'json-array-legacy',
+        };
+      }
+    } catch {
+      return { schemaVersion: SCHEMA_VERSION, itemCount: 0, updatedAt: null, storageFormat: 'unknown' };
+    }
+
+    return { schemaVersion: SCHEMA_VERSION, itemCount: 0, updatedAt: null, storageFormat: 'unknown' };
+  },
+};
