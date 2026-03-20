@@ -159,4 +159,9 @@ export const lineHistoryStore = {
   exportJson(): string {
     return JSON.stringify(buildEnvelope(readStorage()), null, 2);
   },
+  importJson(raw: string): LineHistoryEntry[] {
+    const items = parseEnvelope(raw);
+    writeStorage(items);
+    return items;
+  },
 };
