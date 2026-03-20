@@ -462,6 +462,17 @@ function toFormState(draft: LineDraft): FormState {
   };
 }
 
+function toLineHistoryFormState(entry: LineHistoryEntry): LineHistoryFormState {
+  return {
+    phoneNumber: entry.phoneNumber,
+    carrier: entry.carrier,
+    status: entry.status,
+    contractStartDate: entry.contractStartDate,
+    contractEndDate: entry.contractEndDate,
+    memo: entry.memo,
+  };
+}
+
 function getDeadlineStatus(value: string): DeadlineStatus {
   const normalized = normalizeReviewDate(value);
   if (!normalized) {
@@ -531,6 +542,7 @@ export function LinesPage(): JSX.Element {
   const [form, setForm] = useState<FormState>(initialFormState);
   const [lineHistoryForm, setLineHistoryForm] = useState<LineHistoryFormState>(initialLineHistoryFormState);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingHistoryId, setEditingHistoryId] = useState<string | null>(null);
   const [undoState, setUndoState] = useState<UndoState | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -617,6 +629,7 @@ export function LinesPage(): JSX.Element {
 
   function resetLineHistoryForm(): void {
     setLineHistoryForm(initialLineHistoryFormState);
+    setEditingHistoryId(null);
   }
 
   function handleExportLineHistory(): void {
@@ -637,6 +650,7 @@ export function LinesPage(): JSX.Element {
       const raw = await file.text();
       const imported = lineHistoryStore.importJson(raw);
       setLineHistoryEntries(imported);
+      setEditingHistoryId(null);
       setSuccessMessage(`契約履歴を ${imported.length} 件読み込みました。`);
     } catch {
       setErrorMessage('契約履歴 JSON の読み込みに失敗しました。形式を確認してください。');
@@ -732,6 +746,39 @@ export function LinesPage(): JSX.Element {
     resetMessages();
 
     try {
+      if (editingHistoryId) {
+        const current = lineHistoryEntries.find((entry) => entry.id === editingHistoryId);
+        if (!current) {
+          setErrorMessage('編集中の契約履歴が見つかりませんでした。');
+          setEditingHistoryId(null);
+          return;
+        }
+
+        const updated = createLineHistoryEntry({
+          phoneNumber: lineHistoryForm.phoneNumber,
+          carrier: lineHistoryForm.carrier,
+          status: lineHistoryForm.status,
+          contractStartDate: lineHistoryForm.contractStartDate,
+          contractEndDate: lineHistoryForm.contractEndDate,
+          memo: lineHistoryForm.memo,
+        });
+
+        const nextEntries = lineHistoryEntries.map((entry) =>
+          entry.id === editingHistoryId
+            ? {
+                ...updated,
+                id: current.id,
+                createdAt: current.createdAt,
+              }
+            : entry,
+        );
+
+        persistLineHistory(nextEntries);
+        resetLineHistoryForm();
+        setSuccessMessage('契約履歴を更新しました。');
+        return;
+      }
+
       const nextEntry = createLineHistoryEntry({
         phoneNumber: lineHistoryForm.phoneNumber,
         carrier: lineHistoryForm.carrier,
@@ -746,6 +793,24 @@ export function LinesPage(): JSX.Element {
     } catch {
       setErrorMessage('電話番号・キャリア・契約開始日は必須です。電話番号は 10〜11 桁で入力してください。');
     }
+  }
+
+  function handleEditLineHistory(entry: LineHistoryEntry): void {
+    resetMessages();
+    setEditingHistoryId(entry.id);
+    setLineHistoryForm(toLineHistoryFormState(entry));
+  }
+
+  function handleDeleteLineHistory(entryId: string): void {
+    resetMessages();
+    const nextEntries = lineHistoryEntries.filter((entry) => entry.id !== entryId);
+    persistLineHistory(nextEntries);
+
+    if (editingHistoryId === entryId) {
+      resetLineHistoryForm();
+    }
+
+    setSuccessMessage('契約履歴を削除しました。');
   }
 
   function handleUndo(): void {
@@ -993,7 +1058,9 @@ export function LinesPage(): JSX.Element {
   const hasDrafts = visibleDrafts.length > 0;
   const countLabel = useMemo(() => `${visibleDrafts.length}件`, [visibleDrafts.length]);
   const submitLabel = editingId ? '更新する' : '保存する';
+  const historySubmitLabel = editingHistoryId ? '履歴を更新する' : '履歴を保存する';
   const cardBadge = editingId ? '編集中' : '詳細表示';
+  const historyCardBadge = editingHistoryId ? '履歴編集中' : '電話番号単位';
 
   function toggleSelectAllVisible(): void {
     setSelectedIds((current) => {
@@ -1478,7 +1545,7 @@ export function LinesPage(): JSX.Element {
         <article className="card">
           <div className="card__header">
             <h3>契約履歴の登録</h3>
-            <span className="badge">電話番号単位</span>
+            <span className="badge">{historyCardBadge}</span>
           </div>
           <p className="muted">過去契約や MNP 転出済みの履歴は、現在の回線一覧とは別に軽量な契約エピソードとして記録します。</p>
           <form className="form-grid" onSubmit={handleLineHistorySubmit}>
@@ -1511,7 +1578,7 @@ export function LinesPage(): JSX.Element {
               <textarea value={lineHistoryForm.memo} onChange={(event) => updateLineHistoryField('memo', event.target.value)} rows={3} placeholder="例: au から LINEMO へ MNP など" />
             </label>
             <div className="button-row field--full">
-              <button type="submit" className="button button--primary">履歴を保存する</button>
+              <button type="submit" className="button button--primary">{historySubmitLabel}</button>
               <button type="button" className="button" onClick={resetLineHistoryForm}>入力をリセット</button>
               <button type="button" className="button" onClick={handleExportLineHistory}>履歴 JSON をエクスポート</button>
               <button type="button" className="button" onClick={() => historyImportInputRef.current?.click()}>履歴 JSON をインポート</button>
@@ -1575,6 +1642,10 @@ export function LinesPage(): JSX.Element {
                           {entry.memo ? <p className="muted">{entry.memo}</p> : null}
                           <div style={{ position: 'relative', marginTop: '0.5rem', height: '1.5rem', background: 'rgba(148, 163, 184, 0.2)', borderRadius: '999px', overflow: 'hidden' }}>
                             <div style={{ position: 'absolute', top: 0, bottom: 0, left: timelineStyle.left, width: timelineStyle.width, borderRadius: '999px', background: 'rgba(59, 130, 246, 0.8)' }} />
+                          </div>
+                          <div className="button-row button-row--tight">
+                            <button type="button" className="button" onClick={() => handleEditLineHistory(entry)}>編集する</button>
+                            <button type="button" className="button button--danger" onClick={() => handleDeleteLineHistory(entry.id)}>削除する</button>
                           </div>
                         </div>
                       );
