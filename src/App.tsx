@@ -6,7 +6,7 @@ const navItems = [
   { to: '/settings', label: '設定' },
 ];
 
-const devProgressLabel = 'DEV / feat/timeline-window-and-view-modes / PR #61';
+const devProgressLabel = 'DEV / feat/history-entry-edit-and-delete / PR #63';
 
 export function AppLayout(): JSX.Element {
   return (
