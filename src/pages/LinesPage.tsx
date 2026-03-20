@@ -33,6 +33,12 @@ type FormState = {
   monthlyCost: string;
   last4: string;
   contractHolderNote: string;
+  contractStartDate: string;
+  contractHolder: string;
+  serviceUser: string;
+  paymentMethod: string;
+  planName: string;
+  deviceName: string;
   status: LineStatus;
   memo: string;
   nextReviewDate: string;
@@ -87,6 +93,9 @@ const notificationReasonParamMap: Record<NotificationReasonParam, NotificationRe
   'within-7-days': '7日以内',
 };
 
+const CARRIER_OPTIONS = ['NTTドコモ', 'ahamo', 'au', 'UQ mobile', 'ソフトバンク', 'Y!mobile', 'LINEMO', '楽天モバイル', 'IIJmio', 'mineo', 'NUROモバイル', 'povo', 'irumo', 'その他'] as const;
+const PAYMENT_METHOD_OPTIONS = ['クレジットカード', '口座振替', '請求書', '家族合算', 'その他'] as const;
+
 function getNotificationReasonLabelFromParam(value: string | null): NotificationReasonLabel | 'all' {
   if (!value) {
     return 'all';
@@ -113,11 +122,17 @@ function getNotificationTargetOnlyFromParam(value: string | null): boolean {
 
 const initialFormState: FormState = {
   lineName: '',
-  carrier: '',
+  carrier: 'NTTドコモ',
   lineType: DEFAULT_LINE_TYPE,
   monthlyCost: '',
   last4: '',
   contractHolderNote: '',
+  contractStartDate: '',
+  contractHolder: '',
+  serviceUser: '',
+  paymentMethod: 'クレジットカード',
+  planName: '',
+  deviceName: '',
   status: '利用中',
   memo: '',
   nextReviewDate: '',
@@ -177,6 +192,14 @@ function parseDate(value: string): Date | null {
   }
   const parsed = new Date(`${value}T00:00:00`);
   return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+function calculateElapsedDays(value: string): number | null {
+  const date = parseDate(value);
+  if (!date) {
+    return null;
+  }
+  return Math.max(diffInDays(date, new Date()), 0);
 }
 
 function isNotificationTarget(diff: number, window: NotificationReminderWindow): boolean {
@@ -308,6 +331,12 @@ function toFormState(draft: LineDraft): FormState {
     monthlyCost: draft.monthlyCost == null ? '' : String(draft.monthlyCost),
     last4: draft.last4,
     contractHolderNote: draft.contractHolderNote,
+    contractStartDate: draft.contractStartDate,
+    contractHolder: draft.contractHolder,
+    serviceUser: draft.serviceUser,
+    paymentMethod: draft.paymentMethod || 'クレジットカード',
+    planName: draft.planName,
+    deviceName: draft.deviceName,
     status: draft.status,
     memo: draft.memo,
     nextReviewDate: draft.nextReviewDate,
@@ -409,7 +438,7 @@ export function LinesPage(): JSX.Element {
   const notificationSettings = loadNotificationSettings();
   const notificationReasonFromQuery = getNotificationReasonLabelFromParam(searchParams.get('notificationReason'));
   const notificationTargetOnlyFromQuery = getNotificationTargetOnlyFromParam(searchParams.get('notificationTargetOnly'));
-  const devPullRequestLabel = import.meta.env.DEV ? 'PR #55' : null;
+  const devPullRequestLabel = import.meta.env.DEV ? 'PR #57' : null;
 
   function resetMessages(): void {
     setErrorMessage(null);
@@ -521,6 +550,12 @@ export function LinesPage(): JSX.Element {
     monthlyCost: number | null;
     last4: string;
     contractHolderNote: string;
+    contractStartDate: string;
+    contractHolder: string;
+    serviceUser: string;
+    paymentMethod: string;
+    planName: string;
+    deviceName: string;
     status: LineStatus;
     memo: string;
     nextReviewDate: string;
@@ -529,11 +564,22 @@ export function LinesPage(): JSX.Element {
     const carrier = form.carrier.trim();
     const memo = form.memo.trim();
     const contractHolderNote = form.contractHolderNote.trim();
+    const contractStartDate = form.contractStartDate;
+    const contractHolder = form.contractHolder.trim();
+    const serviceUser = form.serviceUser.trim();
+    const paymentMethod = form.paymentMethod.trim();
+    const planName = form.planName.trim();
+    const deviceName = form.deviceName.trim();
     const nextReviewDate = form.nextReviewDate;
     const normalizedLast4 = normalizeLast4(form.last4);
 
     if (!lineName || !carrier || !form.status || !form.lineType) {
       setErrorMessage('回線名、キャリア、回線種別、契約状態は必須です。');
+      return null;
+    }
+
+    if (contractStartDate && !normalizeReviewDate(contractStartDate)) {
+      setErrorMessage('契約開始日は YYYY-MM-DD 形式の実在日付だけ保存できます。');
       return null;
     }
 
@@ -559,6 +605,12 @@ export function LinesPage(): JSX.Element {
       monthlyCost: normalizeMonthlyCost(form.monthlyCost),
       last4: normalizedLast4,
       contractHolderNote,
+      contractStartDate,
+      contractHolder,
+      serviceUser,
+      paymentMethod,
+      planName,
+      deviceName,
       status: form.status,
       memo,
       nextReviewDate,
@@ -700,6 +752,11 @@ export function LinesPage(): JSX.Element {
         draft.lineType,
         draft.last4,
         draft.contractHolderNote,
+        draft.contractHolder,
+        draft.serviceUser,
+        draft.paymentMethod,
+        draft.planName,
+        draft.deviceName,
       ]
         .join(' ')
         .toLowerCase();
@@ -729,6 +786,11 @@ export function LinesPage(): JSX.Element {
         draft.lineType,
         draft.last4,
         draft.contractHolderNote,
+        draft.contractHolder,
+        draft.serviceUser,
+        draft.paymentMethod,
+        draft.planName,
+        draft.deviceName,
       ]
         .join(' ')
         .toLowerCase();
@@ -915,7 +977,11 @@ export function LinesPage(): JSX.Element {
 
             <label className="field">
               <span>キャリア *</span>
-              <input value={form.carrier} onChange={(event) => updateField('carrier', event.target.value)} placeholder="例: NTTドコモ" />
+              <select value={form.carrier} onChange={(event) => updateField('carrier', event.target.value)}>
+                {CARRIER_OPTIONS.map((option) => (
+                  <option key={option} value={option}>{option}</option>
+                ))}
+              </select>
             </label>
 
             <label className="field">
@@ -930,6 +996,11 @@ export function LinesPage(): JSX.Element {
             </label>
 
             <label className="field">
+              <span>契約開始日</span>
+              <input type="date" value={form.contractStartDate} onChange={(event) => updateField('contractStartDate', event.target.value)} />
+            </label>
+
+            <label className="field">
               <span>月額費用</span>
               <input inputMode="numeric" value={form.monthlyCost} onChange={(event) => updateField('monthlyCost', event.target.value)} placeholder="例: 2980" />
             </label>
@@ -937,6 +1008,35 @@ export function LinesPage(): JSX.Element {
             <label className="field">
               <span>回線番号下4桁</span>
               <input inputMode="numeric" value={form.last4} onChange={(event) => updateField('last4', event.target.value)} placeholder="例: 1234" />
+            </label>
+
+            <label className="field">
+              <span>契約者</span>
+              <input value={form.contractHolder} onChange={(event) => updateField('contractHolder', event.target.value)} placeholder="例: 山田 太郎" />
+            </label>
+
+            <label className="field">
+              <span>使用者</span>
+              <input value={form.serviceUser} onChange={(event) => updateField('serviceUser', event.target.value)} placeholder="例: 本人 / 家族" />
+            </label>
+
+            <label className="field">
+              <span>支払方法</span>
+              <select value={form.paymentMethod} onChange={(event) => updateField('paymentMethod', event.target.value)}>
+                {PAYMENT_METHOD_OPTIONS.map((option) => (
+                  <option key={option} value={option}>{option}</option>
+                ))}
+              </select>
+            </label>
+
+            <label className="field">
+              <span>プラン</span>
+              <input value={form.planName} onChange={(event) => updateField('planName', event.target.value)} placeholder="例: 20GB / かけ放題付き" />
+            </label>
+
+            <label className="field">
+              <span>端末</span>
+              <input value={form.deviceName} onChange={(event) => updateField('deviceName', event.target.value)} placeholder="例: iPhone 15 / モバイルルーター" />
             </label>
 
             <label className="field">
@@ -997,7 +1097,7 @@ export function LinesPage(): JSX.Element {
           <div className="form-grid">
             <label className="field field--full">
               <span>キーワード</span>
-              <input value={filters.keyword} onChange={(event) => updateFilter('keyword', event.target.value)} placeholder="回線名 / キャリア / メモ / 下4桁 / 契約名義メモ" />
+              <input value={filters.keyword} onChange={(event) => updateFilter('keyword', event.target.value)} placeholder="回線名 / キャリア / 契約者 / 使用者 / プラン / 端末 / メモ" />
             </label>
 
             <label className="field">
@@ -1112,6 +1212,7 @@ export function LinesPage(): JSX.Element {
                 );
                 const isSelected = selectedIds.includes(draft.id);
                 const isExpanded = expandedIds.includes(draft.id);
+                const elapsedDays = calculateElapsedDays(draft.contractStartDate);
 
                 return (
                   <li key={draft.id} className={isSelected ? 'list__item--selected' : ''}>
@@ -1127,11 +1228,16 @@ export function LinesPage(): JSX.Element {
                       <span>回線種別: {draft.lineType}</span>
                       <span>月額費用: {formatMonthlyCost(draft.monthlyCost)}</span>
                       <span>次回確認日: {formatReviewDate(draft.nextReviewDate)}</span>
+                      <span>契約者: {draft.contractHolder || '未設定'}</span>
+                      <span>使用者: {draft.serviceUser || '未設定'}</span>
+                      <span>プラン: {draft.planName || '未設定'}</span>
+                      <span>端末: {draft.deviceName || '未設定'}</span>
                     </div>
                     <div className="badge-row">
                       <span className={deadlineStatus.className}>{deadlineStatus.label}</span>
                       {notificationReason ? <span className="badge badge--ok">通知理由: {notificationReason}</span> : null}
                       {draft.last4 ? <span className="badge">下4桁: {draft.last4}</span> : null}
+                      {elapsedDays != null ? <span className="badge">契約経過: {elapsedDays}日</span> : null}
                     </div>
                     <div className="button-row button-row--tight">
                       <button type="button" className="button" onClick={() => toggleExpanded(draft.id)}>
@@ -1154,6 +1260,34 @@ export function LinesPage(): JSX.Element {
                           <div>
                             <dt>契約名義メモ</dt>
                             <dd>{draft.contractHolderNote || '未設定'}</dd>
+                          </div>
+                          <div>
+                            <dt>契約開始日</dt>
+                            <dd>{formatDate(draft.contractStartDate)}</dd>
+                          </div>
+                          <div>
+                            <dt>契約経過日数</dt>
+                            <dd>{elapsedDays == null ? '未設定' : `${elapsedDays}日`}</dd>
+                          </div>
+                          <div>
+                            <dt>契約者</dt>
+                            <dd>{draft.contractHolder || '未設定'}</dd>
+                          </div>
+                          <div>
+                            <dt>使用者</dt>
+                            <dd>{draft.serviceUser || '未設定'}</dd>
+                          </div>
+                          <div>
+                            <dt>支払方法</dt>
+                            <dd>{draft.paymentMethod || '未設定'}</dd>
+                          </div>
+                          <div>
+                            <dt>プラン</dt>
+                            <dd>{draft.planName || '未設定'}</dd>
+                          </div>
+                          <div>
+                            <dt>端末</dt>
+                            <dd>{draft.deviceName || '未設定'}</dd>
                           </div>
                           <div>
                             <dt>通知理由</dt>
