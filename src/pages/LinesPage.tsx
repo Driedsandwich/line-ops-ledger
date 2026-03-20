@@ -80,12 +80,19 @@ type NotificationReasonLabel = '期限超過' | '今日期限' | '3日以内' | 
 
 type NotificationReasonParam = 'overdue' | 'today' | 'within-3-days' | 'within-7-days';
 
+type TimelineWindowKey = '3m' | '6m' | '12m' | 'all';
+type TimelineViewMode = 'active' | 'all';
+
 type LineHistoryGroup = {
   phoneNumber: string;
   maskedPhoneNumber: string;
   entries: LineHistoryEntry[];
   earliestDate: string;
   latestDate: string;
+};
+
+type VisibleLineHistoryGroup = LineHistoryGroup & {
+  visibleEntries: LineHistoryEntry[];
 };
 
 const notificationReasonParamMap: Record<NotificationReasonParam, NotificationReasonLabel> = {
@@ -97,6 +104,16 @@ const notificationReasonParamMap: Record<NotificationReasonParam, NotificationRe
 
 const CARRIER_OPTIONS = ['NTTドコモ', 'ahamo', 'au', 'UQ mobile', 'ソフトバンク', 'Y!mobile', 'LINEMO', '楽天モバイル', 'IIJmio', 'mineo', 'NUROモバイル', 'povo', 'irumo', 'その他'] as const;
 const PAYMENT_METHOD_OPTIONS = ['クレジットカード', '口座振替', '請求書', '家族合算', 'その他'] as const;
+const TIMELINE_WINDOW_OPTIONS: Array<{ key: TimelineWindowKey; label: string }> = [
+  { key: '3m', label: '3か月' },
+  { key: '6m', label: '6か月' },
+  { key: '12m', label: '12か月' },
+  { key: 'all', label: '全期間' },
+];
+const TIMELINE_VIEW_OPTIONS: Array<{ key: TimelineViewMode; label: string }> = [
+  { key: 'active', label: '契約中中心' },
+  { key: 'all', label: '過去契約含む' },
+];
 
 function getNotificationReasonLabelFromParam(value: string | null): NotificationReasonLabel | 'all' {
   if (!value) {
@@ -208,6 +225,99 @@ function calculateElapsedDays(value: string): number | null {
 
 function isCurrentContract(status: LineStatus): boolean {
   return status === '利用中' || status === '解約予定';
+}
+
+function isCurrentHistoryStatus(status: string): boolean {
+  return status === '利用中' || status === '解約予定';
+}
+
+function addMonths(date: Date, months: number): Date {
+  const next = new Date(date);
+  next.setMonth(next.getMonth() + months);
+  return next;
+}
+
+function getTimelineWindowStart(windowKey: TimelineWindowKey, today: Date): Date | null {
+  const base = startOfDay(today);
+
+  switch (windowKey) {
+    case '3m':
+      return addMonths(base, -3);
+    case '6m':
+      return addMonths(base, -6);
+    case '12m':
+      return addMonths(base, -12);
+    case 'all':
+    default:
+      return null;
+  }
+}
+
+function isEntryVisibleInTimeline(entry: LineHistoryEntry, windowKey: TimelineWindowKey, viewMode: TimelineViewMode, today: Date): boolean {
+  if (viewMode === 'active' && !isCurrentHistoryStatus(entry.status)) {
+    return false;
+  }
+
+  const entryStart = parseDate(entry.contractStartDate);
+  const entryEnd = parseDate(entry.contractEndDate || today.toISOString().slice(0, 10));
+
+  if (!entryStart || !entryEnd) {
+    return viewMode === 'all';
+  }
+
+  const windowStart = getTimelineWindowStart(windowKey, today);
+  const windowEnd = startOfDay(today);
+
+  if (!windowStart) {
+    return true;
+  }
+
+  return entryEnd >= windowStart && entryStart <= windowEnd;
+}
+
+function calculateTimelineStyleForWindow(
+  entry: LineHistoryEntry,
+  windowKey: TimelineWindowKey,
+  today: Date,
+  fallbackStart: string,
+  fallbackEnd: string,
+): { left: string; width: string } {
+  const entryStart = parseDate(entry.contractStartDate) ?? parseDate(fallbackStart);
+  const entryEnd = parseDate(entry.contractEndDate || today.toISOString().slice(0, 10)) ?? parseDate(fallbackEnd);
+
+  if (!entryStart || !entryEnd) {
+    return { left: '0%', width: '100%' };
+  }
+
+  const explicitWindowStart = getTimelineWindowStart(windowKey, today);
+  const windowStart = explicitWindowStart ?? parseDate(fallbackStart) ?? entryStart;
+  const windowEnd = explicitWindowStart ? startOfDay(today) : parseDate(fallbackEnd) ?? entryEnd;
+
+  const clampedStart = entryStart < windowStart ? windowStart : entryStart;
+  const clampedEnd = entryEnd > windowEnd ? windowEnd : entryEnd;
+
+  const totalDays = Math.max(diffInDays(windowStart, windowEnd) + 1, 1);
+  const offsetDays = Math.max(diffInDays(windowStart, clampedStart), 0);
+  const durationDays = Math.max(diffInDays(clampedStart, clampedEnd) + 1, 1);
+
+  return {
+    left: `${(offsetDays / totalDays) * 100}%`,
+    width: `${Math.max((durationDays / totalDays) * 100, 6)}%`,
+  };
+}
+
+function getTimelineRangeLabel(windowKey: TimelineWindowKey): string {
+  switch (windowKey) {
+    case '3m':
+      return '直近3か月';
+    case '6m':
+      return '直近6か月';
+    case '12m':
+      return '直近12か月';
+    case 'all':
+    default:
+      return '全期間';
+  }
 }
 
 function isNotificationTarget(diff: number, window: NotificationReminderWindow): boolean {
@@ -408,32 +518,14 @@ function buildLineHistoryGroups(entries: LineHistoryEntry[]): LineHistoryGroup[]
     .sort((a, b) => a.phoneNumber.localeCompare(b.phoneNumber));
 }
 
-function calculateTimelineStyle(group: LineHistoryGroup, entry: LineHistoryEntry): { left: string; width: string } {
-  const groupStart = parseDate(group.earliestDate);
-  const groupEnd = parseDate(group.latestDate || group.earliestDate);
-  const entryStart = parseDate(entry.contractStartDate);
-  const entryEnd = parseDate(entry.contractEndDate || group.latestDate || entry.contractStartDate);
-
-  if (!groupStart || !groupEnd || !entryStart || !entryEnd) {
-    return { left: '0%', width: '100%' };
-  }
-
-  const totalDays = Math.max(diffInDays(groupStart, groupEnd) + 1, 1);
-  const offsetDays = Math.max(diffInDays(groupStart, entryStart), 0);
-  const durationDays = Math.max(diffInDays(entryStart, entryEnd) + 1, 1);
-
-  return {
-    left: `${(offsetDays / totalDays) * 100}%`,
-    width: `${Math.max((durationDays / totalDays) * 100, 8)}%`,
-  };
-}
-
 export function LinesPage(): JSX.Element {
   const [searchParams, setSearchParams] = useSearchParams();
   const [drafts, setDrafts] = useState<LineDraft[]>(() => lineDraftStore.load());
   const [lineHistoryEntries, setLineHistoryEntries] = useState<LineHistoryEntry[]>(() => lineHistoryStore.load());
   const [filters, setFilters] = useState<FilterState>(initialFilterState);
   const [sortKey, setSortKey] = useState<SortKey>(initialSortKey);
+  const [timelineWindow, setTimelineWindow] = useState<TimelineWindowKey>('6m');
+  const [timelineViewMode, setTimelineViewMode] = useState<TimelineViewMode>('all');
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [expandedIds, setExpandedIds] = useState<string[]>([]);
   const [form, setForm] = useState<FormState>(initialFormState);
@@ -447,7 +539,8 @@ export function LinesPage(): JSX.Element {
   const notificationSettings = loadNotificationSettings();
   const notificationReasonFromQuery = getNotificationReasonLabelFromParam(searchParams.get('notificationReason'));
   const notificationTargetOnlyFromQuery = getNotificationTargetOnlyFromParam(searchParams.get('notificationTargetOnly'));
-  const devPullRequestLabel = import.meta.env.DEV ? 'PR #59' : null;
+  const devPullRequestLabel = import.meta.env.DEV ? 'PR #61' : null;
+  const today = new Date();
 
   function resetMessages(): void {
     setErrorMessage(null);
@@ -877,6 +970,24 @@ export function LinesPage(): JSX.Element {
   }, [filteredDrafts, sortKey]);
 
   const lineHistoryGroups = useMemo(() => buildLineHistoryGroups(lineHistoryEntries), [lineHistoryEntries]);
+  const visibleLineHistoryGroups = useMemo(() => {
+    return lineHistoryGroups
+      .map((group) => {
+        const visibleEntries = group.entries.filter((entry) =>
+          isEntryVisibleInTimeline(entry, timelineWindow, timelineViewMode, today),
+        );
+
+        return {
+          ...group,
+          visibleEntries,
+        } satisfies VisibleLineHistoryGroup;
+      })
+      .filter((group) => group.visibleEntries.length > 0);
+  }, [lineHistoryGroups, timelineViewMode, timelineWindow, today]);
+  const totalVisibleTimelineEntries = useMemo(
+    () => visibleLineHistoryGroups.reduce((sum, group) => sum + group.visibleEntries.length, 0),
+    [visibleLineHistoryGroups],
+  );
   const visibleIds = useMemo(() => visibleDrafts.map((draft) => draft.id), [visibleDrafts]);
   const allVisibleSelected = visibleIds.length > 0 && visibleIds.every((id) => selectedIds.includes(id));
   const hasDrafts = visibleDrafts.length > 0;
@@ -1414,34 +1525,57 @@ export function LinesPage(): JSX.Element {
         <article className="card">
           <div className="card__header">
             <h3>電話番号単位の履歴タイムライン</h3>
-            <span className="badge">{lineHistoryGroups.length}番号</span>
+            <span className="badge">{visibleLineHistoryGroups.length}番号 / {totalVisibleTimelineEntries}件</span>
           </div>
-          {lineHistoryGroups.length === 0 ? (
-            <p className="muted">契約履歴はまだありません。上のフォームから過去契約や MNP 転出済みの履歴を追加すると、ここに電話番号単位の履歴が表示されます。</p>
+          <div className="form-grid">
+            <label className="field">
+              <span>表示期間</span>
+              <select value={timelineWindow} onChange={(event) => setTimelineWindow(event.target.value as TimelineWindowKey)}>
+                {TIMELINE_WINDOW_OPTIONS.map((option) => (
+                  <option key={option.key} value={option.key}>{option.label}</option>
+                ))}
+              </select>
+            </label>
+            <label className="field">
+              <span>表示対象</span>
+              <select value={timelineViewMode} onChange={(event) => setTimelineViewMode(event.target.value as TimelineViewMode)}>
+                {TIMELINE_VIEW_OPTIONS.map((option) => (
+                  <option key={option.key} value={option.key}>{option.label}</option>
+                ))}
+              </select>
+            </label>
+          </div>
+          <p className="muted">表示期間: {getTimelineRangeLabel(timelineWindow)} / 表示対象: {TIMELINE_VIEW_OPTIONS.find((option) => option.key === timelineViewMode)?.label}</p>
+          {visibleLineHistoryGroups.length === 0 ? (
+            <p className="muted">現在の表示条件に一致する履歴はありません。期間または表示対象を切り替えて確認してください。</p>
           ) : (
             <div className="stack">
-              {lineHistoryGroups.map((group) => (
+              {visibleLineHistoryGroups.map((group) => (
                 <div key={group.phoneNumber} className="detail-panel">
                   <div className="card__header">
                     <h3>{group.maskedPhoneNumber}</h3>
-                    <span className="badge">{group.entries.length}件</span>
+                    <span className="badge">表示 {group.visibleEntries.length}件 / 全 {group.entries.length}件</span>
                   </div>
-                  <p className="muted">{formatDate(group.earliestDate)} 〜 {formatDate(group.latestDate)}</p>
-                  <div className="definition-list">
-                    {group.entries.map((entry, index) => {
-                      const timelineStyle = calculateTimelineStyle(group, entry);
-                      const previousEntry = index > 0 ? group.entries[index - 1] : null;
+                  <p className="muted">履歴全体: {formatDate(group.earliestDate)} 〜 {formatDate(group.latestDate)}</p>
+                  <div className="stack" style={{ gap: '0.75rem' }}>
+                    {group.visibleEntries.map((entry, index) => {
+                      const timelineStyle = calculateTimelineStyleForWindow(entry, timelineWindow, today, group.earliestDate, group.latestDate);
+                      const previousEntry = index > 0 ? group.visibleEntries[index - 1] : null;
                       return (
-                        <div key={entry.id}>
-                          <dt>{entry.carrier} / {entry.status}</dt>
-                          <dd>
-                            <div>{formatDate(entry.contractStartDate)} 〜 {entry.contractEndDate ? formatDate(entry.contractEndDate) : '継続中'}</div>
-                            {previousEntry ? <div>MNP / 契約移行: {previousEntry.carrier} → {entry.carrier}</div> : null}
-                            {entry.memo ? <div>{entry.memo}</div> : null}
-                            <div style={{ position: 'relative', marginTop: '0.5rem', height: '1.5rem', background: 'rgba(148, 163, 184, 0.2)', borderRadius: '999px' }}>
-                              <div style={{ position: 'absolute', top: 0, bottom: 0, left: timelineStyle.left, width: timelineStyle.width, borderRadius: '999px', background: 'rgba(59, 130, 246, 0.8)' }} />
-                            </div>
-                          </dd>
+                        <div key={entry.id} className="detail-panel" style={{ margin: 0 }}>
+                          <div className="card__header">
+                            <h3>{entry.carrier}</h3>
+                            <span className={isCurrentHistoryStatus(entry.status) ? 'badge badge--ok' : 'badge'}>{entry.status}</span>
+                          </div>
+                          <div className="list__summary-grid">
+                            <span>開始: {formatDate(entry.contractStartDate)}</span>
+                            <span>終了: {entry.contractEndDate ? formatDate(entry.contractEndDate) : '継続中'}</span>
+                          </div>
+                          {previousEntry ? <p className="muted">直前の移動: {previousEntry.carrier} → {entry.carrier}</p> : null}
+                          {entry.memo ? <p className="muted">{entry.memo}</p> : null}
+                          <div style={{ position: 'relative', marginTop: '0.5rem', height: '1.5rem', background: 'rgba(148, 163, 184, 0.2)', borderRadius: '999px', overflow: 'hidden' }}>
+                            <div style={{ position: 'absolute', top: 0, bottom: 0, left: timelineStyle.left, width: timelineStyle.width, borderRadius: '999px', background: 'rgba(59, 130, 246, 0.8)' }} />
+                          </div>
                         </div>
                       );
                     })}
