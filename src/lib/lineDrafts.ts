@@ -1,4 +1,4 @@
-export const LINE_STATUS_OPTIONS = ['利用中', '解約予定'] as const;
+export const LINE_STATUS_OPTIONS = ['利用中', '解約予定', '解約済み', 'MNP転出済み'] as const;
 export const LINE_TYPE_OPTIONS = ['音声SIM', 'データSIM', 'ホームルーター', '光回線', '未分類'] as const;
 export const DEFAULT_LINE_TYPE = '未分類';
 export const CURRENT_LINE_DRAFT_SCHEMA_VERSION = 3;
@@ -17,6 +17,7 @@ export type LineDraft = {
   last4: string;
   contractHolderNote: string;
   contractStartDate: string;
+  contractEndDate: string;
   contractHolder: string;
   serviceUser: string;
   paymentMethod: string;
@@ -66,6 +67,7 @@ type LineDraftInput = {
   last4: string;
   contractHolderNote: string;
   contractStartDate?: string;
+  contractEndDate?: string;
   contractHolder?: string;
   serviceUser?: string;
   paymentMethod?: string;
@@ -142,6 +144,7 @@ function normalizeLineDraft(input: Partial<LineDraft> & { lineName: string; carr
   const last4 = normalizeLast4(input.last4);
   const contractHolderNote = (input.contractHolderNote ?? '').trim();
   const contractStartDate = normalizeReviewDate(input.contractStartDate);
+  const contractEndDate = normalizeReviewDate(input.contractEndDate);
   const contractHolder = (input.contractHolder ?? '').trim();
   const serviceUser = (input.serviceUser ?? '').trim();
   const paymentMethod = (input.paymentMethod ?? '').trim();
@@ -165,6 +168,7 @@ function normalizeLineDraft(input: Partial<LineDraft> & { lineName: string; carr
     last4,
     contractHolderNote,
     contractStartDate,
+    contractEndDate,
     contractHolder,
     serviceUser,
     paymentMethod,

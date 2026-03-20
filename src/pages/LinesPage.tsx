@@ -34,6 +34,7 @@ type FormState = {
   last4: string;
   contractHolderNote: string;
   contractStartDate: string;
+  contractEndDate: string;
   contractHolder: string;
   serviceUser: string;
   paymentMethod: string;
@@ -59,6 +60,7 @@ type FilterState = {
   lineType: 'all' | LineType;
   notificationTargetOnly: boolean;
   notificationReason: 'all' | NotificationReasonLabel;
+  contractActiveOnly: boolean;
 };
 
 type UndoState = {
@@ -128,6 +130,7 @@ const initialFormState: FormState = {
   last4: '',
   contractHolderNote: '',
   contractStartDate: '',
+  contractEndDate: '',
   contractHolder: '',
   serviceUser: '',
   paymentMethod: 'クレジットカード',
@@ -153,6 +156,7 @@ const initialFilterState: FilterState = {
   lineType: 'all',
   notificationTargetOnly: false,
   notificationReason: 'all',
+  contractActiveOnly: false,
 };
 
 const initialSortKey: SortKey = 'nextReviewDate';
@@ -200,6 +204,10 @@ function calculateElapsedDays(value: string): number | null {
     return null;
   }
   return Math.max(diffInDays(date, new Date()), 0);
+}
+
+function isCurrentContract(status: LineStatus): boolean {
+  return status === '利用中' || status === '解約予定';
 }
 
 function isNotificationTarget(diff: number, window: NotificationReminderWindow): boolean {
@@ -332,6 +340,7 @@ function toFormState(draft: LineDraft): FormState {
     last4: draft.last4,
     contractHolderNote: draft.contractHolderNote,
     contractStartDate: draft.contractStartDate,
+    contractEndDate: draft.contractEndDate,
     contractHolder: draft.contractHolder,
     serviceUser: draft.serviceUser,
     paymentMethod: draft.paymentMethod || 'クレジットカード',
@@ -438,7 +447,7 @@ export function LinesPage(): JSX.Element {
   const notificationSettings = loadNotificationSettings();
   const notificationReasonFromQuery = getNotificationReasonLabelFromParam(searchParams.get('notificationReason'));
   const notificationTargetOnlyFromQuery = getNotificationTargetOnlyFromParam(searchParams.get('notificationTargetOnly'));
-  const devPullRequestLabel = import.meta.env.DEV ? 'PR #57' : null;
+  const devPullRequestLabel = import.meta.env.DEV ? 'PR #59' : null;
 
   function resetMessages(): void {
     setErrorMessage(null);
@@ -551,6 +560,7 @@ export function LinesPage(): JSX.Element {
     last4: string;
     contractHolderNote: string;
     contractStartDate: string;
+    contractEndDate: string;
     contractHolder: string;
     serviceUser: string;
     paymentMethod: string;
@@ -565,6 +575,7 @@ export function LinesPage(): JSX.Element {
     const memo = form.memo.trim();
     const contractHolderNote = form.contractHolderNote.trim();
     const contractStartDate = form.contractStartDate;
+    const contractEndDate = form.contractEndDate;
     const contractHolder = form.contractHolder.trim();
     const serviceUser = form.serviceUser.trim();
     const paymentMethod = form.paymentMethod.trim();
@@ -580,6 +591,11 @@ export function LinesPage(): JSX.Element {
 
     if (contractStartDate && !normalizeReviewDate(contractStartDate)) {
       setErrorMessage('契約開始日は YYYY-MM-DD 形式の実在日付だけ保存できます。');
+      return null;
+    }
+
+    if (contractEndDate && !normalizeReviewDate(contractEndDate)) {
+      setErrorMessage('契約終了日は YYYY-MM-DD 形式の実在日付だけ保存できます。');
       return null;
     }
 
@@ -606,6 +622,7 @@ export function LinesPage(): JSX.Element {
       last4: normalizedLast4,
       contractHolderNote,
       contractStartDate,
+      contractEndDate,
       contractHolder,
       serviceUser,
       paymentMethod,
@@ -727,6 +744,10 @@ export function LinesPage(): JSX.Element {
         notificationSettings.enabled,
       );
 
+      if (filters.contractActiveOnly && !isCurrentContract(draft.status)) {
+        return false;
+      }
+
       if (filters.notificationTargetOnly && !notificationReason) {
         return false;
       }
@@ -769,6 +790,9 @@ export function LinesPage(): JSX.Element {
     const summaryDrafts = drafts.filter((draft) => {
       const keyword = filters.keyword.trim().toLowerCase();
 
+      if (filters.contractActiveOnly && !isCurrentContract(draft.status)) {
+        return false;
+      }
       if (filters.status !== 'all' && draft.status !== filters.status) {
         return false;
       }
@@ -821,7 +845,7 @@ export function LinesPage(): JSX.Element {
       total: Object.values(counts).reduce((sum, count) => sum + count, 0),
       counts,
     };
-  }, [drafts, filters.keyword, filters.lineType, filters.status, notificationSettings]);
+  }, [drafts, filters.contractActiveOnly, filters.keyword, filters.lineType, filters.status, notificationSettings]);
 
   const visibleDrafts = useMemo(() => {
     return [...filteredDrafts].sort((a, b) => {
@@ -1001,6 +1025,11 @@ export function LinesPage(): JSX.Element {
             </label>
 
             <label className="field">
+              <span>契約終了日</span>
+              <input type="date" value={form.contractEndDate} onChange={(event) => updateField('contractEndDate', event.target.value)} />
+            </label>
+
+            <label className="field">
               <span>月額費用</span>
               <input inputMode="numeric" value={form.monthlyCost} onChange={(event) => updateField('monthlyCost', event.target.value)} placeholder="例: 2980" />
             </label>
@@ -1143,6 +1172,15 @@ export function LinesPage(): JSX.Element {
               />
               <span>通知対象のみ</span>
             </label>
+
+            <label className="field checkbox-row">
+              <input
+                type="checkbox"
+                checked={filters.contractActiveOnly}
+                onChange={(event) => updateFilter('contractActiveOnly', event.target.checked)}
+              />
+              <span>契約中のみ</span>
+            </label>
           </div>
 
           <div className="detail-panel">
@@ -1238,6 +1276,7 @@ export function LinesPage(): JSX.Element {
                       {notificationReason ? <span className="badge badge--ok">通知理由: {notificationReason}</span> : null}
                       {draft.last4 ? <span className="badge">下4桁: {draft.last4}</span> : null}
                       {elapsedDays != null ? <span className="badge">契約経過: {elapsedDays}日</span> : null}
+                      {draft.contractEndDate ? <span className="badge">契約終了: {formatDate(draft.contractEndDate)}</span> : null}
                     </div>
                     <div className="button-row button-row--tight">
                       <button type="button" className="button" onClick={() => toggleExpanded(draft.id)}>
@@ -1264,6 +1303,10 @@ export function LinesPage(): JSX.Element {
                           <div>
                             <dt>契約開始日</dt>
                             <dd>{formatDate(draft.contractStartDate)}</dd>
+                          </div>
+                          <div>
+                            <dt>契約終了日</dt>
+                            <dd>{formatDate(draft.contractEndDate)}</dd>
                           </div>
                           <div>
                             <dt>契約経過日数</dt>
