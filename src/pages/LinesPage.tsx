@@ -575,7 +575,7 @@ export function LinesPage(): JSX.Element {
   const notificationSettings = loadNotificationSettings();
   const notificationReasonFromQuery = getNotificationReasonLabelFromParam(searchParams.get('notificationReason'));
   const notificationTargetOnlyFromQuery = getNotificationTargetOnlyFromParam(searchParams.get('notificationTargetOnly'));
-  const devPullRequestLabel = import.meta.env.DEV ? 'PR #63' : null;
+  const devPullRequestLabel = import.meta.env.DEV ? 'PR #65' : null;
   const today = new Date();
 
   function resetMessages(): void {
@@ -1095,7 +1095,6 @@ export function LinesPage(): JSX.Element {
   const submitLabel = editingId ? '更新する' : '保存する';
   const historySubmitLabel = editingHistoryId ? '履歴を更新する' : '履歴を保存する';
   const cardBadge = editingId ? '編集中' : '詳細表示';
-  const historyCardBadge = editingHistoryId ? '履歴編集中' : '電話番号単位';
 
   function toggleSelectAllVisible(): void {
     setSelectedIds((current) => {
