@@ -6,7 +6,7 @@ const navItems = [
   { to: '/settings', label: '設定' },
 ];
 
-const devProgressLabel = 'DEV / feat/ledger-management-fields / PR #57';
+const devProgressLabel = 'DEV / feat/current-and-past-contract-status / PR #59';
 
 export function AppLayout(): JSX.Element {
   return (
