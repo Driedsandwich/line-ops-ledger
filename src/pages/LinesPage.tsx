@@ -8,6 +8,7 @@ import {
   LINE_TYPE_OPTIONS,
   normalizeLast4,
   normalizeMonthlyCost,
+  normalizePhoneNumber,
   normalizeReviewDate,
   updateLineDraft,
   type LineDraft,
@@ -31,6 +32,7 @@ type FormState = {
   carrier: string;
   lineType: LineType;
   monthlyCost: string;
+  phoneNumber: string;
   last4: string;
   contractHolderNote: string;
   contractStartDate: string;
@@ -145,6 +147,7 @@ const initialFormState: FormState = {
   carrier: 'NTTドコモ',
   lineType: DEFAULT_LINE_TYPE,
   monthlyCost: '',
+  phoneNumber: '',
   last4: '',
   contractHolderNote: '',
   contractStartDate: '',
@@ -437,7 +440,21 @@ function getPhoneLast4(phoneNumber: string): string {
   return digits.length >= 4 ? digits.slice(-4) : '';
 }
 
+function getMaskedDraftPhoneNumber(draft: LineDraft): string {
+  if (draft.phoneNumber) {
+    return maskPhoneNumber(draft.phoneNumber);
+  }
+  if (draft.last4) {
+    return `***-****-${draft.last4}`;
+  }
+  return '未設定';
+}
+
 function findRelatedHistoryEntries(draft: LineDraft, entries: LineHistoryEntry[]): LineHistoryEntry[] {
+  if (draft.phoneNumber) {
+    return entries.filter((entry) => normalizePhoneNumber(entry.phoneNumber) === draft.phoneNumber);
+  }
+
   if (!draft.last4) {
     return [];
   }
@@ -446,12 +463,20 @@ function findRelatedHistoryEntries(draft: LineDraft, entries: LineHistoryEntry[]
 }
 
 function findRelatedDrafts(entry: LineHistoryEntry, drafts: LineDraft[]): LineDraft[] {
+  const phoneNumber = normalizePhoneNumber(entry.phoneNumber);
+  if (phoneNumber) {
+    const exactDrafts = drafts.filter((draft) => draft.phoneNumber === phoneNumber);
+    if (exactDrafts.length > 0) {
+      return exactDrafts;
+    }
+  }
+
   const last4 = getPhoneLast4(entry.phoneNumber);
   if (!last4) {
     return [];
   }
 
-  return drafts.filter((draft) => draft.last4 === last4);
+  return drafts.filter((draft) => !draft.phoneNumber && draft.last4 === last4);
 }
 
 function downloadJson(filename: string, content: string): void {
@@ -470,6 +495,7 @@ function toFormState(draft: LineDraft): FormState {
     carrier: draft.carrier,
     lineType: draft.lineType,
     monthlyCost: draft.monthlyCost == null ? '' : String(draft.monthlyCost),
+    phoneNumber: draft.phoneNumber,
     last4: draft.last4,
     contractHolderNote: draft.contractHolderNote,
     contractStartDate: draft.contractStartDate,
@@ -697,6 +723,7 @@ export function LinesPage(): JSX.Element {
     carrier: string;
     lineType: LineType;
     monthlyCost: number | null;
+    phoneNumber: string;
     last4: string;
     contractHolderNote: string;
     contractStartDate: string;
@@ -713,6 +740,7 @@ export function LinesPage(): JSX.Element {
     const lineName = form.lineName.trim();
     const carrier = form.carrier.trim();
     const memo = form.memo.trim();
+    const phoneNumber = normalizePhoneNumber(form.phoneNumber);
     const contractHolderNote = form.contractHolderNote.trim();
     const contractStartDate = form.contractStartDate;
     const contractEndDate = form.contractEndDate;
@@ -722,7 +750,7 @@ export function LinesPage(): JSX.Element {
     const planName = form.planName.trim();
     const deviceName = form.deviceName.trim();
     const nextReviewDate = form.nextReviewDate;
-    const normalizedLast4 = normalizeLast4(form.last4);
+    const normalizedLast4 = phoneNumber ? normalizeLast4(phoneNumber) : normalizeLast4(form.last4);
 
     if (!lineName || !carrier || !form.status || !form.lineType) {
       setErrorMessage('回線名、キャリア、回線種別、契約状態は必須です。');
@@ -749,7 +777,12 @@ export function LinesPage(): JSX.Element {
       return null;
     }
 
-    if (form.last4 && !normalizedLast4) {
+    if (form.phoneNumber && !phoneNumber) {
+      setErrorMessage('電話番号は数字10〜11桁だけ保存できます。');
+      return null;
+    }
+
+    if (!phoneNumber && form.last4 && !normalizedLast4) {
       setErrorMessage('回線番号下4桁は数字4桁だけ保存できます。');
       return null;
     }
@@ -759,6 +792,7 @@ export function LinesPage(): JSX.Element {
       carrier,
       lineType: form.lineType,
       monthlyCost: normalizeMonthlyCost(form.monthlyCost),
+      phoneNumber,
       last4: normalizedLast4,
       contractHolderNote,
       contractStartDate,
@@ -820,9 +854,10 @@ export function LinesPage(): JSX.Element {
         contractEndDate: lineHistoryForm.contractEndDate,
         memo: lineHistoryForm.memo,
       });
+
       persistLineHistory([nextEntry, ...lineHistoryEntries]);
       resetLineHistoryForm();
-      setSuccessMessage('契約履歴を追加しました。');
+      setSuccessMessage('契約履歴を保存しました。');
     } catch {
       setErrorMessage('電話番号・キャリア・契約開始日は必須です。電話番号は 10〜11 桁で入力してください。');
     }
@@ -962,6 +997,7 @@ export function LinesPage(): JSX.Element {
         draft.carrier,
         draft.memo,
         draft.lineType,
+        draft.phoneNumber,
         draft.last4,
         draft.contractHolderNote,
         draft.contractHolder,
@@ -999,6 +1035,7 @@ export function LinesPage(): JSX.Element {
         draft.carrier,
         draft.memo,
         draft.lineType,
+        draft.phoneNumber,
         draft.last4,
         draft.contractHolderNote,
         draft.contractHolder,
@@ -1084,12 +1121,15 @@ export function LinesPage(): JSX.Element {
       })
       .filter((group) => group.visibleEntries.length > 0);
   }, [drafts, lineHistoryGroups, timelinePhoneFilter, timelineViewMode, timelineWindow, today]);
+
   const totalVisibleTimelineEntries = useMemo(
     () => visibleLineHistoryGroups.reduce((sum, group) => sum + group.visibleEntries.length, 0),
     [visibleLineHistoryGroups],
   );
+
   const visibleIds = useMemo(() => visibleDrafts.map((draft) => draft.id), [visibleDrafts]);
-  const allVisibleSelected = visibleIds.length > 0 && visibleIds.every((id) => selectedIds.includes(id));
+  const selectedVisibleCount = useMemo(() => visibleIds.filter((id) => selectedIds.includes(id)).length, [visibleIds, selectedIds]);
+  const allVisibleSelected = visibleIds.length > 0 && selectedVisibleCount === visibleIds.length;
   const hasDrafts = visibleDrafts.length > 0;
   const countLabel = useMemo(() => `${visibleDrafts.length}件`, [visibleDrafts.length]);
   const submitLabel = editingId ? '更新する' : '保存する';
@@ -1101,16 +1141,18 @@ export function LinesPage(): JSX.Element {
       if (allVisibleSelected) {
         return current.filter((id) => !visibleIds.includes(id));
       }
+
       return Array.from(new Set([...current, ...visibleIds]));
     });
   }
 
-  function applyBulkStatus(nextStatus: LineStatus): void {
-    resetMessages();
+  function applyBulkStatus(nextStatus: Extract<LineStatus, '利用中' | '解約予定'>): void {
     if (selectedIds.length === 0) {
-      setErrorMessage('一括変更する回線を選択してください。');
+      setErrorMessage('一括ステータス変更する回線を選択してください。');
       return;
     }
+
+    resetMessages();
 
     const nextDrafts = drafts.map((draft) =>
       selectedIds.includes(draft.id)
@@ -1129,11 +1171,12 @@ export function LinesPage(): JSX.Element {
   }
 
   function handleBulkDelete(): void {
-    resetMessages();
     if (selectedIds.length === 0) {
-      setErrorMessage('一括削除する回線を選択してください。');
+      setErrorMessage('削除する回線を選択してください。');
       return;
     }
+
+    resetMessages();
 
     const nextDrafts = drafts.filter((draft) => !selectedIds.includes(draft.id));
     persist(nextDrafts, {
@@ -1146,30 +1189,25 @@ export function LinesPage(): JSX.Element {
   }
 
   useEffect(() => {
+    lineDraftStore.ensureCurrentVersion();
+  }, []);
+
+  useEffect(() => {
+    setFilters((current) => ({
+      ...current,
+      notificationReason: notificationReasonFromQuery,
+      notificationTargetOnly: notificationTargetOnlyFromQuery,
+    }));
+  }, [notificationReasonFromQuery, notificationTargetOnlyFromQuery]);
+
+  useEffect(() => {
     setSelectedIds((current) => current.filter((id) => drafts.some((draft) => draft.id === id)));
     setExpandedIds((current) => current.filter((id) => drafts.some((draft) => draft.id === id)));
   }, [drafts]);
 
   useEffect(() => {
-    setFilters((current) => {
-      if (
-        current.notificationReason === notificationReasonFromQuery &&
-        current.notificationTargetOnly === notificationTargetOnlyFromQuery
-      ) {
-        return current;
-      }
-
-      return {
-        ...current,
-        notificationReason: notificationReasonFromQuery,
-        notificationTargetOnly: notificationTargetOnlyFromQuery,
-      };
-    });
-  }, [notificationReasonFromQuery, notificationTargetOnlyFromQuery]);
-
-  useEffect(() => {
     function onKeyDown(event: KeyboardEvent): void {
-      const isUndoShortcut = (event.ctrlKey || event.metaKey) && !event.shiftKey && event.key.toLowerCase() === 'z';
+      const isUndoShortcut = (event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'z' && !event.shiftKey && !event.altKey;
       if (!isUndoShortcut || !undoState) {
         return;
       }
@@ -1189,13 +1227,11 @@ export function LinesPage(): JSX.Element {
     <div className="page">
       <header className="page__header">
         <div>
-          <p className="eyebrow">Lines</p>
-          <h2>回線一覧</h2>
-          <p className="page__lead">
-            回線ドラフトの追加に加えて、検索・絞り込み・並び替え・期限表示・一括更新・一括削除・詳細表示で見たい回線を探しやすくします。保存層は薄い store に切り出し、後で差し替えやすくします。
-          </p>
-          {devPullRequestLabel ? <p className="notice">開発中表示: {devPullRequestLabel}</p> : null}
+          <p className="page__eyebrow">回線一覧 / 履歴管理</p>
+          <h2>/lines</h2>
+          <p className="muted">回線ドラフトの追加・編集・履歴追跡を localStorage ベースで行います。開発中のみ PR 番号を表示しています。</p>
         </div>
+        {devPullRequestLabel ? <span className="badge badge--ok">{devPullRequestLabel}</span> : null}
       </header>
 
       <section className="card-grid card-grid--lines">
@@ -1224,9 +1260,7 @@ export function LinesPage(): JSX.Element {
               <span>回線種別 *</span>
               <select value={form.lineType} onChange={(event) => updateField('lineType', event.target.value as LineType)}>
                 {LINE_TYPE_OPTIONS.map((option) => (
-                  <option key={option} value={option}>
-                    {option}
-                  </option>
+                  <option key={option} value={option}>{option}</option>
                 ))}
               </select>
             </label>
@@ -1244,6 +1278,11 @@ export function LinesPage(): JSX.Element {
             <label className="field">
               <span>月額費用</span>
               <input inputMode="numeric" value={form.monthlyCost} onChange={(event) => updateField('monthlyCost', event.target.value)} placeholder="例: 2980" />
+            </label>
+
+            <label className="field">
+              <span>電話番号</span>
+              <input inputMode="numeric" value={form.phoneNumber} onChange={(event) => updateField('phoneNumber', event.target.value)} placeholder="例: 09012345678" />
             </label>
 
             <label className="field">
@@ -1289,22 +1328,14 @@ export function LinesPage(): JSX.Element {
               <span>契約状態 *</span>
               <select value={form.status} onChange={(event) => updateField('status', event.target.value as LineStatus)}>
                 {LINE_STATUS_OPTIONS.map((option) => (
-                  <option key={option} value={option}>
-                    {option}
-                  </option>
+                  <option key={option} value={option}>{option}</option>
                 ))}
               </select>
             </label>
 
             <label className="field">
               <span>次回確認日</span>
-              <input
-                type="date"
-                min="2000-01-01"
-                max="9999-12-31"
-                value={form.nextReviewDate}
-                onChange={(event) => updateField('nextReviewDate', event.target.value)}
-              />
+              <input type="date" value={form.nextReviewDate} onChange={(event) => updateField('nextReviewDate', event.target.value)} />
             </label>
 
             <label className="field field--full">
@@ -1338,7 +1369,7 @@ export function LinesPage(): JSX.Element {
           <div className="form-grid">
             <label className="field field--full">
               <span>キーワード</span>
-              <input value={filters.keyword} onChange={(event) => updateFilter('keyword', event.target.value)} placeholder="回線名 / キャリア / 契約者 / 使用者 / プラン / 端末 / メモ" />
+              <input value={filters.keyword} onChange={(event) => updateFilter('keyword', event.target.value)} placeholder="回線名 / キャリア / 電話番号 / 契約者 / 使用者 / プラン / 端末 / メモ" />
             </label>
 
             <label className="field">
@@ -1398,31 +1429,23 @@ export function LinesPage(): JSX.Element {
           <div className="detail-panel">
             <div className="card__header">
               <h3>通知対象サマリー</h3>
-              <span className="badge">{notificationSummary.total}件</span>
+              <span className="badge">対象 {notificationSummary.total}件</span>
             </div>
-            <p className="muted">現在の検索・契約状態・回線種別条件に対して、通知対象を理由別にすばやく絞り込めます。</p>
-            <div className="button-row">
-              <button
-                type="button"
-                className={filters.notificationReason === 'all' ? 'button button--primary' : 'button'}
-                onClick={() => setNotificationReasonFilter('all')}
-              >
-                通知対象合計 {notificationSummary.total}件
+            <div className="badge-row">
+              <button type="button" className={`button ${filters.notificationReason === 'all' ? 'button--primary' : ''}`} onClick={() => setNotificationReasonFilter('all')}>
+                通知対象合計 {notificationSummary.total}
               </button>
-              {(['期限超過', '今日期限', '3日以内', '7日以内'] as const).map((reason) => (
+              {(['期限超過', '今日期限', '3日以内', '7日以内'] as NotificationReasonLabel[]).map((reason) => (
                 <button
                   key={reason}
                   type="button"
-                  className={filters.notificationReason === reason ? 'button button--primary' : 'button'}
+                  className={`button ${filters.notificationReason === reason ? 'button--primary' : ''}`}
                   onClick={() => setNotificationReasonFilter(reason)}
                 >
-                  {reason} {notificationSummary.counts[reason]}件
+                  {reason} {notificationSummary.counts[reason]}
                 </button>
               ))}
             </div>
-            {filters.notificationReason !== 'all' ? (
-              <p className="notice">通知理由: {filters.notificationReason} で絞り込み中です。</p>
-            ) : null}
           </div>
 
           <div className="button-row">
@@ -1479,6 +1502,7 @@ export function LinesPage(): JSX.Element {
                       <span>{draft.carrier}</span>
                       <span>回線種別: {draft.lineType}</span>
                       <span>月額費用: {formatMonthlyCost(draft.monthlyCost)}</span>
+                      <span>電話番号: {getMaskedDraftPhoneNumber(draft)}</span>
                       <span>次回確認日: {formatReviewDate(draft.nextReviewDate)}</span>
                       <span>契約者: {draft.contractHolder || '未設定'}</span>
                       <span>使用者: {draft.serviceUser || '未設定'}</span>
@@ -1488,7 +1512,7 @@ export function LinesPage(): JSX.Element {
                     <div className="badge-row">
                       <span className={deadlineStatus.className}>{deadlineStatus.label}</span>
                       {notificationReason ? <span className="badge badge--ok">通知理由: {notificationReason}</span> : null}
-                      {draft.last4 ? <span className="badge">下4桁: {draft.last4}</span> : null}
+                      {draft.phoneNumber ? <span className="badge">電話番号: {maskPhoneNumber(draft.phoneNumber)}</span> : draft.last4 ? <span className="badge">下4桁: {draft.last4}</span> : null}
                       {elapsedDays != null ? <span className="badge">契約経過: {elapsedDays}日</span> : null}
                       {draft.contractEndDate ? <span className="badge">契約終了: {formatDate(draft.contractEndDate)}</span> : null}
                       {relatedHistoryEntries.length > 0 ? <span className="badge badge--ok">関連履歴: {relatedHistoryEntries.length}件</span> : null}
@@ -1507,6 +1531,10 @@ export function LinesPage(): JSX.Element {
                     {isExpanded ? (
                       <div className="detail-panel">
                         <div className="definition-list">
+                          <div>
+                            <dt>電話番号</dt>
+                            <dd>{getMaskedDraftPhoneNumber(draft)}</dd>
+                          </div>
                           <div>
                             <dt>回線番号下4桁</dt>
                             <dd>{draft.last4 || '未設定'}</dd>
@@ -1573,7 +1601,7 @@ export function LinesPage(): JSX.Element {
                             <h3>関連履歴候補</h3>
                             <span className="badge">{relatedHistoryEntries.length}件</span>
                           </div>
-                          <p className="muted">現在は回線番号下4桁の一致を基準に、関連しそうな履歴候補を表示します。下4桁未設定の回線は関連付けできません。</p>
+                          <p className="muted">電話番号全文がある場合は全文一致を優先し、旧データで電話番号が未設定の回線だけ下4桁一致を補助的に使います。</p>
                           {relatedHistoryEntries.length === 0 ? (
                             <p className="muted">関連履歴候補はまだありません。</p>
                           ) : (
@@ -1697,7 +1725,7 @@ export function LinesPage(): JSX.Element {
                       </div>
                       <div className="badge-row">
                         {group.relatedDrafts.map((draft) => (
-                          <span key={draft.id} className="badge badge--ok">{draft.lineName} / 下4桁 {draft.last4 || '未設定'}</span>
+                          <span key={draft.id} className="badge badge--ok">{draft.lineName} / {getMaskedDraftPhoneNumber(draft)}</span>
                         ))}
                       </div>
                     </div>
