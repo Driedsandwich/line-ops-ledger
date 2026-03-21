@@ -1,41 +1,39 @@
 import { NavLink, Outlet } from 'react-router-dom';
 
 const navItems = [
-  { to: '/', label: 'ダッシュボード', end: true },
+  { to: '/', label: 'ダッシュボード' },
   { to: '/lines', label: '回線一覧' },
   { to: '/settings', label: '設定' },
 ];
 
-const devProgressLabel = 'DEV / feat/link-ledger-and-history-records / PR #65';
+const devProgressLabel = 'DEV / feat/compact-lines-view-and-refresh-dev-labels / PR pending';
 
 export function AppLayout(): JSX.Element {
   return (
     <div className="app-shell">
       <aside className="sidebar">
         <div className="sidebar__header">
-          <p className="eyebrow">Local-first encrypted PWA</p>
+          <p className="eyebrow">Line Ops Ledger</p>
           <h1>回線運用台帳</h1>
-          <p className="sidebar__description">
-            回線・期限・証跡・特典の確認導線を先に固定するための初期シェルです。
-          </p>
-          {import.meta.env.DEV ? <p className="dev-progress-badge">{devProgressLabel}</p> : null}
+          <p className="muted">Local-first PWA shell</p>
+          {import.meta.env.DEV ? <p className="notice">{devProgressLabel}</p> : null}
         </div>
-        <nav className="nav">
+
+        <nav className="sidebar__nav">
           {navItems.map((item) => (
             <NavLink
               key={item.to}
               to={item.to}
-              end={item.end}
-              className={({ isActive }: { isActive: boolean }) =>
-                isActive ? 'nav__item nav__item--active' : 'nav__item'
-              }
+              end={item.to === '/'}
+              className={({ isActive }) => `sidebar__link${isActive ? ' sidebar__link--active' : ''}`}
             >
               {item.label}
             </NavLink>
           ))}
         </nav>
       </aside>
-      <main className="content">
+
+      <main className="app-content">
         <Outlet />
       </main>
     </div>
