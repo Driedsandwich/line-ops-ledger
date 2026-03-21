@@ -1,7 +1,7 @@
 export const LINE_STATUS_OPTIONS = ['利用中', '解約予定', '解約済み', 'MNP転出済み'] as const;
 export const LINE_TYPE_OPTIONS = ['音声SIM', 'データSIM', 'ホームルーター', '光回線', '未分類'] as const;
 export const DEFAULT_LINE_TYPE = '未分類';
-export const CURRENT_LINE_DRAFT_SCHEMA_VERSION = 3;
+export const CURRENT_LINE_DRAFT_SCHEMA_VERSION = 4;
 export const LINE_DRAFT_BACKUP_FILENAME_PREFIX = 'line-ops-ledger-backup';
 
 export type LineStatus = (typeof LINE_STATUS_OPTIONS)[number];
@@ -14,6 +14,7 @@ export type LineDraft = {
   carrier: string;
   lineType: LineType;
   monthlyCost: number | null;
+  phoneNumber: string;
   last4: string;
   contractHolderNote: string;
   contractStartDate: string;
@@ -64,6 +65,7 @@ type LineDraftInput = {
   carrier: string;
   lineType: LineType;
   monthlyCost: number | null;
+  phoneNumber: string;
   last4: string;
   contractHolderNote: string;
   contractStartDate?: string;
@@ -127,6 +129,15 @@ export function normalizeMonthlyCost(value: string | number | null | undefined):
   return normalized;
 }
 
+export function normalizePhoneNumber(value: string | null | undefined): string {
+  if (!value) {
+    return '';
+  }
+
+  const digits = String(value).replace(/\D/g, '');
+  return digits.length >= 10 && digits.length <= 11 ? digits : '';
+}
+
 export function normalizeLast4(value: string | null | undefined): string {
   if (!value) {
     return '';
@@ -141,7 +152,8 @@ function normalizeLineDraft(input: Partial<LineDraft> & { lineName: string; carr
   const carrier = input.carrier.trim();
   const lineType = isLineType(String(input.lineType ?? '')) ? (input.lineType as LineType) : DEFAULT_LINE_TYPE;
   const monthlyCost = normalizeMonthlyCost(input.monthlyCost ?? null);
-  const last4 = normalizeLast4(input.last4);
+  const phoneNumber = normalizePhoneNumber(input.phoneNumber);
+  const last4 = phoneNumber ? normalizeLast4(phoneNumber) : normalizeLast4(input.last4);
   const contractHolderNote = (input.contractHolderNote ?? '').trim();
   const contractStartDate = normalizeReviewDate(input.contractStartDate);
   const contractEndDate = normalizeReviewDate(input.contractEndDate);
@@ -165,6 +177,7 @@ function normalizeLineDraft(input: Partial<LineDraft> & { lineName: string; carr
     carrier,
     lineType,
     monthlyCost,
+    phoneNumber,
     last4,
     contractHolderNote,
     contractStartDate,
