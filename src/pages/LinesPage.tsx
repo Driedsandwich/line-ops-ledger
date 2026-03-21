@@ -512,6 +512,23 @@ function downloadJson(filename: string, content: string): void {
   URL.revokeObjectURL(url);
 }
 
+function toLineHistoryStatusFromDraftStatus(status: LineStatus): LineHistoryStatus {
+  if (status === '解約済み' || status === 'MNP転出済み') {
+    return status;
+  }
+
+  return status;
+}
+
+function buildHistoryDraftMemo(draft: LineDraft): string {
+  const memoParts = [
+    draft.lineName ? `主台帳: ${draft.lineName}` : '',
+    draft.memo ? `主台帳メモ: ${draft.memo}` : '',
+  ].filter(Boolean);
+
+  return memoParts.join(' / ');
+}
+
 function toFormState(draft: LineDraft): FormState {
   return {
     lineName: draft.lineName,
@@ -622,6 +639,7 @@ export function LinesPage(): JSX.Element {
   const [isCompactView, setIsCompactView] = useState(() => readBooleanPreference(LINES_COMPACT_VIEW_STORAGE_KEY, false));
   const [isFormCollapsed, setIsFormCollapsed] = useState(() => readBooleanPreference(LINES_FORM_COLLAPSED_STORAGE_KEY, false));
   const historyImportInputRef = useRef<HTMLInputElement | null>(null);
+  const historyFormSectionRef = useRef<HTMLElement | null>(null);
 
   const notificationSettings = loadNotificationSettings();
   const notificationReasonFromQuery = getNotificationReasonLabelFromParam(searchParams.get('notificationReason'));
@@ -719,6 +737,21 @@ export function LinesPage(): JSX.Element {
   function resetLineHistoryForm(): void {
     setLineHistoryForm(initialLineHistoryFormState);
     setEditingHistoryId(null);
+  }
+
+  function handleCreateHistoryDraftFromLedger(draft: LineDraft): void {
+    resetMessages();
+    setEditingHistoryId(null);
+    setLineHistoryForm({
+      phoneNumber: draft.phoneNumber,
+      carrier: draft.carrier,
+      status: toLineHistoryStatusFromDraftStatus(draft.status),
+      contractStartDate: draft.contractStartDate,
+      contractEndDate: draft.contractEndDate,
+      memo: buildHistoryDraftMemo(draft),
+    });
+    historyFormSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    setSuccessMessage('契約履歴フォームへ下書きを反映しました。内容を確認してから保存してください。');
   }
 
   function handleExportLineHistory(): void {
@@ -899,6 +932,7 @@ export function LinesPage(): JSX.Element {
     setEditingHistoryId(entry.id);
     setLineHistoryForm(toLineHistoryFormState(entry));
     setIsFormCollapsed(false);
+    historyFormSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
   function handleDeleteLineHistory(entryId: string): void {
@@ -1521,8 +1555,7 @@ export function LinesPage(): JSX.Element {
                   key={reason}
                   type="button"
                   className={`button ${filters.notificationReason === reason ? 'button--primary' : ''}`}
-                  onClick={() => setNotificationReasonFilter(reason)}
-                >
+                  onClick={() => setNotificationReasonFilter(reason)}>
                   {reason} {notificationSummary.counts[reason]}
                 </button>
               ))}
@@ -1680,6 +1713,11 @@ export function LinesPage(): JSX.Element {
                             <dd>{draft.status}</dd>
                           </div>
                         </div>
+                        <div className="button-row button-row--tight" style={{ marginTop: '0.75rem' }}>
+                          <button type="button" className="button button--primary" onClick={() => handleCreateHistoryDraftFromLedger(draft)}>
+                            履歴下書きを作る
+                          </button>
+                        </div>
                         <div className="detail-panel" style={{ marginTop: '1rem' }}>
                           <div className="card__header">
                             <h3>関連履歴候補</h3>
@@ -1712,7 +1750,7 @@ export function LinesPage(): JSX.Element {
         </article>
       </section>
 
-      <section className="card-grid card-grid--single">
+      <section className="card-grid card-grid--single" ref={historyFormSectionRef}>
         <article className="card">
           <div className="card__header">
             <h3>契約履歴の登録</h3>
