@@ -596,12 +596,14 @@ export function LinesPage(): JSX.Element {
   const [undoState, setUndoState] = useState<UndoState | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [isCompactView, setIsCompactView] = useState(false);
+  const [isFormCollapsed, setIsFormCollapsed] = useState(false);
   const historyImportInputRef = useRef<HTMLInputElement | null>(null);
 
   const notificationSettings = loadNotificationSettings();
   const notificationReasonFromQuery = getNotificationReasonLabelFromParam(searchParams.get('notificationReason'));
   const notificationTargetOnlyFromQuery = getNotificationTargetOnlyFromParam(searchParams.get('notificationTargetOnly'));
-  const devPullRequestLabel = import.meta.env.DEV ? 'PR #69' : null;
+  const devPullRequestLabel = import.meta.env.DEV ? 'PR pending' : null;
   const today = new Date();
 
   function resetMessages(): void {
@@ -867,6 +869,7 @@ export function LinesPage(): JSX.Element {
     resetMessages();
     setEditingHistoryId(entry.id);
     setLineHistoryForm(toLineHistoryFormState(entry));
+    setIsFormCollapsed(false);
   }
 
   function handleDeleteLineHistory(entryId: string): void {
@@ -932,6 +935,7 @@ export function LinesPage(): JSX.Element {
     setEditingId(draft.id);
     setForm(toFormState(draft));
     setExpandedIds((current) => (current.includes(draft.id) ? current : [...current, draft.id]));
+    setIsFormCollapsed(false);
   }
 
   function handleDelete(draftId: string): void {
@@ -1206,6 +1210,12 @@ export function LinesPage(): JSX.Element {
   }, [drafts]);
 
   useEffect(() => {
+    if (drafts.length > 0 && !editingId) {
+      setIsFormCollapsed(true);
+    }
+  }, [drafts.length, editingId]);
+
+  useEffect(() => {
     function onKeyDown(event: KeyboardEvent): void {
       const isUndoShortcut = (event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'z' && !event.shiftKey && !event.altKey;
       if (!isUndoShortcut || !undoState) {
@@ -1229,135 +1239,149 @@ export function LinesPage(): JSX.Element {
         <div>
           <p className="page__eyebrow">回線一覧 / 履歴管理</p>
           <h2>/lines</h2>
-          <p className="muted">回線ドラフトの追加・編集・履歴追跡を localStorage ベースで行います。開発中のみ PR 番号を表示しています。</p>
+          <p className="muted">回線ドラフトの追加・編集・履歴追跡を localStorage ベースで行います。数十件規模の巡回に備え、フォーム折りたたみとコンパクト表示を追加しています。</p>
         </div>
-        {devPullRequestLabel ? <span className="badge badge--ok">{devPullRequestLabel}</span> : null}
+        <div className="button-row button-row--tight" style={{ justifyContent: 'flex-end' }}>
+          <button type="button" className={`button ${isCompactView ? 'button--primary' : ''}`} onClick={() => setIsCompactView((current) => !current)}>
+            {isCompactView ? '通常表示に戻す' : 'コンパクト表示'}
+          </button>
+          {devPullRequestLabel ? <span className="badge badge--ok">{devPullRequestLabel}</span> : null}
+        </div>
       </header>
 
       <section className="card-grid card-grid--lines">
         <article className="card">
           <div className="card__header">
             <h3>回線フォーム</h3>
-            <span className="badge">{cardBadge}</span>
-          </div>
-
-          <form className="form-grid" onSubmit={handleSubmit}>
-            <label className="field">
-              <span>回線名 *</span>
-              <input value={form.lineName} onChange={(event) => updateField('lineName', event.target.value)} placeholder="例: 自宅用メイン回線" />
-            </label>
-
-            <label className="field">
-              <span>キャリア *</span>
-              <select value={form.carrier} onChange={(event) => updateField('carrier', event.target.value)}>
-                {CARRIER_OPTIONS.map((option) => (
-                  <option key={option} value={option}>{option}</option>
-                ))}
-              </select>
-            </label>
-
-            <label className="field">
-              <span>回線種別 *</span>
-              <select value={form.lineType} onChange={(event) => updateField('lineType', event.target.value as LineType)}>
-                {LINE_TYPE_OPTIONS.map((option) => (
-                  <option key={option} value={option}>{option}</option>
-                ))}
-              </select>
-            </label>
-
-            <label className="field">
-              <span>契約開始日</span>
-              <input type="date" value={form.contractStartDate} onChange={(event) => updateField('contractStartDate', event.target.value)} />
-            </label>
-
-            <label className="field">
-              <span>契約終了日</span>
-              <input type="date" value={form.contractEndDate} onChange={(event) => updateField('contractEndDate', event.target.value)} />
-            </label>
-
-            <label className="field">
-              <span>月額費用</span>
-              <input inputMode="numeric" value={form.monthlyCost} onChange={(event) => updateField('monthlyCost', event.target.value)} placeholder="例: 2980" />
-            </label>
-
-            <label className="field">
-              <span>電話番号</span>
-              <input inputMode="numeric" value={form.phoneNumber} onChange={(event) => updateField('phoneNumber', event.target.value)} placeholder="例: 09012345678" />
-            </label>
-
-            <label className="field">
-              <span>回線番号下4桁</span>
-              <input inputMode="numeric" value={form.last4} onChange={(event) => updateField('last4', event.target.value)} placeholder="例: 1234" />
-            </label>
-
-            <label className="field">
-              <span>契約者</span>
-              <input value={form.contractHolder} onChange={(event) => updateField('contractHolder', event.target.value)} placeholder="例: 山田 太郎" />
-            </label>
-
-            <label className="field">
-              <span>使用者</span>
-              <input value={form.serviceUser} onChange={(event) => updateField('serviceUser', event.target.value)} placeholder="例: 本人 / 家族" />
-            </label>
-
-            <label className="field">
-              <span>支払方法</span>
-              <select value={form.paymentMethod} onChange={(event) => updateField('paymentMethod', event.target.value)}>
-                {PAYMENT_METHOD_OPTIONS.map((option) => (
-                  <option key={option} value={option}>{option}</option>
-                ))}
-              </select>
-            </label>
-
-            <label className="field">
-              <span>プラン</span>
-              <input value={form.planName} onChange={(event) => updateField('planName', event.target.value)} placeholder="例: 20GB / かけ放題付き" />
-            </label>
-
-            <label className="field">
-              <span>端末</span>
-              <input value={form.deviceName} onChange={(event) => updateField('deviceName', event.target.value)} placeholder="例: iPhone 15 / モバイルルーター" />
-            </label>
-
-            <label className="field">
-              <span>契約名義メモ</span>
-              <input value={form.contractHolderNote} onChange={(event) => updateField('contractHolderNote', event.target.value)} placeholder="例: 本人 / 家族名義 など" />
-            </label>
-
-            <label className="field">
-              <span>契約状態 *</span>
-              <select value={form.status} onChange={(event) => updateField('status', event.target.value as LineStatus)}>
-                {LINE_STATUS_OPTIONS.map((option) => (
-                  <option key={option} value={option}>{option}</option>
-                ))}
-              </select>
-            </label>
-
-            <label className="field">
-              <span>次回確認日</span>
-              <input type="date" value={form.nextReviewDate} onChange={(event) => updateField('nextReviewDate', event.target.value)} />
-            </label>
-
-            <label className="field field--full">
-              <span>メモ</span>
-              <textarea value={form.memo} onChange={(event) => updateField('memo', event.target.value)} rows={4} placeholder="特典期限や確認メモなど" />
-            </label>
-
-            {errorMessage ? <p className="notice notice--warn">{errorMessage}</p> : null}
-            {successMessage ? <p className="notice">{successMessage}</p> : null}
-
-            <div className="button-row field--full">
-              <button type="submit" className="button button--primary">
-                {submitLabel}
-              </button>
-              <button type="button" className="button" onClick={resetForm}>
-                入力をリセット
-              </button>
-              <button type="button" className="button" onClick={handleUndo} disabled={!undoState}>
-                操作を戻す
+            <div className="button-row button-row--tight">
+              <span className="badge">{cardBadge}</span>
+              <button type="button" className="button" onClick={() => setIsFormCollapsed((current) => !current)}>
+                {isFormCollapsed ? 'フォームを開く' : 'フォームをたたむ'}
               </button>
             </div>
-          </form>
+          </div>
+
+          {isFormCollapsed ? (
+            <p className="muted">登録済み回線があるためフォームを折りたたんでいます。追加や編集時に開いてください。</p>
+          ) : (
+            <form className="form-grid" onSubmit={handleSubmit}>
+              <label className="field">
+                <span>回線名 *</span>
+                <input value={form.lineName} onChange={(event) => updateField('lineName', event.target.value)} placeholder="例: 自宅用メイン回線" />
+              </label>
+
+              <label className="field">
+                <span>キャリア *</span>
+                <select value={form.carrier} onChange={(event) => updateField('carrier', event.target.value)}>
+                  {CARRIER_OPTIONS.map((option) => (
+                    <option key={option} value={option}>{option}</option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="field">
+                <span>回線種別 *</span>
+                <select value={form.lineType} onChange={(event) => updateField('lineType', event.target.value as LineType)}>
+                  {LINE_TYPE_OPTIONS.map((option) => (
+                    <option key={option} value={option}>{option}</option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="field">
+                <span>契約開始日</span>
+                <input type="date" value={form.contractStartDate} onChange={(event) => updateField('contractStartDate', event.target.value)} />
+              </label>
+
+              <label className="field">
+                <span>契約終了日</span>
+                <input type="date" value={form.contractEndDate} onChange={(event) => updateField('contractEndDate', event.target.value)} />
+              </label>
+
+              <label className="field">
+                <span>月額費用</span>
+                <input inputMode="numeric" value={form.monthlyCost} onChange={(event) => updateField('monthlyCost', event.target.value)} placeholder="例: 2980" />
+              </label>
+
+              <label className="field">
+                <span>電話番号</span>
+                <input inputMode="numeric" value={form.phoneNumber} onChange={(event) => updateField('phoneNumber', event.target.value)} placeholder="例: 09012345678" />
+              </label>
+
+              <label className="field">
+                <span>回線番号下4桁</span>
+                <input inputMode="numeric" value={form.last4} onChange={(event) => updateField('last4', event.target.value)} placeholder="例: 1234" />
+              </label>
+
+              <label className="field">
+                <span>契約者</span>
+                <input value={form.contractHolder} onChange={(event) => updateField('contractHolder', event.target.value)} placeholder="例: 山田 太郎" />
+              </label>
+
+              <label className="field">
+                <span>使用者</span>
+                <input value={form.serviceUser} onChange={(event) => updateField('serviceUser', event.target.value)} placeholder="例: 本人 / 家族" />
+              </label>
+
+              <label className="field">
+                <span>支払方法</span>
+                <select value={form.paymentMethod} onChange={(event) => updateField('paymentMethod', event.target.value)}>
+                  {PAYMENT_METHOD_OPTIONS.map((option) => (
+                    <option key={option} value={option}>{option}</option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="field">
+                <span>プラン</span>
+                <input value={form.planName} onChange={(event) => updateField('planName', event.target.value)} placeholder="例: 20GB / かけ放題付き" />
+              </label>
+
+              <label className="field">
+                <span>端末</span>
+                <input value={form.deviceName} onChange={(event) => updateField('deviceName', event.target.value)} placeholder="例: iPhone 15 / モバイルルーター" />
+              </label>
+
+              <label className="field">
+                <span>契約名義メモ</span>
+                <input value={form.contractHolderNote} onChange={(event) => updateField('contractHolderNote', event.target.value)} placeholder="例: 本人 / 家族名義 など" />
+              </label>
+
+              <label className="field">
+                <span>契約状態 *</span>
+                <select value={form.status} onChange={(event) => updateField('status', event.target.value as LineStatus)}>
+                  {LINE_STATUS_OPTIONS.map((option) => (
+                    <option key={option} value={option}>{option}</option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="field">
+                <span>次回確認日</span>
+                <input type="date" value={form.nextReviewDate} onChange={(event) => updateField('nextReviewDate', event.target.value)} />
+              </label>
+
+              <label className="field field--full">
+                <span>メモ</span>
+                <textarea value={form.memo} onChange={(event) => updateField('memo', event.target.value)} rows={4} placeholder="特典期限や確認メモなど" />
+              </label>
+
+              {errorMessage ? <p className="notice notice--warn">{errorMessage}</p> : null}
+              {successMessage ? <p className="notice">{successMessage}</p> : null}
+
+              <div className="button-row field--full">
+                <button type="submit" className="button button--primary">
+                  {submitLabel}
+                </button>
+                <button type="button" className="button" onClick={resetForm}>
+                  入力をリセット
+                </button>
+                <button type="button" className="button" onClick={handleUndo} disabled={!undoState}>
+                  操作を戻す
+                </button>
+              </div>
+            </form>
+          )}
         </article>
 
         <article className="card">
@@ -1469,7 +1493,10 @@ export function LinesPage(): JSX.Element {
         <article className="card">
           <div className="card__header">
             <h3>保存済み回線</h3>
-            <span className="badge">{countLabel}</span>
+            <div className="button-row button-row--tight">
+              <span className="badge">{countLabel}</span>
+              {isCompactView ? <span className="badge badge--ok">コンパクト表示中</span> : null}
+            </div>
           </div>
 
           {!hasDrafts ? (
@@ -1501,21 +1528,21 @@ export function LinesPage(): JSX.Element {
                     <div className="list__summary-grid">
                       <span>{draft.carrier}</span>
                       <span>回線種別: {draft.lineType}</span>
-                      <span>月額費用: {formatMonthlyCost(draft.monthlyCost)}</span>
                       <span>電話番号: {getMaskedDraftPhoneNumber(draft)}</span>
                       <span>次回確認日: {formatReviewDate(draft.nextReviewDate)}</span>
-                      <span>契約者: {draft.contractHolder || '未設定'}</span>
-                      <span>使用者: {draft.serviceUser || '未設定'}</span>
-                      <span>プラン: {draft.planName || '未設定'}</span>
-                      <span>端末: {draft.deviceName || '未設定'}</span>
+                      {!isCompactView ? <span>月額費用: {formatMonthlyCost(draft.monthlyCost)}</span> : null}
+                      {!isCompactView ? <span>契約者: {draft.contractHolder || '未設定'}</span> : null}
+                      {!isCompactView ? <span>使用者: {draft.serviceUser || '未設定'}</span> : null}
+                      {!isCompactView ? <span>プラン: {draft.planName || '未設定'}</span> : null}
+                      {!isCompactView ? <span>端末: {draft.deviceName || '未設定'}</span> : null}
                     </div>
                     <div className="badge-row">
                       <span className={deadlineStatus.className}>{deadlineStatus.label}</span>
                       {notificationReason ? <span className="badge badge--ok">通知理由: {notificationReason}</span> : null}
                       {draft.phoneNumber ? <span className="badge">電話番号: {maskPhoneNumber(draft.phoneNumber)}</span> : draft.last4 ? <span className="badge">下4桁: {draft.last4}</span> : null}
-                      {elapsedDays != null ? <span className="badge">契約経過: {elapsedDays}日</span> : null}
-                      {draft.contractEndDate ? <span className="badge">契約終了: {formatDate(draft.contractEndDate)}</span> : null}
-                      {relatedHistoryEntries.length > 0 ? <span className="badge badge--ok">関連履歴: {relatedHistoryEntries.length}件</span> : null}
+                      {!isCompactView && elapsedDays != null ? <span className="badge">契約経過: {elapsedDays}日</span> : null}
+                      {!isCompactView && draft.contractEndDate ? <span className="badge">契約終了: {formatDate(draft.contractEndDate)}</span> : null}
+                      {!isCompactView && relatedHistoryEntries.length > 0 ? <span className="badge badge--ok">関連履歴: {relatedHistoryEntries.length}件</span> : null}
                     </div>
                     <div className="button-row button-row--tight">
                       <button type="button" className="button" onClick={() => toggleExpanded(draft.id)}>
