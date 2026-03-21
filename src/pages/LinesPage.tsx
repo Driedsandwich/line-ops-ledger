@@ -117,6 +117,29 @@ const TIMELINE_VIEW_OPTIONS: Array<{ key: TimelineViewMode; label: string }> = [
   { key: 'active', label: '契約中中心' },
   { key: 'all', label: '過去契約含む' },
 ];
+const LINES_COMPACT_VIEW_STORAGE_KEY = 'line-ops-ledger.lines.compact-view';
+const LINES_FORM_COLLAPSED_STORAGE_KEY = 'line-ops-ledger.lines.form-collapsed';
+
+function readBooleanPreference(storageKey: string, fallback: boolean): boolean {
+  if (typeof window === 'undefined') {
+    return fallback;
+  }
+
+  const raw = window.localStorage.getItem(storageKey);
+  if (raw == null) {
+    return fallback;
+  }
+
+  return raw === 'true';
+}
+
+function writeBooleanPreference(storageKey: string, value: boolean): void {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  window.localStorage.setItem(storageKey, value ? 'true' : 'false');
+}
 
 function getNotificationReasonLabelFromParam(value: string | null): NotificationReasonLabel | 'all' {
   if (!value) {
@@ -596,14 +619,13 @@ export function LinesPage(): JSX.Element {
   const [undoState, setUndoState] = useState<UndoState | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
-  const [isCompactView, setIsCompactView] = useState(false);
-  const [isFormCollapsed, setIsFormCollapsed] = useState(false);
+  const [isCompactView, setIsCompactView] = useState(() => readBooleanPreference(LINES_COMPACT_VIEW_STORAGE_KEY, false));
+  const [isFormCollapsed, setIsFormCollapsed] = useState(() => readBooleanPreference(LINES_FORM_COLLAPSED_STORAGE_KEY, false));
   const historyImportInputRef = useRef<HTMLInputElement | null>(null);
 
   const notificationSettings = loadNotificationSettings();
   const notificationReasonFromQuery = getNotificationReasonLabelFromParam(searchParams.get('notificationReason'));
   const notificationTargetOnlyFromQuery = getNotificationTargetOnlyFromParam(searchParams.get('notificationTargetOnly'));
-  const devPullRequestLabel = import.meta.env.DEV ? 'PR pending' : null;
   const today = new Date();
 
   function resetMessages(): void {
@@ -672,6 +694,13 @@ export function LinesPage(): JSX.Element {
     }
 
     setSearchParams(nextParams, { replace: true });
+  }
+
+  function setContractActiveOnlyFilter(enabled: boolean): void {
+    setFilters((current) => ({
+      ...current,
+      contractActiveOnly: enabled,
+    }));
   }
 
   function focusRelatedHistory(phoneNumbers: string[]): void {
@@ -1211,9 +1240,17 @@ export function LinesPage(): JSX.Element {
 
   useEffect(() => {
     if (drafts.length > 0 && !editingId) {
-      setIsFormCollapsed(true);
+      setIsFormCollapsed((current) => current || readBooleanPreference(LINES_FORM_COLLAPSED_STORAGE_KEY, true));
     }
   }, [drafts.length, editingId]);
+
+  useEffect(() => {
+    writeBooleanPreference(LINES_COMPACT_VIEW_STORAGE_KEY, isCompactView);
+  }, [isCompactView]);
+
+  useEffect(() => {
+    writeBooleanPreference(LINES_FORM_COLLAPSED_STORAGE_KEY, isFormCollapsed);
+  }, [isFormCollapsed]);
 
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent): void {
@@ -1239,13 +1276,12 @@ export function LinesPage(): JSX.Element {
         <div>
           <p className="page__eyebrow">回線一覧 / 履歴管理</p>
           <h2>/lines</h2>
-          <p className="muted">回線ドラフトの追加・編集・履歴追跡を localStorage ベースで行います。数十件規模の巡回に備え、フォーム折りたたみとコンパクト表示を追加しています。</p>
+          <p className="muted">回線ドラフトの追加・編集・履歴追跡を localStorage ベースで行います。数十件規模の巡回に備え、表示状態の保持とクイック導線を追加しています。</p>
         </div>
         <div className="button-row button-row--tight" style={{ justifyContent: 'flex-end' }}>
           <button type="button" className={`button ${isCompactView ? 'button--primary' : ''}`} onClick={() => setIsCompactView((current) => !current)}>
             {isCompactView ? '通常表示に戻す' : 'コンパクト表示'}
           </button>
-          {devPullRequestLabel ? <span className="badge badge--ok">{devPullRequestLabel}</span> : null}
         </div>
       </header>
 
@@ -1444,10 +1480,31 @@ export function LinesPage(): JSX.Element {
               <input
                 type="checkbox"
                 checked={filters.contractActiveOnly}
-                onChange={(event) => updateFilter('contractActiveOnly', event.target.checked)}
+                onChange={(event) => setContractActiveOnlyFilter(event.target.checked)}
               />
               <span>契約中のみ</span>
             </label>
+          </div>
+
+          <div className="detail-panel">
+            <div className="card__header">
+              <h3>クイック巡回</h3>
+              <span className="badge">1タップ切替</span>
+            </div>
+            <div className="badge-row">
+              <button type="button" className={`button ${filters.contractActiveOnly ? 'button--primary' : ''}`} onClick={() => setContractActiveOnlyFilter(!filters.contractActiveOnly)}>
+                {filters.contractActiveOnly ? '契約中のみ: ON' : '契約中のみ'}
+              </button>
+              <button type="button" className={`button ${filters.notificationTargetOnly ? 'button--primary' : ''}`} onClick={() => setNotificationTargetOnlyFilter(!filters.notificationTargetOnly)}>
+                {filters.notificationTargetOnly ? '通知対象のみ: ON' : '通知対象のみ'}
+              </button>
+              <button type="button" className="button" onClick={() => {
+                setFilters(initialFilterState);
+                setSearchParams(new URLSearchParams(), { replace: true });
+              }}>
+                絞り込みをリセット
+              </button>
+            </div>
           </div>
 
           <div className="detail-panel">
