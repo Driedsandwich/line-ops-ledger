@@ -6,7 +6,7 @@ const navItems = [
   { to: '/settings', label: '設定' },
 ];
 
-const devProgressLabel = 'DEV / feat/optimize-lines-view-for-dozens / PR #70';
+const devProgressLabel = 'DEV / feat/persist-lines-view-preferences / PR pending';
 
 export function AppLayout(): JSX.Element {
   return (
