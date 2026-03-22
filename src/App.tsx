@@ -6,7 +6,7 @@ const navItems = [
   { to: '/settings', label: '設定' },
 ];
 
-const devProgressLabel = 'DEV / feat/draft-history-from-ledger-details / PR #74';
+const devProgressLabel = 'DEV / feat/extend-history-with-activity-log / PR #76';
 
 export function AppLayout(): JSX.Element {
   return (
