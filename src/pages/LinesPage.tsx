@@ -53,6 +53,9 @@ type LineHistoryFormState = {
   status: LineHistoryStatus;
   contractStartDate: string;
   contractEndDate: string;
+  activityDate: string;
+  activityType: string;
+  activityMemo: string;
   memo: string;
 };
 
@@ -107,6 +110,7 @@ const notificationReasonParamMap: Record<NotificationReasonParam, NotificationRe
 
 const CARRIER_OPTIONS = ['NTTドコモ', 'ahamo', 'au', 'UQ mobile', 'ソフトバンク', 'Y!mobile', 'LINEMO', '楽天モバイル', 'IIJmio', 'mineo', 'NUROモバイル', 'povo', 'irumo', 'その他'] as const;
 const PAYMENT_METHOD_OPTIONS = ['クレジットカード', '口座振替', '請求書', '家族合算', 'その他'] as const;
+const ACTIVITY_TYPE_OPTIONS = ['利用実績確認', '通信実施', '通話実施', 'SMS送信', '料金確認', 'プラン変更', 'その他'] as const;
 const TIMELINE_WINDOW_OPTIONS: Array<{ key: TimelineWindowKey; label: string }> = [
   { key: '3m', label: '3か月' },
   { key: '6m', label: '6か月' },
@@ -191,6 +195,9 @@ const initialLineHistoryFormState: LineHistoryFormState = {
   status: '利用中',
   contractStartDate: '',
   contractEndDate: '',
+  activityDate: '',
+  activityType: '利用実績確認',
+  activityMemo: '',
   memo: '',
 };
 
@@ -248,6 +255,15 @@ function calculateElapsedDays(value: string): number | null {
     return null;
   }
   return Math.max(diffInDays(date, new Date()), 0);
+}
+
+function calculateContractDurationDays(start: string, end: string): number | null {
+  const startDate = parseDate(start);
+  const endDate = parseDate(end);
+  if (!startDate || !endDate) {
+    return null;
+  }
+  return Math.max(diffInDays(startDate, endDate) + 1, 1);
 }
 
 function isCurrentContract(status: LineStatus): boolean {
@@ -558,6 +574,9 @@ function toLineHistoryFormState(entry: LineHistoryEntry): LineHistoryFormState {
     status: entry.status,
     contractStartDate: entry.contractStartDate,
     contractEndDate: entry.contractEndDate,
+    activityDate: entry.activityDate,
+    activityType: entry.activityType || '利用実績確認',
+    activityMemo: entry.activityMemo,
     memo: entry.memo,
   };
 }
@@ -748,6 +767,9 @@ export function LinesPage(): JSX.Element {
       status: toLineHistoryStatusFromDraftStatus(draft.status),
       contractStartDate: draft.contractStartDate,
       contractEndDate: draft.contractEndDate,
+      activityDate: '',
+      activityType: '利用実績確認',
+      activityMemo: '',
       memo: buildHistoryDraftMemo(draft),
     });
     historyFormSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -891,6 +913,9 @@ export function LinesPage(): JSX.Element {
           status: lineHistoryForm.status,
           contractStartDate: lineHistoryForm.contractStartDate,
           contractEndDate: lineHistoryForm.contractEndDate,
+          activityDate: lineHistoryForm.activityDate,
+          activityType: lineHistoryForm.activityType,
+          activityMemo: lineHistoryForm.activityMemo,
           memo: lineHistoryForm.memo,
         });
 
@@ -916,6 +941,9 @@ export function LinesPage(): JSX.Element {
         status: lineHistoryForm.status,
         contractStartDate: lineHistoryForm.contractStartDate,
         contractEndDate: lineHistoryForm.contractEndDate,
+        activityDate: lineHistoryForm.activityDate,
+        activityType: lineHistoryForm.activityType,
+        activityMemo: lineHistoryForm.activityMemo,
         memo: lineHistoryForm.memo,
       });
 
@@ -1756,7 +1784,7 @@ export function LinesPage(): JSX.Element {
             <h3>契約履歴の登録</h3>
             <span className="badge">{editingHistoryId ? '履歴編集中' : '電話番号単位'}</span>
           </div>
-          <p className="muted">過去契約や MNP 転出済みの履歴は、現在の回線一覧とは別に軽量な契約エピソードとして記録します。</p>
+          <p className="muted">過去契約や MNP 転出済みの履歴は、主台帳を補完する契約履歴・活動記録として保存します。</p>
           <form className="form-grid" onSubmit={handleLineHistorySubmit}>
             <label className="field">
               <span>電話番号 *</span>
@@ -1781,6 +1809,22 @@ export function LinesPage(): JSX.Element {
             <label className="field">
               <span>契約終了日</span>
               <input type="date" value={lineHistoryForm.contractEndDate} onChange={(event) => updateLineHistoryField('contractEndDate', event.target.value)} />
+            </label>
+            <label className="field">
+              <span>活動日</span>
+              <input type="date" value={lineHistoryForm.activityDate} onChange={(event) => updateLineHistoryField('activityDate', event.target.value)} />
+            </label>
+            <label className="field">
+              <span>活動種別</span>
+              <select value={lineHistoryForm.activityType} onChange={(event) => updateLineHistoryField('activityType', event.target.value)}>
+                {ACTIVITY_TYPE_OPTIONS.map((option) => (
+                  <option key={option} value={option}>{option}</option>
+                ))}
+              </select>
+            </label>
+            <label className="field field--full">
+              <span>活動メモ</span>
+              <textarea value={lineHistoryForm.activityMemo} onChange={(event) => updateLineHistoryField('activityMemo', event.target.value)} rows={2} placeholder="例: 発信テスト実施 / データ通信実施 / 請求確認" />
             </label>
             <label className="field field--full">
               <span>メモ</span>
@@ -1868,6 +1912,12 @@ export function LinesPage(): JSX.Element {
                           </div>
                           {previousEntry ? <p className="muted">直前の移動: {previousEntry.carrier} → {entry.carrier}</p> : null}
                           {entry.memo ? <p className="muted">{entry.memo}</p> : null}
+                          {entry.activityDate || entry.activityType || entry.activityMemo ? (
+                            <p className="muted">活動記録: {[entry.activityDate || '', entry.activityType || '', entry.activityMemo || ''].filter(Boolean).join(' / ')}</p>
+                          ) : null}
+                          {calculateContractDurationDays(entry.contractStartDate, entry.contractEndDate || '') != null ? (
+                            <p className="muted">契約維持日数: {calculateContractDurationDays(entry.contractStartDate, entry.contractEndDate || '')}日</p>
+                          ) : null}
                           {group.relatedDrafts.length > 0 ? (
                             <p className="muted">関連主台帳候補: {group.relatedDrafts.map((draft) => draft.lineName).join(' / ')}</p>
                           ) : null}
