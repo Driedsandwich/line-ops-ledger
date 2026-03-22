@@ -6,7 +6,7 @@ const navItems = [
   { to: '/settings', label: '設定' },
 ];
 
-const devProgressLabel = 'DEV / feat/extend-history-with-activity-log / PR #76';
+const devProgressLabel = 'DEV / feat/multi-activity-logs-in-history / PR pending';
 
 export function AppLayout(): JSX.Element {
   return (
