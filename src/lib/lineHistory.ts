@@ -1,7 +1,14 @@
 export const LINE_HISTORY_STATUS_OPTIONS = ['利用中', '解約予定', '解約済み', 'MNP転出済み'] as const;
-export const CURRENT_LINE_HISTORY_SCHEMA_VERSION = 2;
+export const CURRENT_LINE_HISTORY_SCHEMA_VERSION = 3;
 
 export type LineHistoryStatus = (typeof LINE_HISTORY_STATUS_OPTIONS)[number];
+
+export type LineHistoryActivityLog = {
+  id: string;
+  activityDate: string;
+  activityType: string;
+  activityMemo: string;
+};
 
 export type LineHistoryEntry = {
   id: string;
@@ -10,11 +17,15 @@ export type LineHistoryEntry = {
   status: LineHistoryStatus;
   contractStartDate: string;
   contractEndDate: string;
-  activityDate: string;
-  activityType: string;
-  activityMemo: string;
+  activityLogs: LineHistoryActivityLog[];
   memo: string;
   createdAt: string;
+};
+
+type LegacyLineHistoryEntry = Partial<LineHistoryEntry> & {
+  activityDate?: string;
+  activityType?: string;
+  activityMemo?: string;
 };
 
 type LineHistoryEnvelope = {
@@ -29,9 +40,12 @@ type LineHistoryInput = {
   status: LineHistoryStatus;
   contractStartDate: string;
   contractEndDate?: string;
-  activityDate?: string;
-  activityType?: string;
-  activityMemo?: string;
+  activityLogs?: Array<{
+    id?: string;
+    activityDate?: string;
+    activityType?: string;
+    activityMemo?: string;
+  }>;
   memo?: string;
 };
 
@@ -79,15 +93,54 @@ function normalizePhoneNumber(value: string | null | undefined): string {
   return digits.length >= 10 && digits.length <= 11 ? digits : '';
 }
 
-function normalizeLineHistoryEntry(input: Partial<LineHistoryEntry>): LineHistoryEntry | null {
+function normalizeActivityLog(input: {
+  id?: string;
+  activityDate?: string;
+  activityType?: string;
+  activityMemo?: string;
+}): LineHistoryActivityLog | null {
+  const activityDate = normalizeDate(input.activityDate);
+  const activityType = String(input.activityType ?? '').trim();
+  const activityMemo = String(input.activityMemo ?? '').trim();
+
+  if (!activityDate && !activityType && !activityMemo) {
+    return null;
+  }
+
+  return {
+    id: String(input.id ?? '').trim() || createId(),
+    activityDate,
+    activityType,
+    activityMemo,
+  };
+}
+
+function normalizeActivityLogs(input: LegacyLineHistoryEntry): LineHistoryActivityLog[] {
+  const logsFromArray = Array.isArray(input.activityLogs)
+    ? input.activityLogs
+        .map((log) => normalizeActivityLog(log))
+        .filter((log): log is LineHistoryActivityLog => log != null)
+    : [];
+
+  if (logsFromArray.length > 0) {
+    return logsFromArray;
+  }
+
+  const legacyLog = normalizeActivityLog({
+    activityDate: input.activityDate,
+    activityType: input.activityType,
+    activityMemo: input.activityMemo,
+  });
+
+  return legacyLog ? [legacyLog] : [];
+}
+
+function normalizeLineHistoryEntry(input: LegacyLineHistoryEntry): LineHistoryEntry | null {
   const phoneNumber = normalizePhoneNumber(input.phoneNumber);
   const carrier = String(input.carrier ?? '').trim();
   const status = isLineHistoryStatus(String(input.status ?? '')) ? (input.status as LineHistoryStatus) : null;
   const contractStartDate = normalizeDate(input.contractStartDate);
   const contractEndDate = normalizeDate(input.contractEndDate);
-  const activityDate = normalizeDate(input.activityDate);
-  const activityType = String(input.activityType ?? '').trim();
-  const activityMemo = String(input.activityMemo ?? '').trim();
   const memo = String(input.memo ?? '').trim();
   const createdAt = String(input.createdAt ?? '').trim() || new Date().toISOString();
   const id = String(input.id ?? '').trim() || createId();
@@ -103,9 +156,7 @@ function normalizeLineHistoryEntry(input: Partial<LineHistoryEntry>): LineHistor
     status,
     contractStartDate,
     contractEndDate,
-    activityDate,
-    activityType,
-    activityMemo,
+    activityLogs: normalizeActivityLogs(input),
     memo,
     createdAt,
   };
@@ -121,13 +172,13 @@ function parseStoredEntries(raw: string | null): LineHistoryEntry[] {
 
     if (Array.isArray(parsed)) {
       return parsed
-        .map((item) => normalizeLineHistoryEntry(item as Partial<LineHistoryEntry>))
+        .map((item) => normalizeLineHistoryEntry(item as LegacyLineHistoryEntry))
         .filter((item): item is LineHistoryEntry => item != null);
     }
 
     if (parsed && typeof parsed === 'object' && Array.isArray((parsed as LineHistoryEnvelope).items)) {
       return (parsed as LineHistoryEnvelope).items
-        .map((item) => normalizeLineHistoryEntry(item as Partial<LineHistoryEntry>))
+        .map((item) => normalizeLineHistoryEntry(item as LegacyLineHistoryEntry))
         .filter((item): item is LineHistoryEntry => item != null);
     }
 
@@ -159,9 +210,7 @@ export function createLineHistoryEntry(input: LineHistoryInput): LineHistoryEntr
     status: input.status,
     contractStartDate: input.contractStartDate,
     contractEndDate: input.contractEndDate,
-    activityDate: input.activityDate,
-    activityType: input.activityType,
-    activityMemo: input.activityMemo,
+    activityLogs: input.activityLogs,
     memo: input.memo,
     createdAt: new Date().toISOString(),
   });
