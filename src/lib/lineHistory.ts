@@ -1,4 +1,7 @@
-export type LineHistoryStatus = '利用中' | '解約予定' | '解約済み' | 'MNP転出済み';
+export const LINE_HISTORY_STATUS_OPTIONS = ['利用中', '解約予定', '解約済み', 'MNP転出済み'] as const;
+export const CURRENT_LINE_HISTORY_SCHEMA_VERSION = 2;
+
+export type LineHistoryStatus = (typeof LINE_HISTORY_STATUS_OPTIONS)[number];
 
 export type LineHistoryEntry = {
   id: string;
@@ -7,31 +10,54 @@ export type LineHistoryEntry = {
   status: LineHistoryStatus;
   contractStartDate: string;
   contractEndDate: string;
+  activityDate: string;
+  activityType: string;
+  activityMemo: string;
   memo: string;
   createdAt: string;
 };
 
-type HistoryEnvelope = {
+type LineHistoryEnvelope = {
   schemaVersion: number;
   updatedAt: string;
   items: LineHistoryEntry[];
 };
 
-const STORAGE_KEY = 'line-ops-ledger.line-history';
-const SCHEMA_VERSION = 1;
+type LineHistoryInput = {
+  phoneNumber: string;
+  carrier: string;
+  status: LineHistoryStatus;
+  contractStartDate: string;
+  contractEndDate?: string;
+  activityDate?: string;
+  activityType?: string;
+  activityMemo?: string;
+  memo?: string;
+};
 
-export const LINE_HISTORY_STATUS_OPTIONS: LineHistoryStatus[] = ['利用中', '解約予定', '解約済み', 'MNP転出済み'];
+export type LineHistoryStore = {
+  load: () => LineHistoryEntry[];
+  save: (entries: LineHistoryEntry[]) => void;
+  exportJson: () => string;
+  importJson: (raw: string) => LineHistoryEntry[];
+};
+
+const STORAGE_KEY = 'line-ops-ledger.line-history';
 
 function createId(): string {
-  return `history_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+  return globalThis.crypto?.randomUUID?.() ?? `line_history_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
 }
 
-function normalizeDate(value: string): string {
+function isLineHistoryStatus(value: string): value is LineHistoryStatus {
+  return LINE_HISTORY_STATUS_OPTIONS.includes(value as LineHistoryStatus);
+}
+
+function normalizeDate(value: string | null | undefined): string {
   if (!value) {
     return '';
   }
 
-  const trimmed = value.trim();
+  const trimmed = String(value).trim();
   if (!/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
     return '';
   }
@@ -41,47 +67,51 @@ function normalizeDate(value: string): string {
     return '';
   }
 
-  return trimmed;
+  const [year, month, day] = trimmed.split('-').map((part) => Number(part));
+  const isSameDate =
+    date.getFullYear() === year && date.getMonth() + 1 === month && date.getDate() === day;
+
+  return isSameDate ? trimmed : '';
 }
 
-function normalizePhoneNumber(value: string): string {
-  const digits = value.replace(/\D/g, '');
-  if (digits.length < 10 || digits.length > 11) {
-    return '';
-  }
-  return digits;
+function normalizePhoneNumber(value: string | null | undefined): string {
+  const digits = String(value ?? '').replace(/\D/g, '');
+  return digits.length >= 10 && digits.length <= 11 ? digits : '';
 }
 
-function isHistoryStatus(value: string): value is LineHistoryStatus {
-  return LINE_HISTORY_STATUS_OPTIONS.includes(value as LineHistoryStatus);
-}
+function normalizeLineHistoryEntry(input: Partial<LineHistoryEntry>): LineHistoryEntry | null {
+  const phoneNumber = normalizePhoneNumber(input.phoneNumber);
+  const carrier = String(input.carrier ?? '').trim();
+  const status = isLineHistoryStatus(String(input.status ?? '')) ? (input.status as LineHistoryStatus) : null;
+  const contractStartDate = normalizeDate(input.contractStartDate);
+  const contractEndDate = normalizeDate(input.contractEndDate);
+  const activityDate = normalizeDate(input.activityDate);
+  const activityType = String(input.activityType ?? '').trim();
+  const activityMemo = String(input.activityMemo ?? '').trim();
+  const memo = String(input.memo ?? '').trim();
+  const createdAt = String(input.createdAt ?? '').trim() || new Date().toISOString();
+  const id = String(input.id ?? '').trim() || createId();
 
-function normalizeEntry(input: Partial<LineHistoryEntry> & { phoneNumber: string; carrier: string }): LineHistoryEntry | null {
-  const phoneNumber = normalizePhoneNumber(input.phoneNumber ?? '');
-  const carrier = (input.carrier ?? '').trim();
-  const status = input.status && isHistoryStatus(input.status) ? input.status : '利用中';
-  const contractStartDate = normalizeDate(input.contractStartDate ?? '');
-  const contractEndDate = normalizeDate(input.contractEndDate ?? '');
-  const memo = (input.memo ?? '').trim();
-  const createdAt = input.createdAt && !Number.isNaN(new Date(input.createdAt).getTime()) ? input.createdAt : new Date().toISOString();
-
-  if (!phoneNumber || !carrier || !contractStartDate) {
+  if (!phoneNumber || !carrier || !status || !contractStartDate) {
     return null;
   }
 
   return {
-    id: input.id ?? createId(),
+    id,
     phoneNumber,
     carrier,
     status,
     contractStartDate,
     contractEndDate,
+    activityDate,
+    activityType,
+    activityMemo,
     memo,
     createdAt,
   };
 }
 
-function parseEnvelope(raw: string | null): LineHistoryEntry[] {
+function parseStoredEntries(raw: string | null): LineHistoryEntry[] {
   if (!raw) {
     return [];
   }
@@ -91,19 +121,14 @@ function parseEnvelope(raw: string | null): LineHistoryEntry[] {
 
     if (Array.isArray(parsed)) {
       return parsed
-        .map((item) => {
-          if (!item || typeof item !== 'object') {
-            return null;
-          }
-          return normalizeEntry(item as Partial<LineHistoryEntry> & { phoneNumber: string; carrier: string });
-        })
-        .filter((item): item is LineHistoryEntry => Boolean(item));
+        .map((item) => normalizeLineHistoryEntry(item as Partial<LineHistoryEntry>))
+        .filter((item): item is LineHistoryEntry => item != null);
     }
 
-    if (parsed && typeof parsed === 'object' && Array.isArray((parsed as HistoryEnvelope).items)) {
-      return (parsed as HistoryEnvelope).items
-        .map((item) => normalizeEntry(item))
-        .filter((item): item is LineHistoryEntry => Boolean(item));
+    if (parsed && typeof parsed === 'object' && Array.isArray((parsed as LineHistoryEnvelope).items)) {
+      return (parsed as LineHistoryEnvelope).items
+        .map((item) => normalizeLineHistoryEntry(item as Partial<LineHistoryEntry>))
+        .filter((item): item is LineHistoryEntry => item != null);
     }
 
     return [];
@@ -112,56 +137,62 @@ function parseEnvelope(raw: string | null): LineHistoryEntry[] {
   }
 }
 
-function buildEnvelope(items: LineHistoryEntry[]): HistoryEnvelope {
-  return {
-    schemaVersion: SCHEMA_VERSION,
-    updatedAt: new Date().toISOString(),
-    items,
-  };
-}
-
-function readStorage(): LineHistoryEntry[] {
-  if (typeof window === 'undefined') {
-    return [];
-  }
-  return parseEnvelope(window.localStorage.getItem(STORAGE_KEY));
-}
-
-function writeStorage(items: LineHistoryEntry[]): void {
+function saveEntries(entries: LineHistoryEntry[]): void {
   if (typeof window === 'undefined') {
     return;
   }
-  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(buildEnvelope(items)));
+
+  const envelope: LineHistoryEnvelope = {
+    schemaVersion: CURRENT_LINE_HISTORY_SCHEMA_VERSION,
+    updatedAt: new Date().toISOString(),
+    items: entries,
+  };
+
+  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(envelope));
 }
 
-export function createLineHistoryEntry(input: {
-  phoneNumber: string;
-  carrier: string;
-  status: LineHistoryStatus;
-  contractStartDate: string;
-  contractEndDate: string;
-  memo: string;
-}): LineHistoryEntry {
-  const normalized = normalizeEntry(input);
-  if (!normalized) {
-    throw new Error('invalid line history entry');
+export function createLineHistoryEntry(input: LineHistoryInput): LineHistoryEntry {
+  const next = normalizeLineHistoryEntry({
+    id: createId(),
+    phoneNumber: input.phoneNumber,
+    carrier: input.carrier,
+    status: input.status,
+    contractStartDate: input.contractStartDate,
+    contractEndDate: input.contractEndDate,
+    activityDate: input.activityDate,
+    activityType: input.activityType,
+    activityMemo: input.activityMemo,
+    memo: input.memo,
+    createdAt: new Date().toISOString(),
+  });
+
+  if (!next) {
+    throw new Error('INVALID_LINE_HISTORY_ENTRY');
   }
-  return normalized;
+
+  return next;
 }
 
-export const lineHistoryStore = {
+export const lineHistoryStore: LineHistoryStore = {
   load(): LineHistoryEntry[] {
-    return readStorage();
+    if (typeof window === 'undefined') {
+      return [];
+    }
+
+    return parseStoredEntries(window.localStorage.getItem(STORAGE_KEY));
   },
-  save(items: LineHistoryEntry[]): void {
-    writeStorage(items);
+
+  save(entries: LineHistoryEntry[]): void {
+    saveEntries(entries);
   },
+
   exportJson(): string {
-    return JSON.stringify(buildEnvelope(readStorage()), null, 2);
+    return JSON.stringify(this.load(), null, 2);
   },
+
   importJson(raw: string): LineHistoryEntry[] {
-    const items = parseEnvelope(raw);
-    writeStorage(items);
-    return items;
+    const entries = parseStoredEntries(raw);
+    saveEntries(entries);
+    return entries;
   },
 };
