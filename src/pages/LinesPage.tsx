@@ -19,6 +19,7 @@ import {
   createLineHistoryEntry,
   lineHistoryStore,
   LINE_HISTORY_STATUS_OPTIONS,
+  type LineHistoryActivityLog,
   type LineHistoryEntry,
   type LineHistoryStatus,
 } from '../lib/lineHistory';
@@ -47,15 +48,20 @@ type FormState = {
   nextReviewDate: string;
 };
 
+type LineHistoryActivityLogFormState = {
+  id: string;
+  activityDate: string;
+  activityType: string;
+  activityMemo: string;
+};
+
 type LineHistoryFormState = {
   phoneNumber: string;
   carrier: string;
   status: LineHistoryStatus;
   contractStartDate: string;
   contractEndDate: string;
-  activityDate: string;
-  activityType: string;
-  activityMemo: string;
+  activityLogs: LineHistoryActivityLogFormState[];
   memo: string;
 };
 
@@ -123,6 +129,33 @@ const TIMELINE_VIEW_OPTIONS: Array<{ key: TimelineViewMode; label: string }> = [
 ];
 const LINES_COMPACT_VIEW_STORAGE_KEY = 'line-ops-ledger.lines.compact-view';
 const LINES_FORM_COLLAPSED_STORAGE_KEY = 'line-ops-ledger.lines.form-collapsed';
+const DEFAULT_ACTIVITY_TYPE = '利用実績確認';
+
+function createActivityLogFormState(overrides?: Partial<LineHistoryActivityLogFormState>): LineHistoryActivityLogFormState {
+  return {
+    id: globalThis.crypto?.randomUUID?.() ?? `activity_log_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`,
+    activityDate: '',
+    activityType: DEFAULT_ACTIVITY_TYPE,
+    activityMemo: '',
+    ...overrides,
+  };
+}
+
+function toActivityLogFormStates(activityLogs: LineHistoryActivityLog[]): LineHistoryActivityLogFormState[] {
+  if (activityLogs.length === 0) {
+    return [createActivityLogFormState()];
+  }
+
+  return activityLogs.map((activityLog) =>
+    createActivityLogFormState({
+      id: activityLog.id,
+      activityDate: activityLog.activityDate,
+      activityType: activityLog.activityType || DEFAULT_ACTIVITY_TYPE,
+      activityMemo: activityLog.activityMemo,
+    }),
+  );
+}
+
 
 function readBooleanPreference(storageKey: string, fallback: boolean): boolean {
   if (typeof window === 'undefined') {
@@ -195,9 +228,7 @@ const initialLineHistoryFormState: LineHistoryFormState = {
   status: '利用中',
   contractStartDate: '',
   contractEndDate: '',
-  activityDate: '',
-  activityType: '利用実績確認',
-  activityMemo: '',
+  activityLogs: [createActivityLogFormState()],
   memo: '',
 };
 
@@ -255,15 +286,6 @@ function calculateElapsedDays(value: string): number | null {
     return null;
   }
   return Math.max(diffInDays(date, new Date()), 0);
-}
-
-function calculateContractDurationDays(start: string, end: string): number | null {
-  const startDate = parseDate(start);
-  const endDate = parseDate(end);
-  if (!startDate || !endDate) {
-    return null;
-  }
-  return Math.max(diffInDays(startDate, endDate) + 1, 1);
 }
 
 function isCurrentContract(status: LineStatus): boolean {
@@ -528,23 +550,6 @@ function downloadJson(filename: string, content: string): void {
   URL.revokeObjectURL(url);
 }
 
-function toLineHistoryStatusFromDraftStatus(status: LineStatus): LineHistoryStatus {
-  if (status === '解約済み' || status === 'MNP転出済み') {
-    return status;
-  }
-
-  return status;
-}
-
-function buildHistoryDraftMemo(draft: LineDraft): string {
-  const memoParts = [
-    draft.lineName ? `主台帳: ${draft.lineName}` : '',
-    draft.memo ? `主台帳メモ: ${draft.memo}` : '',
-  ].filter(Boolean);
-
-  return memoParts.join(' / ');
-}
-
 function toFormState(draft: LineDraft): FormState {
   return {
     lineName: draft.lineName,
@@ -574,11 +579,40 @@ function toLineHistoryFormState(entry: LineHistoryEntry): LineHistoryFormState {
     status: entry.status,
     contractStartDate: entry.contractStartDate,
     contractEndDate: entry.contractEndDate,
-    activityDate: entry.activityDate,
-    activityType: entry.activityType || '利用実績確認',
-    activityMemo: entry.activityMemo,
+    activityLogs: toActivityLogFormStates(entry.activityLogs),
     memo: entry.memo,
   };
+}
+
+function calculateContractDurationDays(contractStartDate: string, contractEndDate: string): number | null {
+  const start = parseDate(contractStartDate);
+  const end = parseDate(contractEndDate);
+  if (!start || !end) {
+    return null;
+  }
+  return Math.max(diffInDays(start, end), 0);
+}
+
+function toLineHistoryStatusFromDraftStatus(status: LineStatus): LineHistoryStatus {
+  if (status === '利用中' || status === '解約予定' || status === '解約済み' || status === 'MNP転出済み') {
+    return status;
+  }
+
+  return '利用中';
+}
+
+function buildHistoryDraftMemo(draft: LineDraft): string {
+  const parts: string[] = [];
+
+  if (draft.lineName.trim()) {
+    parts.push(`主台帳から下書きを作成: ${draft.lineName.trim()}`);
+  }
+
+  if (draft.memo.trim()) {
+    parts.push(draft.memo.trim());
+  }
+
+  return parts.join(' / ');
 }
 
 function getDeadlineStatus(value: string): DeadlineStatus {
@@ -692,6 +726,32 @@ export function LinesPage(): JSX.Element {
     setLineHistoryForm((current) => ({ ...current, [key]: value }));
   }
 
+  function updateActivityLogField(id: string, key: keyof LineHistoryActivityLogFormState, value: string): void {
+    setLineHistoryForm((current) => ({
+      ...current,
+      activityLogs: current.activityLogs.map((activityLog) =>
+        activityLog.id === id ? { ...activityLog, [key]: value } : activityLog,
+      ),
+    }));
+  }
+
+  function addActivityLogField(): void {
+    setLineHistoryForm((current) => ({
+      ...current,
+      activityLogs: [...current.activityLogs, createActivityLogFormState()],
+    }));
+  }
+
+  function removeActivityLogField(id: string): void {
+    setLineHistoryForm((current) => {
+      const nextLogs = current.activityLogs.filter((activityLog) => activityLog.id !== id);
+      return {
+        ...current,
+        activityLogs: nextLogs.length > 0 ? nextLogs : [createActivityLogFormState()],
+      };
+    });
+  }
+
   function updateFilter<K extends keyof FilterState>(key: K, value: FilterState[K]): void {
     setFilters((current) => ({ ...current, [key]: value }));
   }
@@ -756,24 +816,6 @@ export function LinesPage(): JSX.Element {
   function resetLineHistoryForm(): void {
     setLineHistoryForm(initialLineHistoryFormState);
     setEditingHistoryId(null);
-  }
-
-  function handleCreateHistoryDraftFromLedger(draft: LineDraft): void {
-    resetMessages();
-    setEditingHistoryId(null);
-    setLineHistoryForm({
-      phoneNumber: draft.phoneNumber,
-      carrier: draft.carrier,
-      status: toLineHistoryStatusFromDraftStatus(draft.status),
-      contractStartDate: draft.contractStartDate,
-      contractEndDate: draft.contractEndDate,
-      activityDate: '',
-      activityType: '利用実績確認',
-      activityMemo: '',
-      memo: buildHistoryDraftMemo(draft),
-    });
-    historyFormSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    setSuccessMessage('契約履歴フォームへ下書きを反映しました。内容を確認してから保存してください。');
   }
 
   function handleExportLineHistory(): void {
@@ -899,6 +941,15 @@ export function LinesPage(): JSX.Element {
     resetMessages();
 
     try {
+      const normalizedActivityLogs = lineHistoryForm.activityLogs
+        .map((activityLog) => ({
+          id: activityLog.id,
+          activityDate: activityLog.activityDate,
+          activityType: activityLog.activityType,
+          activityMemo: activityLog.activityMemo,
+        }))
+        .filter((activityLog) => activityLog.activityDate || activityLog.activityType || activityLog.activityMemo);
+
       if (editingHistoryId) {
         const current = lineHistoryEntries.find((entry) => entry.id === editingHistoryId);
         if (!current) {
@@ -913,9 +964,7 @@ export function LinesPage(): JSX.Element {
           status: lineHistoryForm.status,
           contractStartDate: lineHistoryForm.contractStartDate,
           contractEndDate: lineHistoryForm.contractEndDate,
-          activityDate: lineHistoryForm.activityDate,
-          activityType: lineHistoryForm.activityType,
-          activityMemo: lineHistoryForm.activityMemo,
+          activityLogs: normalizedActivityLogs,
           memo: lineHistoryForm.memo,
         });
 
@@ -941,9 +990,7 @@ export function LinesPage(): JSX.Element {
         status: lineHistoryForm.status,
         contractStartDate: lineHistoryForm.contractStartDate,
         contractEndDate: lineHistoryForm.contractEndDate,
-        activityDate: lineHistoryForm.activityDate,
-        activityType: lineHistoryForm.activityType,
-        activityMemo: lineHistoryForm.activityMemo,
+        activityLogs: normalizedActivityLogs,
         memo: lineHistoryForm.memo,
       });
 
@@ -960,7 +1007,6 @@ export function LinesPage(): JSX.Element {
     setEditingHistoryId(entry.id);
     setLineHistoryForm(toLineHistoryFormState(entry));
     setIsFormCollapsed(false);
-    historyFormSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
   function handleDeleteLineHistory(entryId: string): void {
@@ -1027,6 +1073,23 @@ export function LinesPage(): JSX.Element {
     setForm(toFormState(draft));
     setExpandedIds((current) => (current.includes(draft.id) ? current : [...current, draft.id]));
     setIsFormCollapsed(false);
+  }
+
+  function handleCreateHistoryDraftFromLedger(draft: LineDraft): void {
+    resetMessages();
+    setEditingHistoryId(null);
+    setLineHistoryForm({
+      phoneNumber: draft.phoneNumber,
+      carrier: draft.carrier,
+      status: toLineHistoryStatusFromDraftStatus(draft.status),
+      contractStartDate: draft.contractStartDate,
+      contractEndDate: draft.contractEndDate,
+      activityLogs: [createActivityLogFormState()],
+      memo: buildHistoryDraftMemo(draft),
+    });
+    setTimelinePhoneFilter(null);
+    setSuccessMessage('契約履歴フォームに下書きを入れました。必要に応じて編集して保存してください。');
+    historyFormSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
   function handleDelete(draftId: string): void {
@@ -1583,7 +1646,8 @@ export function LinesPage(): JSX.Element {
                   key={reason}
                   type="button"
                   className={`button ${filters.notificationReason === reason ? 'button--primary' : ''}`}
-                  onClick={() => setNotificationReasonFilter(reason)}>
+                  onClick={() => setNotificationReasonFilter(reason)}
+                >
                   {reason} {notificationSummary.counts[reason]}
                 </button>
               ))}
@@ -1741,17 +1805,18 @@ export function LinesPage(): JSX.Element {
                             <dd>{draft.status}</dd>
                           </div>
                         </div>
-                        <div className="button-row button-row--tight" style={{ marginTop: '0.75rem' }}>
-                          <button type="button" className="button button--primary" onClick={() => handleCreateHistoryDraftFromLedger(draft)}>
-                            履歴下書きを作る
-                          </button>
-                        </div>
                         <div className="detail-panel" style={{ marginTop: '1rem' }}>
                           <div className="card__header">
                             <h3>関連履歴候補</h3>
                             <span className="badge">{relatedHistoryEntries.length}件</span>
                           </div>
                           <p className="muted">電話番号全文がある場合は全文一致を優先し、旧データで電話番号が未設定の回線だけ下4桁一致を補助的に使います。</p>
+                          <div className="button-row button-row--tight" style={{ marginTop: '0.75rem' }}>
+                            <button type="button" className="button" onClick={() => handleCreateHistoryDraftFromLedger(draft)} disabled={!draft.phoneNumber}>
+                              履歴下書きを作る
+                            </button>
+                          </div>
+                          {!draft.phoneNumber ? <p className="muted">電話番号が未設定の回線は履歴下書きを作れません。</p> : null}
                           {relatedHistoryEntries.length === 0 ? (
                             <p className="muted">関連履歴候補はまだありません。</p>
                           ) : (
@@ -1784,7 +1849,7 @@ export function LinesPage(): JSX.Element {
             <h3>契約履歴の登録</h3>
             <span className="badge">{editingHistoryId ? '履歴編集中' : '電話番号単位'}</span>
           </div>
-          <p className="muted">過去契約や MNP 転出済みの履歴は、主台帳を補完する契約履歴・活動記録として保存します。</p>
+          <p className="muted">過去契約や MNP 転出済みの履歴は、現在の回線一覧とは別に軽量な契約エピソードとして記録します。</p>
           <form className="form-grid" onSubmit={handleLineHistorySubmit}>
             <label className="field">
               <span>電話番号 *</span>
@@ -1810,22 +1875,42 @@ export function LinesPage(): JSX.Element {
               <span>契約終了日</span>
               <input type="date" value={lineHistoryForm.contractEndDate} onChange={(event) => updateLineHistoryField('contractEndDate', event.target.value)} />
             </label>
-            <label className="field">
-              <span>活動日</span>
-              <input type="date" value={lineHistoryForm.activityDate} onChange={(event) => updateLineHistoryField('activityDate', event.target.value)} />
-            </label>
-            <label className="field">
-              <span>活動種別</span>
-              <select value={lineHistoryForm.activityType} onChange={(event) => updateLineHistoryField('activityType', event.target.value)}>
-                {ACTIVITY_TYPE_OPTIONS.map((option) => (
-                  <option key={option} value={option}>{option}</option>
+            <div className="detail-panel field--full" style={{ marginTop: '0.5rem' }}>
+              <div className="card__header">
+                <h3>活動ログ</h3>
+                <button type="button" className="button" onClick={addActivityLogField}>活動ログを追加</button>
+              </div>
+              <div className="stack" style={{ gap: '0.75rem' }}>
+                {lineHistoryForm.activityLogs.map((activityLog, index) => (
+                  <div key={activityLog.id} className="detail-panel" style={{ margin: 0 }}>
+                    <div className="card__header">
+                      <h3>活動ログ {index + 1}</h3>
+                      <button type="button" className="button button--danger" onClick={() => removeActivityLogField(activityLog.id)}>
+                        このログを削除
+                      </button>
+                    </div>
+                    <div className="form-grid">
+                      <label className="field">
+                        <span>活動日</span>
+                        <input type="date" value={activityLog.activityDate} onChange={(event) => updateActivityLogField(activityLog.id, 'activityDate', event.target.value)} />
+                      </label>
+                      <label className="field">
+                        <span>活動種別</span>
+                        <select value={activityLog.activityType} onChange={(event) => updateActivityLogField(activityLog.id, 'activityType', event.target.value)}>
+                          {ACTIVITY_TYPE_OPTIONS.map((option) => (
+                            <option key={option} value={option}>{option}</option>
+                          ))}
+                        </select>
+                      </label>
+                      <label className="field field--full">
+                        <span>活動メモ</span>
+                        <textarea value={activityLog.activityMemo} onChange={(event) => updateActivityLogField(activityLog.id, 'activityMemo', event.target.value)} rows={2} placeholder="例: 発信テスト実施 / データ通信実施 / 請求確認" />
+                      </label>
+                    </div>
+                  </div>
                 ))}
-              </select>
-            </label>
-            <label className="field field--full">
-              <span>活動メモ</span>
-              <textarea value={lineHistoryForm.activityMemo} onChange={(event) => updateLineHistoryField('activityMemo', event.target.value)} rows={2} placeholder="例: 発信テスト実施 / データ通信実施 / 請求確認" />
-            </label>
+              </div>
+            </div>
             <label className="field field--full">
               <span>メモ</span>
               <textarea value={lineHistoryForm.memo} onChange={(event) => updateLineHistoryField('memo', event.target.value)} rows={3} placeholder="例: au から LINEMO へ MNP など" />
@@ -1912,8 +1997,20 @@ export function LinesPage(): JSX.Element {
                           </div>
                           {previousEntry ? <p className="muted">直前の移動: {previousEntry.carrier} → {entry.carrier}</p> : null}
                           {entry.memo ? <p className="muted">{entry.memo}</p> : null}
-                          {entry.activityDate || entry.activityType || entry.activityMemo ? (
-                            <p className="muted">活動記録: {[entry.activityDate || '', entry.activityType || '', entry.activityMemo || ''].filter(Boolean).join(' / ')}</p>
+                          {entry.activityLogs.length > 0 ? (
+                            <div className="detail-panel" style={{ marginTop: '0.5rem', marginBottom: '0.5rem' }}>
+                              <div className="card__header">
+                                <h3>活動ログ</h3>
+                                <span className="badge">{entry.activityLogs.length}件</span>
+                              </div>
+                              <div className="stack" style={{ gap: '0.5rem' }}>
+                                {entry.activityLogs.map((activityLog, activityIndex) => (
+                                  <p key={activityLog.id} className="muted">
+                                    {activityIndex + 1}. {[activityLog.activityDate || '', activityLog.activityType || '', activityLog.activityMemo || ''].filter(Boolean).join(' / ') || '未記入'}
+                                  </p>
+                                ))}
+                              </div>
+                            </div>
                           ) : null}
                           {calculateContractDurationDays(entry.contractStartDate, entry.contractEndDate || '') != null ? (
                             <p className="muted">契約維持日数: {calculateContractDurationDays(entry.contractStartDate, entry.contractEndDate || '')}日</p>
