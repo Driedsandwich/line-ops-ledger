@@ -1112,6 +1112,23 @@ export function LinesPage(): JSX.Element {
     historyFormSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
+  function handleQuickActivityLog(draft: LineDraft): void {
+    resetMessages();
+    setEditingHistoryId(null);
+    setLineHistoryForm({
+      phoneNumber: draft.phoneNumber,
+      carrier: draft.carrier,
+      status: toLineHistoryStatusFromDraftStatus(draft.status),
+      contractStartDate: draft.contractStartDate,
+      contractEndDate: draft.contractEndDate,
+      activityLogs: [createActivityLogFormState({ activityDate: today.toISOString().slice(0, 10) })],
+      memo: '',
+    });
+    setTimelinePhoneFilter(null);
+    setSuccessMessage('今日の活動ログ下書きを入れました。種別・メモを確認して保存してください。');
+    historyFormSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
   function handleDelete(draftId: string): void {
     resetMessages();
     const nextDrafts = drafts.filter((draft) => draft.id !== draftId);
@@ -1837,6 +1854,9 @@ export function LinesPage(): JSX.Element {
                           </div>
                           <p className="muted">電話番号全文がある場合は全文一致を優先し、旧データで電話番号が未設定の回線だけ下4桁一致を補助的に使います。</p>
                           <div className="button-row button-row--tight" style={{ marginTop: '0.75rem' }}>
+                            <button type="button" className="button" onClick={() => handleQuickActivityLog(draft)} disabled={!draft.phoneNumber}>
+                              今日の活動を記録
+                            </button>
                             <button type="button" className="button" onClick={() => handleCreateHistoryDraftFromLedger(draft)} disabled={!draft.phoneNumber}>
                               履歴下書きを作る
                             </button>
