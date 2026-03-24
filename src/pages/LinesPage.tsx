@@ -480,6 +480,15 @@ function formatDate(value: string): string {
   }).format(date);
 }
 
+function getLatestActivityDate(activityLogs: LineHistoryActivityLog[]): string | null {
+  const dated = activityLogs.filter((log) => log.activityDate);
+  if (dated.length === 0) return null;
+  return dated.reduce((latest, log) =>
+    log.activityDate > latest ? log.activityDate : latest,
+    dated[0].activityDate,
+  );
+}
+
 function formatMonthlyCost(value: number | null): string {
   if (value == null) {
     return '未設定';
@@ -1995,6 +2004,11 @@ export function LinesPage(): JSX.Element {
                             <span>開始: {formatDate(entry.contractStartDate)}</span>
                             <span>終了: {entry.contractEndDate ? formatDate(entry.contractEndDate) : '継続中'}</span>
                           </div>
+                          {getLatestActivityDate(entry.activityLogs) != null ? (
+                            <div className="badge-row" style={{ marginTop: '0.25rem' }}>
+                              <span className="badge">最終活動: {formatDate(getLatestActivityDate(entry.activityLogs)!)}</span>
+                            </div>
+                          ) : null}
                           {previousEntry ? <p className="muted">直前の移動: {previousEntry.carrier} → {entry.carrier}</p> : null}
                           {entry.memo ? <p className="muted">{entry.memo}</p> : null}
                           {entry.activityLogs.length > 0 ? (
@@ -2004,11 +2018,17 @@ export function LinesPage(): JSX.Element {
                                 <span className="badge">{entry.activityLogs.length}件</span>
                               </div>
                               <div className="stack" style={{ gap: '0.5rem' }}>
-                                {entry.activityLogs.map((activityLog, activityIndex) => (
-                                  <p key={activityLog.id} className="muted">
-                                    {activityIndex + 1}. {[activityLog.activityDate || '', activityLog.activityType || '', activityLog.activityMemo || ''].filter(Boolean).join(' / ') || '未記入'}
-                                  </p>
-                                ))}
+                                {[...entry.activityLogs]
+                                  .sort((a, b) => (b.activityDate || '').localeCompare(a.activityDate || ''))
+                                  .map((activityLog) => (
+                                    <div key={activityLog.id}>
+                                      <div className="badge-row" style={{ marginBottom: '0.25rem' }}>
+                                        {activityLog.activityDate ? <span className="badge">{formatDate(activityLog.activityDate)}</span> : null}
+                                        {activityLog.activityType ? <span className="badge badge--ok">{activityLog.activityType}</span> : null}
+                                      </div>
+                                      {activityLog.activityMemo ? <p className="muted" style={{ margin: 0 }}>{activityLog.activityMemo}</p> : null}
+                                    </div>
+                                  ))}
                               </div>
                             </div>
                           ) : null}
