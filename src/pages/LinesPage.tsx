@@ -489,6 +489,17 @@ function getLatestActivityDate(activityLogs: LineHistoryActivityLog[]): string |
   );
 }
 
+function getLatestActivityDateFromHistoryEntries(entries: LineHistoryEntry[]): string | null {
+  let latest: string | null = null;
+  for (const entry of entries) {
+    const date = getLatestActivityDate(entry.activityLogs);
+    if (date != null && (latest == null || date > latest)) {
+      latest = date;
+    }
+  }
+  return latest;
+}
+
 function formatMonthlyCost(value: number | null): string {
   if (value == null) {
     return '未設定';
@@ -1705,6 +1716,7 @@ export function LinesPage(): JSX.Element {
                 const isExpanded = expandedIds.includes(draft.id);
                 const elapsedDays = calculateElapsedDays(draft.contractStartDate);
                 const relatedHistoryEntries = findRelatedHistoryEntries(draft, lineHistoryEntries);
+                const latestActivityDate = getLatestActivityDateFromHistoryEntries(relatedHistoryEntries);
                 const relatedPhoneNumbers = Array.from(new Set(relatedHistoryEntries.map((entry) => entry.phoneNumber)));
 
                 return (
@@ -1812,6 +1824,10 @@ export function LinesPage(): JSX.Element {
                           <div>
                             <dt>契約状態</dt>
                             <dd>{draft.status}</dd>
+                          </div>
+                          <div>
+                            <dt>最終活動日</dt>
+                            <dd>{latestActivityDate != null ? formatDate(latestActivityDate) : '記録なし'}</dd>
                           </div>
                         </div>
                         <div className="detail-panel" style={{ marginTop: '1rem' }}>

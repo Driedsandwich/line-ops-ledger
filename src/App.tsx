@@ -6,7 +6,7 @@ const navItems = [
   { to: '/settings', label: '設定' },
 ];
 
-const devProgressLabel = 'DEV / feat/activity-log-display-improvement / PR #80';
+const devProgressLabel = 'DEV / feat/latest-activity-in-line-detail / PR #82';
 
 export function AppLayout(): JSX.Element {
   return (
