@@ -6,7 +6,7 @@ const navItems = [
   { to: '/settings', label: '設定' },
 ];
 
-const devProgressLabel = 'DEV / fix/sw-cache-bust / Issue #93';
+const devProgressLabel = 'DEV / fix/code-review-bugs / Issue #95';
 
 export function AppLayout(): JSX.Element {
   return (

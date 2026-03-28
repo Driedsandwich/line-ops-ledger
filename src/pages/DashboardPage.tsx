@@ -268,10 +268,10 @@ function buildSummary(drafts: LineDraft[], allHistoryEntries: LineHistoryEntry[]
     if (diff === 0) {
       todayCount += 1;
     }
-    if (diff >= 0 && diff <= 3) {
+    if (diff >= 1 && diff <= 3) {
       within3Days += 1;
     }
-    if (diff >= 0 && diff <= 7) {
+    if (diff >= 4 && diff <= 7) {
       within7Days += 1;
     }
     if (isNotificationTarget(diff, reminderWindow)) {
@@ -389,11 +389,11 @@ export function DashboardPage(): JSX.Element {
               <strong>{summary.todayCount}件</strong>
             </div>
             <div className="stat-box">
-              <span>3日以内</span>
+              <span>1〜3日</span>
               <strong>{summary.within3Days}件</strong>
             </div>
             <div className="stat-box">
-              <span>7日以内</span>
+              <span>4〜7日</span>
               <strong>{summary.within7Days}件</strong>
             </div>
           </div>
