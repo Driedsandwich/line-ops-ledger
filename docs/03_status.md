@@ -2,28 +2,22 @@
 
 ## 現在地
 - private repo 作成済み
-- Bootstrap Issue: #1
-- Context Hub Issue: #2
-- Merged PR: #3
-- Merged PR: #5
-- Merged PR: #7
-- Merged PR: #9
-- Merged PR: #11
-- Merged PR: #13
-- Merged PR: #15
-- Merged PR: #17
-- Merged PR: #19
-- Merged PR: #21
-- Merged PR: #23
-- Merged PR: #25
-- Issue #26 の実装として、`/lines` の行詳細の開閉を追加中
+- Bootstrap Issue: #1 (open / DO NOT CLOSE)
+- Context Hub Issue: #2 (open / DO NOT CLOSE)
+- 直近マージ済み PR: #88〜#103（ソート・ダッシュボード強化・SWキャッシュ修正など）
+- オープン Issue: #1, #2 のみ（永続存続）
 
-## 次の3つ
-1. Issue #26 の PR をレビュー可能な状態で作成する
-2. 表示確認後、次Issueを「正式スキーマ整理と保存層の段階移行」に固定する
-3. workflow 実行状況を見て required checks を最小構成で検討する
+## 実装済み主要機能
+- 回線一覧：検索・フィルタ・ソート（URLパラメータ対応）・一括操作
+- 履歴タイムライン：複数活動ログ・編集削除・期間フィルタ
+- ダッシュボード：通知サマリー・契約終了アラート・長期未活動カード
+- Service Worker：開発環境無効化・本番ネットワークファースト・ビルド時キャッシュバスト
+
+## 次の3つ（候補）
+1. ダッシュボード「長期未活動の回線」から直接「活動を記録」できるボタンを追加（Issue 新規）
+2. 活動記録後に「次回確認日を更新しますか？」サジェスト表示
+3. 主台帳＋履歴を1ファイルにまとめた統合エクスポート
 
 ## 確認方法
-- `/lines` で `詳細を開く` / `詳細を閉じる` が見える
-- 展開時に詳細情報が見える
-- `/` と `/settings` の既存機能が壊れていない
+- `npm run dev` で起動し `/` `/lines` `/settings` の基本動作を確認
+- `/lines?sort=latestActivityAsc` でソートが「最終活動日が古い順」で初期化されること

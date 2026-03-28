@@ -1418,6 +1418,16 @@ export function LinesPage(): JSX.Element {
     }));
   }, [notificationReasonFromQuery, notificationTargetOnlyFromQuery]);
 
+  const quickActivityParam = searchParams.get('quickActivity');
+  useEffect(() => {
+    if (!quickActivityParam) return;
+    const target = drafts.find((d) => d.phoneNumber === quickActivityParam);
+    if (target) {
+      handleQuickActivityLog(target);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [quickActivityParam]);
+
   useEffect(() => {
     setSelectedIds((current) => current.filter((id) => drafts.some((draft) => draft.id === id)));
     setExpandedIds((current) => current.filter((id) => drafts.some((draft) => draft.id === id)));
