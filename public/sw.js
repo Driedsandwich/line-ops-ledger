@@ -1,4 +1,4 @@
-const CACHE_NAME = 'line-ops-ledger-v1';
+const CACHE_NAME = 'line-ops-ledger-__SW_CACHE_VERSION__';
 const APP_SHELL = ['/', '/offline.html', '/manifest.webmanifest', '/icon.svg'];
 
 self.addEventListener('install', (event) => {
@@ -28,6 +28,7 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
+  // ナビゲーションリクエスト: network-first（オフライン時のみ fallback）
   if (event.request.mode === 'navigate') {
     event.respondWith(
       fetch(event.request).catch(() => caches.match('/') || caches.match('/offline.html')),
@@ -39,6 +40,24 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
+  // JS/CSS アセット（ハッシュ付きファイル名）: network-first でキャッシュに頼らない
+  if (url.pathname.startsWith('/assets/')) {
+    event.respondWith(
+      fetch(event.request)
+        .then((response) => {
+          if (!response || response.status !== 200 || response.type !== 'basic') {
+            return response;
+          }
+          const copy = response.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
+          return response;
+        })
+        .catch(() => caches.match(event.request)),
+    );
+    return;
+  }
+
+  // その他の静的ファイル（manifest, icon など）: cache-first
   event.respondWith(
     caches.match(event.request).then((cached) => {
       if (cached) return cached;

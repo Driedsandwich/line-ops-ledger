@@ -20,6 +20,10 @@ const router = createBrowserRouter([
 ]);
 
 async function registerServiceWorker(): Promise<void> {
+  if (import.meta.env.DEV) {
+    return;
+  }
+
   if ('serviceWorker' in navigator) {
     try {
       await navigator.serviceWorker.register('/sw.js');
