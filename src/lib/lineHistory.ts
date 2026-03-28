@@ -22,10 +22,11 @@ export type LineHistoryEntry = {
   createdAt: string;
 };
 
-type LegacyLineHistoryEntry = Partial<LineHistoryEntry> & {
+type LegacyLineHistoryEntry = Omit<Partial<LineHistoryEntry>, 'activityLogs'> & {
   activityDate?: string;
   activityType?: string;
   activityMemo?: string;
+  activityLogs?: Array<Partial<LineHistoryActivityLog>>;
 };
 
 type LineHistoryEnvelope = {

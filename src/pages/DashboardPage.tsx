@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { lineDraftStore, normalizeReviewDate, type LineDraft } from '../lib/lineDrafts';
+import { lineHistoryStore, type LineHistoryEntry } from '../lib/lineHistory';
 import {
   loadNotificationSettings,
   type NotificationRelaunchPolicy,
@@ -70,6 +71,33 @@ function formatRelaunchPolicy(value: NotificationRelaunchPolicy): string {
   }
 }
 
+const INACTIVE_THRESHOLD_DAYS = 90;
+
+function getLatestActivityDate(entries: LineHistoryEntry[]): string | null {
+  let latest: string | null = null;
+  for (const entry of entries) {
+    for (const log of entry.activityLogs) {
+      if (log.activityDate && (!latest || log.activityDate > latest)) {
+        latest = log.activityDate;
+      }
+    }
+  }
+  return latest;
+}
+
+function findRelatedHistoryEntries(draft: LineDraft, allEntries: LineHistoryEntry[]): LineHistoryEntry[] {
+  if (draft.phoneNumber) {
+    const exact = allEntries.filter((e) => e.phoneNumber === draft.phoneNumber);
+    if (exact.length > 0) {
+      return exact;
+    }
+  }
+  if (draft.last4) {
+    return allEntries.filter((e) => e.phoneNumber.slice(-4) === draft.last4);
+  }
+  return [];
+}
+
 function isNotificationTarget(diff: number, window: NotificationReminderWindow): boolean {
   switch (window) {
     case 'overdue':
@@ -120,6 +148,11 @@ type NotificationTargetItem = {
   reasonLabel: NotificationReasonLabel;
 };
 
+type InactiveLineItem = {
+  draft: LineDraft;
+  latestActivityDate: string | null;
+};
+
 type DashboardSummary = {
   dangerCount: number;
   todayCount: number;
@@ -132,6 +165,7 @@ type DashboardSummary = {
   notificationReasonSummary: NotificationReasonSummary;
   notificationTargets: NotificationTargetItem[];
   nearest: LineDraft[];
+  inactiveLines: InactiveLineItem[];
 };
 
 function createEmptyNotificationReasonSummary(): NotificationReasonSummary {
@@ -173,7 +207,7 @@ function incrementReasonSummary(summary: NotificationReasonSummary, reasonLabel:
   }
 }
 
-function buildSummary(drafts: LineDraft[], reminderWindow: NotificationReminderWindow): DashboardSummary {
+function buildSummary(drafts: LineDraft[], allHistoryEntries: LineHistoryEntry[], reminderWindow: NotificationReminderWindow): DashboardSummary {
   const today = new Date();
   let dangerCount = 0;
   let todayCount = 0;
@@ -247,6 +281,34 @@ function buildSummary(drafts: LineDraft[], reminderWindow: NotificationReminderW
     }
   }
 
+  const todayStr = today.toISOString().slice(0, 10);
+  const inactiveLines = drafts
+    .map((draft) => {
+      const related = findRelatedHistoryEntries(draft, allHistoryEntries);
+      const latestActivityDate = getLatestActivityDate(related);
+      return { draft, latestActivityDate };
+    })
+    .filter(({ latestActivityDate }) => {
+      if (!latestActivityDate) {
+        return true;
+      }
+      const diff = diffInDays(new Date(`${latestActivityDate}T00:00:00`), new Date(`${todayStr}T00:00:00`));
+      return diff >= INACTIVE_THRESHOLD_DAYS;
+    })
+    .sort((a, b) => {
+      if (!a.latestActivityDate && !b.latestActivityDate) {
+        return b.draft.createdAt.localeCompare(a.draft.createdAt);
+      }
+      if (!a.latestActivityDate) {
+        return -1;
+      }
+      if (!b.latestActivityDate) {
+        return 1;
+      }
+      return a.latestActivityDate.localeCompare(b.latestActivityDate);
+    })
+    .slice(0, 5);
+
   return {
     dangerCount,
     todayCount,
@@ -259,13 +321,15 @@ function buildSummary(drafts: LineDraft[], reminderWindow: NotificationReminderW
     notificationReasonSummary,
     notificationTargets,
     nearest,
+    inactiveLines,
   };
 }
 
 export function DashboardPage(): JSX.Element {
   const drafts = lineDraftStore.load();
+  const historyEntries = lineHistoryStore.load();
   const notificationSettings = loadNotificationSettings();
-  const summary = buildSummary(drafts, notificationSettings.reminderWindow);
+  const summary = buildSummary(drafts, historyEntries, notificationSettings.reminderWindow);
 
   return (
     <div className="page">
@@ -445,6 +509,37 @@ export function DashboardPage(): JSX.Element {
           </div>
           <p className="metric">{formatCurrency(summary.monthlyTotal)}</p>
           <p className="muted">月額費用が入力された回線だけを合計します。未設定の回線は合計に含めません。</p>
+        </article>
+
+        <article className="card">
+          <div className="card__header">
+            <h3>長期未活動の回線</h3>
+            <span className={summary.inactiveLines.length === 0 ? 'badge badge--ok' : 'badge'}>
+              {summary.inactiveLines.length === 0 ? '問題なし' : `${summary.inactiveLines.length}件`}
+            </span>
+          </div>
+          <p className="muted">活動ログがない、または最終活動日から{INACTIVE_THRESHOLD_DAYS}日以上経過している回線を表示します（最大5件）。</p>
+          {summary.inactiveLines.length === 0 ? (
+            <p className="muted">長期未活動の回線はありません。</p>
+          ) : (
+            <>
+              <ul className="list list--drafts">
+                {summary.inactiveLines.map((item) => (
+                  <li key={item.draft.id}>
+                    <div className="list__row">
+                      <strong>{item.draft.lineName}</strong>
+                      <span className={item.draft.status === '利用中' ? 'badge badge--ok' : 'badge'}>{item.draft.status}</span>
+                    </div>
+                    <span>{item.draft.carrier}</span>
+                    <span>最終活動: {item.latestActivityDate ? new Intl.DateTimeFormat('ja-JP', { year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(`${item.latestActivityDate}T00:00:00`)) : '記録なし'}</span>
+                  </li>
+                ))}
+              </ul>
+              <div className="button-row">
+                <Link className="button" to="/lines">回線一覧で確認する</Link>
+              </div>
+            </>
+          )}
         </article>
 
         <article className="card">
