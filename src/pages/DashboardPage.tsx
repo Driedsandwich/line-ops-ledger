@@ -291,6 +291,7 @@ function buildSummary(drafts: LineDraft[], allHistoryEntries: LineHistoryEntry[]
 
   const todayStr = today.toISOString().slice(0, 10);
   const inactiveLines = drafts
+    .filter((draft) => draft.status === '利用中' || draft.status === '解約予定')
     .map((draft) => {
       const related = findRelatedHistoryEntries(draft, allHistoryEntries);
       const latestActivityDate = getLatestActivityDate(related);
