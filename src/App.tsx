@@ -6,7 +6,7 @@ const navItems = [
   { to: '/settings', label: '設定' },
 ];
 
-const devProgressLabel = 'DEV / fix/code-review-bugs / Issue #95';
+const devProgressLabel = 'DEV / feat/dashboard-contract-end-alert / Issue #97';
 
 export function AppLayout(): JSX.Element {
   return (
