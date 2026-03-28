@@ -717,7 +717,7 @@ export function LinesPage(): JSX.Element {
   const notificationSettings = loadNotificationSettings();
   const notificationReasonFromQuery = getNotificationReasonLabelFromParam(searchParams.get('notificationReason'));
   const notificationTargetOnlyFromQuery = getNotificationTargetOnlyFromParam(searchParams.get('notificationTargetOnly'));
-  const today = new Date();
+  const today = useMemo(() => new Date(), []);
 
   function resetMessages(): void {
     setErrorMessage(null);
@@ -858,6 +858,7 @@ export function LinesPage(): JSX.Element {
       setLineHistoryEntries(imported);
       setEditingHistoryId(null);
       setTimelinePhoneFilter(null);
+      resetLineHistoryForm();
       setSuccessMessage(`契約履歴を ${imported.length} 件読み込みました。`);
     } catch {
       setErrorMessage('契約履歴 JSON の読み込みに失敗しました。形式を確認してください。');
