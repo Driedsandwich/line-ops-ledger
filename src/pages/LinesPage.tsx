@@ -1787,6 +1787,9 @@ export function LinesPage(): JSX.Element {
                       <button type="button" className="button" onClick={() => handleEdit(draft)}>
                         編集する
                       </button>
+                      <button type="button" className="button" onClick={() => handleQuickActivityLog(draft)} disabled={!draft.phoneNumber}>
+                        活動を記録
+                      </button>
                       <button type="button" className="button button--danger" onClick={() => handleDelete(draft.id)}>
                         削除する
                       </button>
