@@ -153,6 +153,13 @@ type InactiveLineItem = {
   latestActivityDate: string | null;
 };
 
+const CONTRACT_END_ALERT_DAYS = 30;
+
+type ContractEndAlertItem = {
+  draft: LineDraft;
+  daysUntilEnd: number;
+};
+
 type DashboardSummary = {
   dangerCount: number;
   todayCount: number;
@@ -166,6 +173,7 @@ type DashboardSummary = {
   notificationTargets: NotificationTargetItem[];
   nearest: LineDraft[];
   inactiveLines: InactiveLineItem[];
+  contractEndAlerts: ContractEndAlertItem[];
 };
 
 function createEmptyNotificationReasonSummary(): NotificationReasonSummary {
@@ -310,6 +318,22 @@ function buildSummary(drafts: LineDraft[], allHistoryEntries: LineHistoryEntry[]
     })
     .slice(0, 5);
 
+  const contractEndAlerts = drafts
+    .filter((draft) => draft.status === '利用中' || draft.status === '解約予定')
+    .flatMap((draft) => {
+      const endDate = parseReviewDate(draft.contractEndDate);
+      if (!endDate) {
+        return [];
+      }
+      const daysUntilEnd = diffInDays(today, endDate);
+      if (daysUntilEnd > CONTRACT_END_ALERT_DAYS) {
+        return [];
+      }
+      return [{ draft, daysUntilEnd }];
+    })
+    .sort((a, b) => a.daysUntilEnd - b.daysUntilEnd)
+    .slice(0, 5);
+
   return {
     dangerCount,
     todayCount,
@@ -323,6 +347,7 @@ function buildSummary(drafts: LineDraft[], allHistoryEntries: LineHistoryEntry[]
     notificationTargets,
     nearest,
     inactiveLines,
+    contractEndAlerts,
   };
 }
 
@@ -356,6 +381,44 @@ export function DashboardPage(): JSX.Element {
           <p className="muted">
             次回確認日が今日以前の回線を危険案件として集計します。日付未設定の回線は件数に含めません。
           </p>
+        </article>
+
+        <article className="card card--accent">
+          <div className="card__header">
+            <h3>契約終了が近い回線</h3>
+            <span className={summary.contractEndAlerts.length === 0 ? 'badge badge--ok' : 'badge'}>
+              {summary.contractEndAlerts.length === 0 ? '該当なし' : `${summary.contractEndAlerts.length}件`}
+            </span>
+          </div>
+          <p className="muted">契約終了日が{CONTRACT_END_ALERT_DAYS}日以内（または超過）の利用中・解約予定回線を表示します（最大5件）。</p>
+          {summary.contractEndAlerts.length === 0 ? (
+            <p className="muted">契約終了が近い回線はありません。</p>
+          ) : (
+            <>
+              <ul className="list list--drafts">
+                {summary.contractEndAlerts.map((item) => (
+                  <li key={item.draft.id}>
+                    <div className="list__row">
+                      <strong>{item.draft.lineName}</strong>
+                      <span className={item.draft.status === '利用中' ? 'badge badge--ok' : 'badge'}>{item.draft.status}</span>
+                    </div>
+                    <span>{item.draft.carrier}</span>
+                    <span>契約終了日: {item.draft.contractEndDate}</span>
+                    <span className="badge">
+                      {item.daysUntilEnd < 0
+                        ? `${Math.abs(item.daysUntilEnd)}日超過`
+                        : item.daysUntilEnd === 0
+                          ? '今日終了'
+                          : `あと${item.daysUntilEnd}日`}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+              <div className="button-row">
+                <Link className="button" to="/lines">回線一覧で確認する</Link>
+              </div>
+            </>
+          )}
         </article>
 
         <article className="card">
