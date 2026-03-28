@@ -600,7 +600,7 @@ export function DashboardPage(): JSX.Element {
                 ))}
               </ul>
               <div className="button-row">
-                <Link className="button" to="/lines">回線一覧で確認する</Link>
+                <Link className="button" to="/lines?sort=latestActivityAsc">回線一覧で確認する</Link>
               </div>
             </>
           )}

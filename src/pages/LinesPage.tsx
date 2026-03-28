@@ -80,6 +80,7 @@ type UndoState = {
 };
 
 type SortKey = 'nextReviewDate' | 'monthlyCostHigh' | 'monthlyCostLow' | 'createdAtDesc' | 'createdAtAsc' | 'latestActivityAsc';
+const SORT_KEYS: SortKey[] = ['nextReviewDate', 'monthlyCostHigh', 'monthlyCostLow', 'createdAtDesc', 'createdAtAsc', 'latestActivityAsc'];
 
 type DeadlineStatus = {
   label: string;
@@ -242,6 +243,13 @@ const initialFilterState: FilterState = {
 };
 
 const initialSortKey: SortKey = 'nextReviewDate';
+
+function parseSortKeyParam(value: string | null): SortKey {
+  if (value && (SORT_KEYS as string[]).includes(value)) {
+    return value as SortKey;
+  }
+  return initialSortKey;
+}
 
 function isEditableElement(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) {
@@ -696,7 +704,7 @@ export function LinesPage(): JSX.Element {
   const [drafts, setDrafts] = useState<LineDraft[]>(() => lineDraftStore.load());
   const [lineHistoryEntries, setLineHistoryEntries] = useState<LineHistoryEntry[]>(() => lineHistoryStore.load());
   const [filters, setFilters] = useState<FilterState>(initialFilterState);
-  const [sortKey, setSortKey] = useState<SortKey>(initialSortKey);
+  const [sortKey, setSortKey] = useState<SortKey>(() => parseSortKeyParam(new URLSearchParams(window.location.search).get('sort')));
   const [timelineWindow, setTimelineWindow] = useState<TimelineWindowKey>('6m');
   const [timelineViewMode, setTimelineViewMode] = useState<TimelineViewMode>('all');
   const [timelinePhoneFilter, setTimelinePhoneFilter] = useState<string[] | null>(null);
