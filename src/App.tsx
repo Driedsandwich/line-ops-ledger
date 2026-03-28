@@ -6,7 +6,7 @@ const navItems = [
   { to: '/settings', label: '設定' },
 ];
 
-const devProgressLabel = 'DEV / fix/inactive-lines-exclude-closed / Issue #99';
+const devProgressLabel = 'DEV / feat/dashboard-quick-activity / Issue #104';
 
 export function AppLayout(): JSX.Element {
   return (
