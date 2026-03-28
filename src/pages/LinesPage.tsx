@@ -79,7 +79,7 @@ type UndoState = {
   label: string;
 };
 
-type SortKey = 'nextReviewDate' | 'monthlyCostHigh' | 'monthlyCostLow' | 'createdAtDesc' | 'createdAtAsc';
+type SortKey = 'nextReviewDate' | 'monthlyCostHigh' | 'monthlyCostLow' | 'createdAtDesc' | 'createdAtAsc' | 'latestActivityAsc';
 
 type DeadlineStatus = {
   label: string;
@@ -1281,6 +1281,20 @@ export function LinesPage(): JSX.Element {
           return b.createdAt.localeCompare(a.createdAt);
         case 'createdAtAsc':
           return a.createdAt.localeCompare(b.createdAt);
+        case 'latestActivityAsc': {
+          const aDate = getLatestActivityDateFromHistoryEntries(findRelatedHistoryEntries(a, lineHistoryEntries));
+          const bDate = getLatestActivityDateFromHistoryEntries(findRelatedHistoryEntries(b, lineHistoryEntries));
+          if (!aDate && !bDate) {
+            return b.createdAt.localeCompare(a.createdAt);
+          }
+          if (!aDate) {
+            return -1;
+          }
+          if (!bDate) {
+            return 1;
+          }
+          return aDate.localeCompare(bDate);
+        }
         case 'nextReviewDate': {
           const aDate = normalizeReviewDate(a.nextReviewDate);
           const bDate = normalizeReviewDate(b.nextReviewDate);
@@ -1297,7 +1311,7 @@ export function LinesPage(): JSX.Element {
         }
       }
     });
-  }, [filteredDrafts, sortKey]);
+  }, [filteredDrafts, lineHistoryEntries, sortKey]);
 
   const lineHistoryGroups = useMemo(() => buildLineHistoryGroups(lineHistoryEntries), [lineHistoryEntries]);
   const visibleLineHistoryGroups = useMemo(() => {
@@ -1626,6 +1640,7 @@ export function LinesPage(): JSX.Element {
                 <option value="monthlyCostLow">月額費用が低い順</option>
                 <option value="createdAtDesc">作成日時が新しい順</option>
                 <option value="createdAtAsc">作成日時が古い順</option>
+                <option value="latestActivityAsc">最終活動日が古い順（要確認優先）</option>
               </select>
             </label>
 
