@@ -1763,6 +1763,7 @@ export function LinesPage(): JSX.Element {
                       {!isCompactView && elapsedDays != null ? <span className="badge">契約経過: {elapsedDays}日</span> : null}
                       {!isCompactView && draft.contractEndDate ? <span className="badge">契約終了: {formatDate(draft.contractEndDate)}</span> : null}
                       {!isCompactView && relatedHistoryEntries.length > 0 ? <span className="badge badge--ok">関連履歴: {relatedHistoryEntries.length}件</span> : null}
+                      {latestActivityDate != null ? <span className="badge">最終活動: {formatDate(latestActivityDate)}</span> : null}
                     </div>
                     <div className="button-row button-row--tight">
                       <button type="button" className="button" onClick={() => toggleExpanded(draft.id)}>
