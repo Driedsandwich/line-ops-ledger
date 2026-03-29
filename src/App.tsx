@@ -1,8 +1,11 @@
 import { NavLink, Outlet } from 'react-router-dom';
 
-const navItems = [
+type NavItem = { to: string; label: string; end?: boolean; indent?: boolean };
+
+const navItems: NavItem[] = [
   { to: '/', label: 'ダッシュボード', end: true },
-  { to: '/lines', label: '回線一覧' },
+  { to: '/lines', label: '回線一覧', end: true },
+  { to: '/lines/history', label: '履歴・タイムライン', indent: true },
   { to: '/settings', label: '設定' },
 ];
 
@@ -26,9 +29,10 @@ export function AppLayout(): JSX.Element {
               key={item.to}
               to={item.to}
               end={item.end}
-              className={({ isActive }: { isActive: boolean }) =>
-                isActive ? 'nav__item nav__item--active' : 'nav__item'
-              }
+              className={({ isActive }: { isActive: boolean }) => {
+                const base = item.indent ? 'nav__item nav__item--sub' : 'nav__item';
+                return isActive ? `${base} nav__item--active` : base;
+              }}
             >
               {item.label}
             </NavLink>

@@ -107,6 +107,12 @@ textarea {
   background: rgba(30, 41, 59, 0.9);
 }
 
+.nav__item--sub {
+  padding-left: 28px;
+  font-size: 0.875rem;
+  color: #94a3b8;
+}
+
 .content {
   padding: 32px;
 }
