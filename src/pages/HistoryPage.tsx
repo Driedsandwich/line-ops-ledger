@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { lineDraftStore, normalizePhoneNumber, type LineDraft } from '../lib/lineDrafts';
 import {
   createLineHistoryEntry,
@@ -554,7 +554,7 @@ export function HistoryPage(): JSX.Element {
       </header>
 
       <section className="card-grid card-grid--single">
-        <article className="card">
+        <article className="card" id="history-form">
           <div className="card__header">
             <h3>契約履歴の登録</h3>
             <span className="badge">{editingHistoryId ? '履歴編集中' : '電話番号単位'}</span>
@@ -679,7 +679,23 @@ export function HistoryPage(): JSX.Element {
             </div>
           ) : null}
           {visibleLineHistoryGroups.length === 0 ? (
-            <p className="muted">現在の表示条件に一致する履歴はありません。期間または表示対象を切り替えて確認してください。</p>
+            lineHistoryGroups.length === 0 ? (
+              <>
+                <p className="muted">履歴はまだありません。主台帳から「活動を記録」で始めるか、上のフォームから過去契約を1件追加するとここにタイムラインが表示されます。</p>
+                <div className="detail-panel">
+                  <p className="muted" style={{ marginTop: 0 }}>
+                    既存データがある場合は、`/settings` から統合バックアップを復元できます。
+                  </p>
+                  <div className="button-row button-row--tight">
+                    <a className="button button--primary" href="#history-form">履歴フォームに戻る</a>
+                    <Link className="button" to="/lines">回線一覧で1件追加する</Link>
+                    <Link className="button" to="/settings">バックアップを復元する</Link>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <p className="muted">現在の表示条件に一致する履歴はありません。期間または表示対象を切り替えて確認してください。</p>
+            )
           ) : (
             <div className="stack">
               {visibleLineHistoryGroups.map((group) => (

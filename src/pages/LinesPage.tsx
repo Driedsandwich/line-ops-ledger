@@ -979,7 +979,7 @@ export function LinesPage(): JSX.Element {
       </header>
 
       <section className="card-grid card-grid--lines">
-        <article className="card">
+        <article className="card" id="line-form">
           <div className="card__header">
             <h3>回線フォーム</h3>
             <div className="button-row button-row--tight">
@@ -1251,7 +1251,19 @@ export function LinesPage(): JSX.Element {
           </div>
 
           {!hasDrafts ? (
-            <p className="muted">保存済み回線はまだありません。上のフォームから追加するとここに表示されます。</p>
+            <>
+              <p className="muted">保存済み回線はまだありません。最初は回線名・キャリア・電話番号だけでも登録できます。</p>
+              <div className="detail-panel">
+                <p className="muted" style={{ marginTop: 0 }}>
+                  既存データがある場合は、`/settings` から統合バックアップを復元すると主台帳と履歴をまとめて戻せます。
+                </p>
+                <div className="button-row button-row--tight">
+                  <a className="button button--primary" href="#line-form">回線フォームに戻る</a>
+                  <Link className="button" to="/settings">バックアップを復元する</Link>
+                  <Link className="button" to="/lines/history">履歴ページを見る</Link>
+                </div>
+              </div>
+            </>
           ) : (
             <ul className="list list--drafts">
               {visibleDrafts.map((draft) => {
