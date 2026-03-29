@@ -27,6 +27,10 @@ import {
   loadNotificationSettings,
   type NotificationReminderWindow,
 } from '../lib/notificationSettings';
+import {
+  getAllActivityTypes,
+  loadCustomActivityTypes,
+} from '../lib/activityTypeSettings';
 
 type FormState = {
   lineName: string;
@@ -725,6 +729,7 @@ export function LinesPage(): JSX.Element {
   const historyFormSectionRef = useRef<HTMLElement | null>(null);
 
   const notificationSettings = loadNotificationSettings();
+  const allActivityTypes = useMemo(() => getAllActivityTypes(loadCustomActivityTypes()), []);
   const notificationReasonFromQuery = getNotificationReasonLabelFromParam(searchParams.get('notificationReason'));
   const notificationTargetOnlyFromQuery = getNotificationTargetOnlyFromParam(searchParams.get('notificationTargetOnly'));
   const today = useMemo(() => new Date(), []);
@@ -2058,7 +2063,7 @@ export function LinesPage(): JSX.Element {
                       <label className="field">
                         <span>活動種別</span>
                         <select value={activityLog.activityType} onChange={(event) => updateActivityLogField(activityLog.id, 'activityType', event.target.value)}>
-                          {ACTIVITY_TYPE_OPTIONS.map((option) => (
+                          {allActivityTypes.map((option) => (
                             <option key={option} value={option}>{option}</option>
                           ))}
                         </select>

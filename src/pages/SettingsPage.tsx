@@ -1,5 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import {
+  ACTIVITY_TYPE_LABEL_MAX_LENGTH,
+  ACTIVITY_TYPE_MAX_CUSTOM,
+  BUILT_IN_ACTIVITY_TYPES,
+  loadCustomActivityTypes,
+  saveCustomActivityTypes,
+} from '../lib/activityTypeSettings';
+import {
   CURRENT_LINE_DRAFT_SCHEMA_VERSION,
   lineDraftStore,
   type LineDraftStorageInfo,
@@ -104,6 +111,8 @@ export function SettingsPage(): JSX.Element {
   );
   const [loading, setLoading] = useState(true);
   const [actionMessage, setActionMessage] = useState<string | null>(null);
+  const [customActivityTypes, setCustomActivityTypes] = useState<string[]>(() => loadCustomActivityTypes());
+  const [newActivityType, setNewActivityType] = useState('');
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   async function refresh(): Promise<void> {
@@ -175,6 +184,35 @@ export function SettingsPage(): JSX.Element {
     setNotificationSettings(nextSettings);
     saveNotificationSettings(nextSettings);
     setActionMessage('通知設定を保存しました。');
+  }
+
+  function handleAddActivityType(): void {
+    const label = newActivityType.trim();
+    if (!label) return;
+    if (label.length > ACTIVITY_TYPE_LABEL_MAX_LENGTH) {
+      setActionMessage(`活動種別は${ACTIVITY_TYPE_LABEL_MAX_LENGTH}文字以内で入力してください。`);
+      return;
+    }
+    if ((BUILT_IN_ACTIVITY_TYPES as readonly string[]).includes(label) || customActivityTypes.includes(label)) {
+      setActionMessage('同じ名前の活動種別がすでに存在します。');
+      return;
+    }
+    if (customActivityTypes.length >= ACTIVITY_TYPE_MAX_CUSTOM) {
+      setActionMessage(`カスタム活動種別は${ACTIVITY_TYPE_MAX_CUSTOM}件まで登録できます。`);
+      return;
+    }
+    const next = [...customActivityTypes, label];
+    setCustomActivityTypes(next);
+    saveCustomActivityTypes(next);
+    setNewActivityType('');
+    setActionMessage(`「${label}」を活動種別に追加しました。`);
+  }
+
+  function handleRemoveActivityType(label: string): void {
+    const next = customActivityTypes.filter((t) => t !== label);
+    setCustomActivityTypes(next);
+    saveCustomActivityTypes(next);
+    setActionMessage(`「${label}」を削除しました。`);
   }
 
   const persistenceLabel = !state.supported
@@ -354,6 +392,55 @@ export function SettingsPage(): JSX.Element {
             この MVP では、アプリを閉じている間の通知配信は保証しません。ここでは「どこまでを通知対象とみなすか」と
             「次回起動時に再表示するか」の最小方針だけを保存します。
           </p>
+        </article>
+
+        <article className="card">
+          <div className="card__header">
+            <h3>カスタム活動種別</h3>
+            <span className="badge">{customActivityTypes.length}件</span>
+          </div>
+
+          <p className="muted">
+            活動ログ記録時のプルダウンに表示する独自の種別を追加できます（最大{ACTIVITY_TYPE_MAX_CUSTOM}件）。
+          </p>
+
+          {customActivityTypes.length > 0 ? (
+            <ul className="list">
+              {customActivityTypes.map((label) => (
+                <li key={label} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem' }}>
+                  <span>{label}</span>
+                  <button type="button" className="button button--sm" onClick={() => handleRemoveActivityType(label)}>
+                    削除
+                  </button>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="muted">カスタム種別はまだありません。</p>
+          )}
+
+          <div className="field" style={{ marginTop: '1rem' }}>
+            <span>新しい種別名</span>
+            <input
+              type="text"
+              value={newActivityType}
+              maxLength={ACTIVITY_TYPE_LABEL_MAX_LENGTH}
+              placeholder="例: データ速度確認"
+              onChange={(event) => setNewActivityType(event.target.value)}
+              onKeyDown={(event) => { if (event.key === 'Enter') { event.preventDefault(); handleAddActivityType(); } }}
+            />
+          </div>
+
+          <div className="button-row">
+            <button
+              type="button"
+              className="button button--primary"
+              disabled={!newActivityType.trim() || customActivityTypes.length >= ACTIVITY_TYPE_MAX_CUSTOM}
+              onClick={handleAddActivityType}
+            >
+              追加する
+            </button>
+          </div>
         </article>
       </section>
     </div>
