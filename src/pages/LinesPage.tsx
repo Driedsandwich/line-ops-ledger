@@ -717,6 +717,7 @@ export function LinesPage(): JSX.Element {
   const [undoState, setUndoState] = useState<UndoState | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [reviewSuggest, setReviewSuggest] = useState<{ draftId: string; draftName: string; suggestedDate: string } | null>(null);
   const [isCompactView, setIsCompactView] = useState(() => readBooleanPreference(LINES_COMPACT_VIEW_STORAGE_KEY, false));
   const [isFormCollapsed, setIsFormCollapsed] = useState(() => readBooleanPreference(LINES_FORM_COLLAPSED_STORAGE_KEY, false));
   const historyImportInputRef = useRef<HTMLInputElement | null>(null);
@@ -730,6 +731,7 @@ export function LinesPage(): JSX.Element {
   function resetMessages(): void {
     setErrorMessage(null);
     setSuccessMessage(null);
+    setReviewSuggest(null);
   }
 
   function persist(nextDrafts: LineDraft[], options?: { previousDrafts?: LineDraft[]; undoLabel?: string }): void {
@@ -1039,9 +1041,37 @@ export function LinesPage(): JSX.Element {
       persistLineHistory([nextEntry, ...lineHistoryEntries]);
       resetLineHistoryForm();
       setSuccessMessage('契約履歴を保存しました。');
+
+      // 保存した活動ログの最新日から次回確認日サジェストを生成
+      const sortedDates = normalizedActivityLogs
+        .map((log) => log.activityDate)
+        .filter(Boolean)
+        .sort();
+      const latestActivityDate = sortedDates.length > 0 ? sortedDates[sortedDates.length - 1] : undefined;
+      if (latestActivityDate) {
+        const relatedDraft = drafts.find(
+          (d) => d.phoneNumber === lineHistoryForm.phoneNumber || (d.last4 && d.last4 === lineHistoryForm.phoneNumber.slice(-4)),
+        );
+        if (relatedDraft) {
+          const base = new Date(`${latestActivityDate}T00:00:00`);
+          base.setDate(base.getDate() + 30);
+          const suggestedDate = base.toISOString().slice(0, 10);
+          setReviewSuggest({ draftId: relatedDraft.id, draftName: relatedDraft.lineName, suggestedDate });
+        }
+      }
     } catch {
       setErrorMessage('電話番号・キャリア・契約開始日は必須です。電話番号は 10〜11 桁で入力してください。');
     }
+  }
+
+  function handleApplyReviewSuggest(): void {
+    if (!reviewSuggest) return;
+    const target = drafts.find((d) => d.id === reviewSuggest.draftId);
+    if (!target) return;
+    const updated = updateLineDraft(target, { ...target, nextReviewDate: reviewSuggest.suggestedDate });
+    persist(drafts.map((d) => (d.id === updated.id ? updated : d)));
+    setReviewSuggest(null);
+    setSuccessMessage(`「${reviewSuggest.draftName}」の次回確認日を ${reviewSuggest.suggestedDate} に更新しました。`);
   }
 
   function handleEditLineHistory(entry: LineHistoryEntry): void {
@@ -2011,6 +2041,15 @@ export function LinesPage(): JSX.Element {
               <span>メモ</span>
               <textarea value={lineHistoryForm.memo} onChange={(event) => updateLineHistoryField('memo', event.target.value)} rows={3} placeholder="例: au から LINEMO へ MNP など" />
             </label>
+            {reviewSuggest && (
+              <div className="notice field--full">
+                <p>「{reviewSuggest.draftName}」の次回確認日を <strong>{reviewSuggest.suggestedDate}</strong> に更新しますか？（活動日 +30日）</p>
+                <div className="button-row">
+                  <button type="button" className="button button--primary" onClick={handleApplyReviewSuggest}>更新する</button>
+                  <button type="button" className="button" onClick={() => setReviewSuggest(null)}>スキップ</button>
+                </div>
+              </div>
+            )}
             <div className="button-row field--full">
               <button type="submit" className="button button--primary">{historySubmitLabel}</button>
               <button type="button" className="button" onClick={resetLineHistoryForm}>入力をリセット</button>
