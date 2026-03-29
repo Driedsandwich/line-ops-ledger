@@ -7,6 +7,8 @@ import {
 import {
   getDefaultNotificationSettings,
   loadNotificationSettings,
+  REVIEW_INTERVAL_DAYS_MAX,
+  REVIEW_INTERVAL_DAYS_MIN,
   saveNotificationSettings,
   type NotificationRelaunchPolicy,
   type NotificationReminderWindow,
@@ -347,6 +349,23 @@ export function SettingsPage(): JSX.Element {
                 <option value="none">{formatRelaunchPolicy('none')}</option>
                 <option value="on-app-launch">{formatRelaunchPolicy('on-app-launch')}</option>
               </select>
+            </label>
+
+            <label className="field field--full">
+              <span>活動後の次回確認日サジェスト（日数）</span>
+              <input
+                type="number"
+                min={REVIEW_INTERVAL_DAYS_MIN}
+                max={REVIEW_INTERVAL_DAYS_MAX}
+                value={notificationSettings.reviewIntervalDays}
+                onChange={(event) => {
+                  const val = parseInt(event.target.value, 10);
+                  if (!Number.isNaN(val) && val >= REVIEW_INTERVAL_DAYS_MIN && val <= REVIEW_INTERVAL_DAYS_MAX) {
+                    updateNotificationSettings({ ...notificationSettings, reviewIntervalDays: val });
+                  }
+                }}
+              />
+              <span className="muted">活動を記録した後に「次回確認日を更新しますか？」で提案される日数です（1〜365日）。</span>
             </label>
           </form>
 

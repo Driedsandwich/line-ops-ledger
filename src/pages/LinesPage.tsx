@@ -1089,7 +1089,7 @@ export function LinesPage(): JSX.Element {
         );
         if (relatedDraft) {
           const base = new Date(`${latestActivityDate}T00:00:00`);
-          base.setDate(base.getDate() + 30);
+          base.setDate(base.getDate() + notificationSettings.reviewIntervalDays);
           const suggestedDate = base.toISOString().slice(0, 10);
           setReviewSuggest({ draftId: relatedDraft.id, draftName: relatedDraft.lineName, suggestedDate });
         }
@@ -2078,7 +2078,7 @@ export function LinesPage(): JSX.Element {
             </label>
             {reviewSuggest && (
               <div className="notice field--full">
-                <p>「{reviewSuggest.draftName}」の次回確認日を <strong>{reviewSuggest.suggestedDate}</strong> に更新しますか？（活動日 +30日）</p>
+                <p>「{reviewSuggest.draftName}」の次回確認日を <strong>{reviewSuggest.suggestedDate}</strong> に更新しますか？（活動日 +{notificationSettings.reviewIntervalDays}日）</p>
                 <div className="button-row">
                   <button type="button" className="button button--primary" onClick={handleApplyReviewSuggest}>更新する</button>
                   <button type="button" className="button" onClick={() => setReviewSuggest(null)}>スキップ</button>
