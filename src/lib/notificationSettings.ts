@@ -8,14 +8,20 @@ export type NotificationSettings = {
   enabled: boolean;
   reminderWindow: NotificationReminderWindow;
   relaunchPolicy: NotificationRelaunchPolicy;
+  reviewIntervalDays: number;
 };
 
 const STORAGE_KEY = 'line-ops-ledger.notification-settings';
+
+export const REVIEW_INTERVAL_DAYS_DEFAULT = 30;
+export const REVIEW_INTERVAL_DAYS_MIN = 1;
+export const REVIEW_INTERVAL_DAYS_MAX = 365;
 
 const defaultNotificationSettings: NotificationSettings = {
   enabled: false,
   reminderWindow: 'within-3-days',
   relaunchPolicy: 'on-app-launch',
+  reviewIntervalDays: REVIEW_INTERVAL_DAYS_DEFAULT,
 };
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -43,10 +49,20 @@ function toNotificationSettings(value: unknown): NotificationSettings | null {
     return null;
   }
 
+  const rawInterval = value.reviewIntervalDays;
+  const reviewIntervalDays =
+    typeof rawInterval === 'number' &&
+    Number.isInteger(rawInterval) &&
+    rawInterval >= REVIEW_INTERVAL_DAYS_MIN &&
+    rawInterval <= REVIEW_INTERVAL_DAYS_MAX
+      ? rawInterval
+      : REVIEW_INTERVAL_DAYS_DEFAULT;
+
   return {
     enabled,
     reminderWindow,
     relaunchPolicy,
+    reviewIntervalDays,
   };
 }
 
