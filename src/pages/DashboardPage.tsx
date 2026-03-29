@@ -597,7 +597,7 @@ export function DashboardPage(): JSX.Element {
                     <span>{item.draft.carrier}</span>
                     <span>最終活動: {item.latestActivityDate ? new Intl.DateTimeFormat('ja-JP', { year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(`${item.latestActivityDate}T00:00:00`)) : '記録なし'}</span>
                     {item.draft.phoneNumber && (
-                      <Link className="button button--sm" to={`/lines?quickActivity=${encodeURIComponent(item.draft.phoneNumber)}`}>活動を記録</Link>
+                      <Link className="button button--sm" to={`/lines/history?quickActivity=${encodeURIComponent(item.draft.phoneNumber)}`}>活動を記録</Link>
                     )}
                   </li>
                 ))}
