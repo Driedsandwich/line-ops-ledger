@@ -67,6 +67,15 @@ const TIMELINE_VIEW_OPTIONS: Array<{ key: TimelineViewMode; label: string }> = [
   { key: 'all', label: '過去契約含む' },
 ];
 const ACTIVITY_TYPE_QUICK_PICK_LIMIT = 6;
+const ACTIVITY_MEMO_RECENT_LIMIT = 4;
+const ACTIVITY_MEMO_TEMPLATE_OPTIONS = [
+  '請求確認。',
+  '通信テスト実施。正常。',
+  '通話テスト実施。正常。',
+  'SMS送信テスト実施。正常。',
+  'MNP予約番号取得。',
+  '月額変動なし。',
+] as const;
 
 // ---------------------------------------------------------------------------
 // Pure helpers
@@ -136,6 +145,57 @@ function getVisibleActivityTypeQuickPicks(baseQuickPicks: string[], currentValue
   }
 
   return [normalized, ...baseQuickPicks].slice(0, ACTIVITY_TYPE_QUICK_PICK_LIMIT);
+}
+
+function getRecentActivityMemoQuickPicks(lineHistoryEntries: LineHistoryEntry[]): string[] {
+  const memoStats = new Map<string, { count: number; latestActivityDate: string }>();
+
+  for (const entry of lineHistoryEntries) {
+    for (const log of entry.activityLogs) {
+      const memo = log.activityMemo.trim();
+      if (!memo || (ACTIVITY_MEMO_TEMPLATE_OPTIONS as readonly string[]).includes(memo)) {
+        continue;
+      }
+
+      const existing = memoStats.get(memo);
+      if (!existing) {
+        memoStats.set(memo, {
+          count: 1,
+          latestActivityDate: log.activityDate || '',
+        });
+        continue;
+      }
+
+      existing.count += 1;
+      if ((log.activityDate || '') > existing.latestActivityDate) {
+        existing.latestActivityDate = log.activityDate || '';
+      }
+    }
+  }
+
+  return [...memoStats.entries()]
+    .sort((a, b) => {
+      if (b[1].count !== a[1].count) {
+        return b[1].count - a[1].count;
+      }
+      if (b[1].latestActivityDate !== a[1].latestActivityDate) {
+        return b[1].latestActivityDate.localeCompare(a[1].latestActivityDate);
+      }
+      return a[0].localeCompare(b[0], 'ja-JP');
+    })
+    .slice(0, ACTIVITY_MEMO_RECENT_LIMIT)
+    .map(([memo]) => memo);
+}
+
+function applyActivityMemoQuickPick(currentValue: string, quickPick: string): string {
+  const normalized = currentValue.trim();
+  if (!normalized) {
+    return quickPick;
+  }
+  if (normalized === quickPick) {
+    return currentValue;
+  }
+  return `${normalized} ${quickPick}`;
 }
 
 function maskPhoneNumber(phoneNumber: string): string {
@@ -354,6 +414,10 @@ export function HistoryPage(): JSX.Element {
   const activityTypeQuickPicks = useMemo(
     () => getActivityTypeQuickPicks(lineHistoryEntries, allActivityTypes),
     [allActivityTypes, lineHistoryEntries],
+  );
+  const recentActivityMemoQuickPicks = useMemo(
+    () => getRecentActivityMemoQuickPicks(lineHistoryEntries),
+    [lineHistoryEntries],
   );
 
   // quickActivity パラメータで電話番号が渡された場合フォームにセット
@@ -665,6 +729,38 @@ export function HistoryPage(): JSX.Element {
                       <label className="field field--full">
                         <span>活動メモ</span>
                         <textarea value={activityLog.activityMemo} onChange={(event) => updateActivityLogField(activityLog.id, 'activityMemo', event.target.value)} rows={2} placeholder="例: 発信テスト実施 / データ通信実施 / 請求確認" />
+                        <div className="detail-panel" style={{ marginTop: '0.5rem' }}>
+                          <p className="muted" style={{ marginTop: 0, marginBottom: '0.5rem' }}>定型候補</p>
+                          <div className="button-row button-row--tight">
+                            {ACTIVITY_MEMO_TEMPLATE_OPTIONS.map((option) => (
+                              <button
+                                key={option}
+                                type="button"
+                                className="button"
+                                onClick={() => updateActivityLogField(activityLog.id, 'activityMemo', applyActivityMemoQuickPick(activityLog.activityMemo, option))}
+                              >
+                                {option}
+                              </button>
+                            ))}
+                          </div>
+                          {recentActivityMemoQuickPicks.length > 0 ? (
+                            <>
+                              <p className="muted" style={{ marginTop: '0.75rem', marginBottom: '0.5rem' }}>最近使った文言</p>
+                              <div className="button-row button-row--tight">
+                                {recentActivityMemoQuickPicks.map((option) => (
+                                  <button
+                                    key={option}
+                                    type="button"
+                                    className="button"
+                                    onClick={() => updateActivityLogField(activityLog.id, 'activityMemo', applyActivityMemoQuickPick(activityLog.activityMemo, option))}
+                                  >
+                                    {option}
+                                  </button>
+                                ))}
+                              </div>
+                            </>
+                          ) : null}
+                        </div>
                       </label>
                     </div>
                   </div>
