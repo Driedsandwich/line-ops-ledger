@@ -66,6 +66,7 @@ const TIMELINE_VIEW_OPTIONS: Array<{ key: TimelineViewMode; label: string }> = [
   { key: 'active', label: '契約中中心' },
   { key: 'all', label: '過去契約含む' },
 ];
+const ACTIVITY_TYPE_QUICK_PICK_LIMIT = 6;
 
 // ---------------------------------------------------------------------------
 // Pure helpers
@@ -102,6 +103,39 @@ function getActivityTypeOptions(baseOptions: string[], currentValue: string): st
   }
 
   return [...baseOptions, normalized];
+}
+
+function getActivityTypeQuickPicks(lineHistoryEntries: LineHistoryEntry[], allActivityTypes: string[]): string[] {
+  const counts = new Map<string, number>();
+  for (const entry of lineHistoryEntries) {
+    for (const log of entry.activityLogs) {
+      const label = log.activityType.trim();
+      if (!label) {
+        continue;
+      }
+      counts.set(label, (counts.get(label) ?? 0) + 1);
+    }
+  }
+
+  const frequentTypes = [...counts.entries()]
+    .sort((a, b) => {
+      if (b[1] !== a[1]) {
+        return b[1] - a[1];
+      }
+      return a[0].localeCompare(b[0], 'ja-JP');
+    })
+    .map(([label]) => label);
+
+  return [...new Set([...frequentTypes, ...allActivityTypes])].slice(0, ACTIVITY_TYPE_QUICK_PICK_LIMIT);
+}
+
+function getVisibleActivityTypeQuickPicks(baseQuickPicks: string[], currentValue: string): string[] {
+  const normalized = currentValue.trim();
+  if (!normalized || baseQuickPicks.includes(normalized)) {
+    return baseQuickPicks;
+  }
+
+  return [normalized, ...baseQuickPicks].slice(0, ACTIVITY_TYPE_QUICK_PICK_LIMIT);
 }
 
 function maskPhoneNumber(phoneNumber: string): string {
@@ -317,6 +351,10 @@ export function HistoryPage(): JSX.Element {
   const notificationSettings = loadNotificationSettings();
   const today = useMemo(() => new Date(), []);
   const allActivityTypes = useMemo(() => getAllActivityTypes(loadCustomActivityTypes()), []);
+  const activityTypeQuickPicks = useMemo(
+    () => getActivityTypeQuickPicks(lineHistoryEntries, allActivityTypes),
+    [allActivityTypes, lineHistoryEntries],
+  );
 
   // quickActivity パラメータで電話番号が渡された場合フォームにセット
   const quickActivityParam = searchParams.get('quickActivity');
@@ -611,6 +649,18 @@ export function HistoryPage(): JSX.Element {
                             <option key={option} value={option}>{option}</option>
                           ))}
                         </select>
+                        <div className="button-row button-row--tight">
+                          {getVisibleActivityTypeQuickPicks(activityTypeQuickPicks, activityLog.activityType).map((option) => (
+                            <button
+                              key={option}
+                              type="button"
+                              className={activityLog.activityType === option ? 'button button--primary' : 'button'}
+                              onClick={() => updateActivityLogField(activityLog.id, 'activityType', option)}
+                            >
+                              {option}
+                            </button>
+                          ))}
+                        </div>
                       </label>
                       <label className="field field--full">
                         <span>活動メモ</span>
