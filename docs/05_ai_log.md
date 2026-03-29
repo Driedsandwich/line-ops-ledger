@@ -37,3 +37,7 @@
   - 活動日+30日を提案、ワンクリックで nextReviewDate を更新
 - Issue #91 クローズ漏れ対処（PR #92 マージ済み）
 - docs / README / Context Hub を現状に同期（本 PR）
+- PR #120（Issue #119）: 履歴・タイムラインを `/lines/history` へ分離、サイドバーサブナビ追加
+  - `LinesPage` から履歴フォーム・活動ログ・タイムライン（~855行）を `HistoryPage` へ抽出
+  - 「活動を記録」ボタンが `/lines/history?quickActivity=<phone>` へ遷移するよう変更
+  - `NotificationSettings.reviewIntervalDays` フィールドを追加（PR #115 依存を前倒し）
