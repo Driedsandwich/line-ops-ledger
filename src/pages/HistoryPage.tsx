@@ -50,6 +50,32 @@ type VisibleLineHistoryGroup = LineHistoryGroup & {
   relatedDrafts: LineDraft[];
 };
 
+type HistoryFormDraftSuggestion = {
+  kind: 'draft';
+  label: string;
+  description: string;
+  carrier: string;
+  status: LineHistoryStatus;
+  contractStartDate: string;
+  contractEndDate: string;
+};
+
+type HistoryFormEntrySuggestion = {
+  kind: 'history';
+  label: string;
+  description: string;
+  carrier: string;
+  status: LineHistoryStatus;
+  contractStartDate: string;
+  contractEndDate: string;
+  latestActivityDate: string;
+};
+
+type ActivityDateQuickPick = {
+  label: string;
+  value: string;
+};
+
 // ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
@@ -196,6 +222,74 @@ function applyActivityMemoQuickPick(currentValue: string, quickPick: string): st
     return currentValue;
   }
   return `${normalized} ${quickPick}`;
+}
+
+function getLatestMatchingHistoryEntry(entries: LineHistoryEntry[], phoneNumber: string, editingHistoryId: string | null): LineHistoryEntry | null {
+  if (!phoneNumber) {
+    return null;
+  }
+
+  const matches = entries.filter((entry) => entry.phoneNumber === phoneNumber && entry.id !== editingHistoryId);
+  if (matches.length === 0) {
+    return null;
+  }
+
+  return [...matches].sort((a, b) => {
+    const latestActivityA = getLatestActivityDate(a.activityLogs) || '';
+    const latestActivityB = getLatestActivityDate(b.activityLogs) || '';
+    const recencyA = latestActivityA || a.contractStartDate || a.createdAt;
+    const recencyB = latestActivityB || b.contractStartDate || b.createdAt;
+    if (recencyB !== recencyA) {
+      return recencyB.localeCompare(recencyA);
+    }
+    return b.createdAt.localeCompare(a.createdAt);
+  })[0] ?? null;
+}
+
+function buildHistoryFormDraftSuggestion(draft: LineDraft): HistoryFormDraftSuggestion {
+  return {
+    kind: 'draft',
+    label: `主台帳候補: ${draft.lineName}`,
+    description: `${draft.carrier} / ${draft.status} / 開始 ${draft.contractStartDate ? formatDate(draft.contractStartDate) : '未設定'}`,
+    carrier: draft.carrier,
+    status: draft.status,
+    contractStartDate: draft.contractStartDate,
+    contractEndDate: draft.contractEndDate,
+  };
+}
+
+function buildHistoryFormEntrySuggestion(entry: LineHistoryEntry): HistoryFormEntrySuggestion {
+  const latestActivityDate = getLatestActivityDate(entry.activityLogs) || '';
+  return {
+    kind: 'history',
+    label: `直近履歴候補: ${entry.carrier}`,
+    description: `${entry.status} / 開始 ${entry.contractStartDate ? formatDate(entry.contractStartDate) : '未設定'}${latestActivityDate ? ` / 最終活動 ${formatDate(latestActivityDate)}` : ''}`,
+    carrier: entry.carrier,
+    status: entry.status,
+    contractStartDate: entry.contractStartDate,
+    contractEndDate: entry.contractEndDate,
+    latestActivityDate,
+  };
+}
+
+function getActivityDateQuickPicks(todayDate: string, contractStartDate: string, latestActivityDate: string): ActivityDateQuickPick[] {
+  const candidates: ActivityDateQuickPick[] = [{ label: '今日', value: todayDate }];
+
+  if (contractStartDate) {
+    candidates.push({ label: '契約開始日', value: contractStartDate });
+  }
+  if (latestActivityDate) {
+    candidates.push({ label: '前回活動日', value: latestActivityDate });
+  }
+
+  const seen = new Set<string>();
+  return candidates.filter((candidate) => {
+    if (!candidate.value || seen.has(candidate.value)) {
+      return false;
+    }
+    seen.add(candidate.value);
+    return true;
+  });
 }
 
 function maskPhoneNumber(phoneNumber: string): string {
@@ -419,6 +513,23 @@ export function HistoryPage(): JSX.Element {
     () => getRecentActivityMemoQuickPicks(lineHistoryEntries),
     [lineHistoryEntries],
   );
+  const normalizedPhoneNumber = useMemo(() => normalizePhoneNumber(lineHistoryForm.phoneNumber), [lineHistoryForm.phoneNumber]);
+  const matchingDraftSuggestion = useMemo(() => {
+    if (!normalizedPhoneNumber) {
+      return null;
+    }
+    const matchingDraft = drafts.find((draft) => draft.phoneNumber === normalizedPhoneNumber);
+    return matchingDraft ? buildHistoryFormDraftSuggestion(matchingDraft) : null;
+  }, [drafts, normalizedPhoneNumber]);
+  const matchingHistorySuggestion = useMemo(() => {
+    const latestHistoryEntry = getLatestMatchingHistoryEntry(lineHistoryEntries, normalizedPhoneNumber, editingHistoryId);
+    return latestHistoryEntry ? buildHistoryFormEntrySuggestion(latestHistoryEntry) : null;
+  }, [editingHistoryId, lineHistoryEntries, normalizedPhoneNumber]);
+  const todayDateString = useMemo(() => today.toISOString().slice(0, 10), [today]);
+  const activityDateQuickPicks = useMemo(
+    () => getActivityDateQuickPicks(todayDateString, lineHistoryForm.contractStartDate, matchingHistorySuggestion?.latestActivityDate ?? ''),
+    [lineHistoryForm.contractStartDate, matchingHistorySuggestion?.latestActivityDate, todayDateString],
+  );
 
   // quickActivity パラメータで電話番号が渡された場合フォームにセット
   const quickActivityParam = searchParams.get('quickActivity');
@@ -482,6 +593,19 @@ export function HistoryPage(): JSX.Element {
   function resetLineHistoryForm(): void {
     setLineHistoryForm(initialLineHistoryFormState);
     setEditingHistoryId(null);
+  }
+
+  function applyHistoryFormSuggestion(
+    suggestion: HistoryFormDraftSuggestion | HistoryFormEntrySuggestion,
+  ): void {
+    setLineHistoryForm((current) => ({
+      ...current,
+      phoneNumber: normalizedPhoneNumber || current.phoneNumber,
+      carrier: suggestion.carrier,
+      status: suggestion.status,
+      contractStartDate: suggestion.contractStartDate,
+      contractEndDate: suggestion.contractEndDate,
+    }));
   }
 
   function handleLineHistorySubmit(event: React.FormEvent<HTMLFormElement>): void {
@@ -687,6 +811,41 @@ export function HistoryPage(): JSX.Element {
               <span>契約終了日</span>
               <input type="date" value={lineHistoryForm.contractEndDate} onChange={(event) => updateLineHistoryField('contractEndDate', event.target.value)} />
             </label>
+            {matchingDraftSuggestion || matchingHistorySuggestion ? (
+              <div className="detail-panel field--full" style={{ marginTop: '0.5rem' }}>
+                <div className="card__header">
+                  <h3>下書き候補</h3>
+                  <span className="badge">{[matchingDraftSuggestion, matchingHistorySuggestion].filter(Boolean).length}件</span>
+                </div>
+                <p className="muted" style={{ marginTop: 0 }}>電話番号に一致する主台帳や既存履歴から、契約情報を1タップで反映できます。</p>
+                <div className="stack" style={{ gap: '0.75rem' }}>
+                  {matchingDraftSuggestion ? (
+                    <div className="detail-panel" style={{ margin: 0 }}>
+                      <div className="card__header">
+                        <h3>{matchingDraftSuggestion.label}</h3>
+                        <span className="badge badge--ok">{matchingDraftSuggestion.status}</span>
+                      </div>
+                      <p className="muted">{matchingDraftSuggestion.description}</p>
+                      <div className="button-row button-row--tight">
+                        <button type="button" className="button" onClick={() => applyHistoryFormSuggestion(matchingDraftSuggestion)}>主台帳候補を反映</button>
+                      </div>
+                    </div>
+                  ) : null}
+                  {matchingHistorySuggestion ? (
+                    <div className="detail-panel" style={{ margin: 0 }}>
+                      <div className="card__header">
+                        <h3>{matchingHistorySuggestion.label}</h3>
+                        <span className={isCurrentHistoryStatus(matchingHistorySuggestion.status) ? 'badge badge--ok' : 'badge'}>{matchingHistorySuggestion.status}</span>
+                      </div>
+                      <p className="muted">{matchingHistorySuggestion.description}</p>
+                      <div className="button-row button-row--tight">
+                        <button type="button" className="button" onClick={() => applyHistoryFormSuggestion(matchingHistorySuggestion)}>直近履歴候補を反映</button>
+                      </div>
+                    </div>
+                  ) : null}
+                </div>
+              </div>
+            ) : null}
             <div className="detail-panel field--full" style={{ marginTop: '0.5rem' }}>
               <div className="card__header">
                 <h3>活動ログ</h3>
@@ -705,6 +864,18 @@ export function HistoryPage(): JSX.Element {
                       <label className="field">
                         <span>活動日</span>
                         <input type="date" value={activityLog.activityDate} onChange={(event) => updateActivityLogField(activityLog.id, 'activityDate', event.target.value)} />
+                        <div className="button-row button-row--tight">
+                          {activityDateQuickPicks.map((option) => (
+                            <button
+                              key={`${activityLog.id}-${option.label}`}
+                              type="button"
+                              className={activityLog.activityDate === option.value ? 'button button--primary' : 'button'}
+                              onClick={() => updateActivityLogField(activityLog.id, 'activityDate', option.value)}
+                            >
+                              {option.label}
+                            </button>
+                          ))}
+                        </div>
                       </label>
                       <label className="field">
                         <span>活動種別</span>
