@@ -852,6 +852,19 @@ export function LinesPage(): JSX.Element {
     setSuccessMessage('契約履歴の JSON をエクスポートしました。');
   }
 
+  function handleExportCombined(): void {
+    resetMessages();
+    const combined = {
+      exportedAt: new Date().toISOString(),
+      version: 1,
+      lineDrafts: JSON.parse(lineDraftStore.exportJson()),
+      lineHistory: JSON.parse(lineHistoryStore.exportJson()),
+    };
+    const timestamp = new Date().toISOString().slice(0, 19).replace(/[:.]/g, '-');
+    downloadJson(`line-ops-ledger-backup-${timestamp}.json`, JSON.stringify(combined, null, 2));
+    setSuccessMessage('主台帳と契約履歴を統合した JSON をエクスポートしました。');
+  }
+
   async function handleImportLineHistory(event: React.ChangeEvent<HTMLInputElement>): Promise<void> {
     const file = event.target.files?.[0];
     if (!file) {
@@ -2002,6 +2015,7 @@ export function LinesPage(): JSX.Element {
               <button type="submit" className="button button--primary">{historySubmitLabel}</button>
               <button type="button" className="button" onClick={resetLineHistoryForm}>入力をリセット</button>
               <button type="button" className="button" onClick={handleExportLineHistory}>履歴 JSON をエクスポート</button>
+              <button type="button" className="button button--primary" onClick={handleExportCombined}>統合バックアップをエクスポート</button>
               <button type="button" className="button" onClick={() => historyImportInputRef.current?.click()}>履歴 JSON をインポート</button>
               <input ref={historyImportInputRef} type="file" accept="application/json,.json" style={{ display: 'none' }} onChange={handleImportLineHistory} />
             </div>
