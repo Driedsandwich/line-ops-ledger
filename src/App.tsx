@@ -6,7 +6,7 @@ const navItems = [
   { to: '/settings', label: '設定' },
 ];
 
-const devProgressLabel = 'DEV / feat/dashboard-quick-activity / Issue #104';
+const devLabel = import.meta.env.VITE_DEV_LABEL as string | undefined;
 
 export function AppLayout(): JSX.Element {
   return (
@@ -18,7 +18,7 @@ export function AppLayout(): JSX.Element {
           <p className="sidebar__description">
             回線・期限・証跡・特典の確認導線を先に固定するための初期シェルです。
           </p>
-          {import.meta.env.DEV ? <p className="dev-progress-badge">{devProgressLabel}</p> : null}
+          {import.meta.env.DEV && devLabel ? <p className="dev-progress-badge">{devLabel}</p> : null}
         </div>
         <nav className="nav">
           {navItems.map((item) => (
