@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import {
   createLineDraft,
   DEFAULT_LINE_TYPE,
@@ -16,12 +16,9 @@ import {
   type LineType,
 } from '../lib/lineDrafts';
 import {
-  createLineHistoryEntry,
   lineHistoryStore,
-  LINE_HISTORY_STATUS_OPTIONS,
   type LineHistoryActivityLog,
   type LineHistoryEntry,
-  type LineHistoryStatus,
 } from '../lib/lineHistory';
 import {
   loadNotificationSettings,
@@ -52,23 +49,6 @@ type FormState = {
   nextReviewDate: string;
 };
 
-type LineHistoryActivityLogFormState = {
-  id: string;
-  activityDate: string;
-  activityType: string;
-  activityMemo: string;
-};
-
-type LineHistoryFormState = {
-  phoneNumber: string;
-  carrier: string;
-  status: LineHistoryStatus;
-  contractStartDate: string;
-  contractEndDate: string;
-  activityLogs: LineHistoryActivityLogFormState[];
-  memo: string;
-};
-
 type FilterState = {
   keyword: string;
   status: 'all' | LineStatus;
@@ -96,22 +76,6 @@ type NotificationReasonLabel = '期限超過' | '今日期限' | '3日以内' | 
 
 type NotificationReasonParam = 'overdue' | 'today' | 'within-3-days' | 'within-7-days';
 
-type TimelineWindowKey = '3m' | '6m' | '12m' | 'all';
-type TimelineViewMode = 'active' | 'all';
-
-type LineHistoryGroup = {
-  phoneNumber: string;
-  maskedPhoneNumber: string;
-  entries: LineHistoryEntry[];
-  earliestDate: string;
-  latestDate: string;
-};
-
-type VisibleLineHistoryGroup = LineHistoryGroup & {
-  visibleEntries: LineHistoryEntry[];
-  relatedDrafts: LineDraft[];
-};
-
 const notificationReasonParamMap: Record<NotificationReasonParam, NotificationReasonLabel> = {
   overdue: '期限超過',
   today: '今日期限',
@@ -121,46 +85,8 @@ const notificationReasonParamMap: Record<NotificationReasonParam, NotificationRe
 
 const CARRIER_OPTIONS = ['NTTドコモ', 'ahamo', 'au', 'UQ mobile', 'ソフトバンク', 'Y!mobile', 'LINEMO', '楽天モバイル', 'IIJmio', 'mineo', 'NUROモバイル', 'povo', 'irumo', 'その他'] as const;
 const PAYMENT_METHOD_OPTIONS = ['クレジットカード', '口座振替', '請求書', '家族合算', 'その他'] as const;
-const ACTIVITY_TYPE_OPTIONS = ['利用実績確認', '通信実施', '通話実施', 'SMS送信', '料金確認', 'プラン変更', 'その他'] as const;
-const TIMELINE_WINDOW_OPTIONS: Array<{ key: TimelineWindowKey; label: string }> = [
-  { key: '3m', label: '3か月' },
-  { key: '6m', label: '6か月' },
-  { key: '12m', label: '12か月' },
-  { key: 'all', label: '全期間' },
-];
-const TIMELINE_VIEW_OPTIONS: Array<{ key: TimelineViewMode; label: string }> = [
-  { key: 'active', label: '契約中中心' },
-  { key: 'all', label: '過去契約含む' },
-];
 const LINES_COMPACT_VIEW_STORAGE_KEY = 'line-ops-ledger.lines.compact-view';
 const LINES_FORM_COLLAPSED_STORAGE_KEY = 'line-ops-ledger.lines.form-collapsed';
-const DEFAULT_ACTIVITY_TYPE = '利用実績確認';
-
-function createActivityLogFormState(overrides?: Partial<LineHistoryActivityLogFormState>): LineHistoryActivityLogFormState {
-  return {
-    id: globalThis.crypto?.randomUUID?.() ?? `activity_log_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`,
-    activityDate: '',
-    activityType: DEFAULT_ACTIVITY_TYPE,
-    activityMemo: '',
-    ...overrides,
-  };
-}
-
-function toActivityLogFormStates(activityLogs: LineHistoryActivityLog[]): LineHistoryActivityLogFormState[] {
-  if (activityLogs.length === 0) {
-    return [createActivityLogFormState()];
-  }
-
-  return activityLogs.map((activityLog) =>
-    createActivityLogFormState({
-      id: activityLog.id,
-      activityDate: activityLog.activityDate,
-      activityType: activityLog.activityType || DEFAULT_ACTIVITY_TYPE,
-      activityMemo: activityLog.activityMemo,
-    }),
-  );
-}
-
 
 function readBooleanPreference(storageKey: string, fallback: boolean): boolean {
   if (typeof window === 'undefined') {
@@ -225,16 +151,6 @@ const initialFormState: FormState = {
   status: '利用中',
   memo: '',
   nextReviewDate: '',
-};
-
-const initialLineHistoryFormState: LineHistoryFormState = {
-  phoneNumber: '',
-  carrier: '',
-  status: '利用中',
-  contractStartDate: '',
-  contractEndDate: '',
-  activityLogs: [createActivityLogFormState()],
-  memo: '',
 };
 
 const initialFilterState: FilterState = {
@@ -302,99 +218,6 @@ function calculateElapsedDays(value: string): number | null {
 
 function isCurrentContract(status: LineStatus): boolean {
   return status === '利用中' || status === '解約予定';
-}
-
-function isCurrentHistoryStatus(status: string): boolean {
-  return status === '利用中' || status === '解約予定';
-}
-
-function addMonths(date: Date, months: number): Date {
-  const next = new Date(date);
-  next.setMonth(next.getMonth() + months);
-  return next;
-}
-
-function getTimelineWindowStart(windowKey: TimelineWindowKey, today: Date): Date | null {
-  const base = startOfDay(today);
-
-  switch (windowKey) {
-    case '3m':
-      return addMonths(base, -3);
-    case '6m':
-      return addMonths(base, -6);
-    case '12m':
-      return addMonths(base, -12);
-    case 'all':
-    default:
-      return null;
-  }
-}
-
-function isEntryVisibleInTimeline(entry: LineHistoryEntry, windowKey: TimelineWindowKey, viewMode: TimelineViewMode, today: Date): boolean {
-  if (viewMode === 'active' && !isCurrentHistoryStatus(entry.status)) {
-    return false;
-  }
-
-  const entryStart = parseDate(entry.contractStartDate);
-  const entryEnd = parseDate(entry.contractEndDate || today.toISOString().slice(0, 10));
-
-  if (!entryStart || !entryEnd) {
-    return viewMode === 'all';
-  }
-
-  const windowStart = getTimelineWindowStart(windowKey, today);
-  const windowEnd = startOfDay(today);
-
-  if (!windowStart) {
-    return true;
-  }
-
-  return entryEnd >= windowStart && entryStart <= windowEnd;
-}
-
-function calculateTimelineStyleForWindow(
-  entry: LineHistoryEntry,
-  windowKey: TimelineWindowKey,
-  today: Date,
-  fallbackStart: string,
-  fallbackEnd: string,
-): { left: string; width: string } {
-  const entryStart = parseDate(entry.contractStartDate) ?? parseDate(fallbackStart);
-  const entryEnd = parseDate(entry.contractEndDate || today.toISOString().slice(0, 10)) ?? parseDate(fallbackEnd);
-
-  if (!entryStart || !entryEnd) {
-    return { left: '0%', width: '100%' };
-  }
-
-  const explicitWindowStart = getTimelineWindowStart(windowKey, today);
-  const windowStart = explicitWindowStart ?? parseDate(fallbackStart) ?? entryStart;
-  const windowEnd = explicitWindowStart ? startOfDay(today) : parseDate(fallbackEnd) ?? entryEnd;
-
-  const clampedStart = entryStart < windowStart ? windowStart : entryStart;
-  const clampedEnd = entryEnd > windowEnd ? windowEnd : entryEnd;
-
-  const totalDays = Math.max(diffInDays(windowStart, windowEnd) + 1, 1);
-  const offsetDays = Math.max(diffInDays(windowStart, clampedStart), 0);
-  const durationDays = Math.max(diffInDays(clampedStart, clampedEnd) + 1, 1);
-
-  return {
-    left: `${(offsetDays / totalDays) * 100}%`,
-    width: `${Math.max((durationDays / totalDays) * 100, 6)}%`,
-  };
-}
-
-function getTimelineRangeLabel(windowKey: TimelineWindowKey): string {
-  switch (windowKey) {
-    case '3m':
-      return '直近3か月';
-    case '6m':
-      return '直近6か月';
-    case '12m':
-      return '直近12か月';
-    case 'all':
-    default:
-      return '全期間';
-  }
 }
 
 function isNotificationTarget(diff: number, window: NotificationReminderWindow): boolean {
@@ -555,33 +378,6 @@ function findRelatedHistoryEntries(draft: LineDraft, entries: LineHistoryEntry[]
   return entries.filter((entry) => getPhoneLast4(entry.phoneNumber) === draft.last4);
 }
 
-function findRelatedDrafts(entry: LineHistoryEntry, drafts: LineDraft[]): LineDraft[] {
-  const phoneNumber = normalizePhoneNumber(entry.phoneNumber);
-  if (phoneNumber) {
-    const exactDrafts = drafts.filter((draft) => draft.phoneNumber === phoneNumber);
-    if (exactDrafts.length > 0) {
-      return exactDrafts;
-    }
-  }
-
-  const last4 = getPhoneLast4(entry.phoneNumber);
-  if (!last4) {
-    return [];
-  }
-
-  return drafts.filter((draft) => !draft.phoneNumber && draft.last4 === last4);
-}
-
-function downloadJson(filename: string, content: string): void {
-  const blob = new Blob([content], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
-  const anchor = document.createElement('a');
-  anchor.href = url;
-  anchor.download = filename;
-  anchor.click();
-  URL.revokeObjectURL(url);
-}
-
 function toFormState(draft: LineDraft): FormState {
   return {
     lineName: draft.lineName,
@@ -602,49 +398,6 @@ function toFormState(draft: LineDraft): FormState {
     memo: draft.memo,
     nextReviewDate: draft.nextReviewDate,
   };
-}
-
-function toLineHistoryFormState(entry: LineHistoryEntry): LineHistoryFormState {
-  return {
-    phoneNumber: entry.phoneNumber,
-    carrier: entry.carrier,
-    status: entry.status,
-    contractStartDate: entry.contractStartDate,
-    contractEndDate: entry.contractEndDate,
-    activityLogs: toActivityLogFormStates(entry.activityLogs),
-    memo: entry.memo,
-  };
-}
-
-function calculateContractDurationDays(contractStartDate: string, contractEndDate: string): number | null {
-  const start = parseDate(contractStartDate);
-  const end = parseDate(contractEndDate);
-  if (!start || !end) {
-    return null;
-  }
-  return Math.max(diffInDays(start, end), 0);
-}
-
-function toLineHistoryStatusFromDraftStatus(status: LineStatus): LineHistoryStatus {
-  if (status === '利用中' || status === '解約予定' || status === '解約済み' || status === 'MNP転出済み') {
-    return status;
-  }
-
-  return '利用中';
-}
-
-function buildHistoryDraftMemo(draft: LineDraft): string {
-  const parts: string[] = [];
-
-  if (draft.lineName.trim()) {
-    parts.push(`主台帳から下書きを作成: ${draft.lineName.trim()}`);
-  }
-
-  if (draft.memo.trim()) {
-    parts.push(draft.memo.trim());
-  }
-
-  return parts.join(' / ');
 }
 
 function getDeadlineStatus(value: string): DeadlineStatus {
@@ -674,59 +427,22 @@ function getDeadlineStatus(value: string): DeadlineStatus {
   return { label: '期限あり', className: 'badge badge--ok', rank: 4 };
 }
 
-function buildLineHistoryGroups(entries: LineHistoryEntry[]): LineHistoryGroup[] {
-  const groups = new Map<string, LineHistoryEntry[]>();
-
-  for (const entry of entries) {
-    const current = groups.get(entry.phoneNumber) ?? [];
-    current.push(entry);
-    groups.set(entry.phoneNumber, current);
-  }
-
-  return [...groups.entries()]
-    .map(([phoneNumber, groupedEntries]) => {
-      const entriesSorted = [...groupedEntries].sort((a, b) => a.contractStartDate.localeCompare(b.contractStartDate));
-      const earliestDate = entriesSorted[0]?.contractStartDate ?? '';
-      const latestDate = entriesSorted.reduce((latest, entry) => {
-        const candidate = entry.contractEndDate || entry.contractStartDate;
-        return candidate > latest ? candidate : latest;
-      }, earliestDate);
-
-      return {
-        phoneNumber,
-        maskedPhoneNumber: maskPhoneNumber(phoneNumber),
-        entries: entriesSorted,
-        earliestDate,
-        latestDate,
-      } satisfies LineHistoryGroup;
-    })
-    .sort((a, b) => a.phoneNumber.localeCompare(b.phoneNumber));
-}
-
 export function LinesPage(): JSX.Element {
   const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
   const [drafts, setDrafts] = useState<LineDraft[]>(() => lineDraftStore.load());
   const [lineHistoryEntries, setLineHistoryEntries] = useState<LineHistoryEntry[]>(() => lineHistoryStore.load());
   const [filters, setFilters] = useState<FilterState>(initialFilterState);
   const [sortKey, setSortKey] = useState<SortKey>(() => parseSortKeyParam(new URLSearchParams(window.location.search).get('sort')));
-  const [timelineWindow, setTimelineWindow] = useState<TimelineWindowKey>('6m');
-  const [timelineViewMode, setTimelineViewMode] = useState<TimelineViewMode>('all');
-  const [timelinePhoneFilter, setTimelinePhoneFilter] = useState<string[] | null>(null);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [expandedIds, setExpandedIds] = useState<string[]>([]);
   const [form, setForm] = useState<FormState>(initialFormState);
-  const [lineHistoryForm, setLineHistoryForm] = useState<LineHistoryFormState>(initialLineHistoryFormState);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [editingHistoryId, setEditingHistoryId] = useState<string | null>(null);
   const [undoState, setUndoState] = useState<UndoState | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
-  const [reviewSuggest, setReviewSuggest] = useState<{ draftId: string; draftName: string; suggestedDate: string } | null>(null);
   const [isCompactView, setIsCompactView] = useState(() => readBooleanPreference(LINES_COMPACT_VIEW_STORAGE_KEY, false));
   const [isFormCollapsed, setIsFormCollapsed] = useState(() => readBooleanPreference(LINES_FORM_COLLAPSED_STORAGE_KEY, false));
-  const historyImportInputRef = useRef<HTMLInputElement | null>(null);
-  const combinedImportInputRef = useRef<HTMLInputElement | null>(null);
-  const historyFormSectionRef = useRef<HTMLElement | null>(null);
 
   const notificationSettings = loadNotificationSettings();
   const allActivityTypes = useMemo(() => getAllActivityTypes(loadCustomActivityTypes()), []);
@@ -737,7 +453,6 @@ export function LinesPage(): JSX.Element {
   function resetMessages(): void {
     setErrorMessage(null);
     setSuccessMessage(null);
-    setReviewSuggest(null);
   }
 
   function persist(nextDrafts: LineDraft[], options?: { previousDrafts?: LineDraft[]; undoLabel?: string }): void {
@@ -749,43 +464,8 @@ export function LinesPage(): JSX.Element {
     }
   }
 
-  function persistLineHistory(nextEntries: LineHistoryEntry[]): void {
-    setLineHistoryEntries(nextEntries);
-    lineHistoryStore.save(nextEntries);
-  }
-
   function updateField<K extends keyof FormState>(key: K, value: FormState[K]): void {
     setForm((current) => ({ ...current, [key]: value }));
-  }
-
-  function updateLineHistoryField<K extends keyof LineHistoryFormState>(key: K, value: LineHistoryFormState[K]): void {
-    setLineHistoryForm((current) => ({ ...current, [key]: value }));
-  }
-
-  function updateActivityLogField(id: string, key: keyof LineHistoryActivityLogFormState, value: string): void {
-    setLineHistoryForm((current) => ({
-      ...current,
-      activityLogs: current.activityLogs.map((activityLog) =>
-        activityLog.id === id ? { ...activityLog, [key]: value } : activityLog,
-      ),
-    }));
-  }
-
-  function addActivityLogField(): void {
-    setLineHistoryForm((current) => ({
-      ...current,
-      activityLogs: [...current.activityLogs, createActivityLogFormState()],
-    }));
-  }
-
-  function removeActivityLogField(id: string): void {
-    setLineHistoryForm((current) => {
-      const nextLogs = current.activityLogs.filter((activityLog) => activityLog.id !== id);
-      return {
-        ...current,
-        activityLogs: nextLogs.length > 0 ? nextLogs : [createActivityLogFormState()],
-      };
-    });
   }
 
   function updateFilter<K extends keyof FilterState>(key: K, value: FilterState[K]): void {
@@ -836,98 +516,9 @@ export function LinesPage(): JSX.Element {
     }));
   }
 
-  function focusRelatedHistory(phoneNumbers: string[]): void {
-    setTimelinePhoneFilter(phoneNumbers);
-  }
-
-  function clearTimelinePhoneFilter(): void {
-    setTimelinePhoneFilter(null);
-  }
-
   function resetForm(): void {
     setForm(initialFormState);
     setEditingId(null);
-  }
-
-  function resetLineHistoryForm(): void {
-    setLineHistoryForm(initialLineHistoryFormState);
-    setEditingHistoryId(null);
-  }
-
-  function handleExportLineHistory(): void {
-    resetMessages();
-    downloadJson('line-history-backup.json', lineHistoryStore.exportJson());
-    setSuccessMessage('契約履歴の JSON をエクスポートしました。');
-  }
-
-  function handleExportCombined(): void {
-    resetMessages();
-    const combined = {
-      exportedAt: new Date().toISOString(),
-      version: 1,
-      lineDrafts: JSON.parse(lineDraftStore.exportJson()),
-      lineHistory: JSON.parse(lineHistoryStore.exportJson()),
-    };
-    const timestamp = new Date().toISOString().slice(0, 19).replace(/[:.]/g, '-');
-    downloadJson(`line-ops-ledger-backup-${timestamp}.json`, JSON.stringify(combined, null, 2));
-    setSuccessMessage('主台帳と契約履歴を統合した JSON をエクスポートしました。');
-  }
-
-  async function handleImportLineHistory(event: React.ChangeEvent<HTMLInputElement>): Promise<void> {
-    const file = event.target.files?.[0];
-    if (!file) {
-      return;
-    }
-
-    resetMessages();
-
-    try {
-      const raw = await file.text();
-      const imported = lineHistoryStore.importJson(raw);
-      setLineHistoryEntries(imported);
-      setEditingHistoryId(null);
-      setTimelinePhoneFilter(null);
-      resetLineHistoryForm();
-      setSuccessMessage(`契約履歴を ${imported.length} 件読み込みました。`);
-    } catch {
-      setErrorMessage('契約履歴 JSON の読み込みに失敗しました。形式を確認してください。');
-    } finally {
-      event.target.value = '';
-    }
-  }
-
-  async function handleImportCombined(event: React.ChangeEvent<HTMLInputElement>): Promise<void> {
-    const file = event.target.files?.[0];
-    if (!file) {
-      return;
-    }
-
-    resetMessages();
-
-    try {
-      const raw = await file.text();
-      const parsed = JSON.parse(raw) as unknown;
-
-      if (!parsed || typeof parsed !== 'object' || !('lineDrafts' in parsed) || !('lineHistory' in parsed)) {
-        throw new Error('統合バックアップの形式が不正です。');
-      }
-
-      const combined = parsed as { lineDrafts: unknown; lineHistory: unknown };
-      const importedDrafts = lineDraftStore.importJson(JSON.stringify(combined.lineDrafts));
-      const importedHistory = lineHistoryStore.importJson(JSON.stringify(combined.lineHistory));
-
-      setDrafts(importedDrafts);
-      setLineHistoryEntries(importedHistory);
-      setEditingHistoryId(null);
-      setTimelinePhoneFilter(null);
-      resetLineHistoryForm();
-      resetForm();
-      setSuccessMessage(`統合バックアップを復元しました（主台帳 ${importedDrafts.length} 件、履歴 ${importedHistory.length} 件）。`);
-    } catch (err) {
-      setErrorMessage(err instanceof Error ? err.message : '統合バックアップの読み込みに失敗しました。形式を確認してください。');
-    } finally {
-      event.target.value = '';
-    }
   }
 
   function validateForm(): {
@@ -1020,119 +611,6 @@ export function LinesPage(): JSX.Element {
     };
   }
 
-  function handleLineHistorySubmit(event: React.FormEvent<HTMLFormElement>): void {
-    event.preventDefault();
-    resetMessages();
-
-    try {
-      const normalizedActivityLogs = lineHistoryForm.activityLogs
-        .map((activityLog) => ({
-          id: activityLog.id,
-          activityDate: activityLog.activityDate,
-          activityType: activityLog.activityType,
-          activityMemo: activityLog.activityMemo,
-        }))
-        .filter((activityLog) => activityLog.activityDate || activityLog.activityType || activityLog.activityMemo);
-
-      if (editingHistoryId) {
-        const current = lineHistoryEntries.find((entry) => entry.id === editingHistoryId);
-        if (!current) {
-          setErrorMessage('編集中の契約履歴が見つかりませんでした。');
-          setEditingHistoryId(null);
-          return;
-        }
-
-        const updated = createLineHistoryEntry({
-          phoneNumber: lineHistoryForm.phoneNumber,
-          carrier: lineHistoryForm.carrier,
-          status: lineHistoryForm.status,
-          contractStartDate: lineHistoryForm.contractStartDate,
-          contractEndDate: lineHistoryForm.contractEndDate,
-          activityLogs: normalizedActivityLogs,
-          memo: lineHistoryForm.memo,
-        });
-
-        const nextEntries = lineHistoryEntries.map((entry) =>
-          entry.id === editingHistoryId
-            ? {
-                ...updated,
-                id: current.id,
-                createdAt: current.createdAt,
-              }
-            : entry,
-        );
-
-        persistLineHistory(nextEntries);
-        resetLineHistoryForm();
-        setSuccessMessage('契約履歴を更新しました。');
-        return;
-      }
-
-      const nextEntry = createLineHistoryEntry({
-        phoneNumber: lineHistoryForm.phoneNumber,
-        carrier: lineHistoryForm.carrier,
-        status: lineHistoryForm.status,
-        contractStartDate: lineHistoryForm.contractStartDate,
-        contractEndDate: lineHistoryForm.contractEndDate,
-        activityLogs: normalizedActivityLogs,
-        memo: lineHistoryForm.memo,
-      });
-
-      persistLineHistory([nextEntry, ...lineHistoryEntries]);
-      resetLineHistoryForm();
-      setSuccessMessage('契約履歴を保存しました。');
-
-      // 保存した活動ログの最新日から次回確認日サジェストを生成
-      const sortedDates = normalizedActivityLogs
-        .map((log) => log.activityDate)
-        .filter(Boolean)
-        .sort();
-      const latestActivityDate = sortedDates.length > 0 ? sortedDates[sortedDates.length - 1] : undefined;
-      if (latestActivityDate) {
-        const relatedDraft = drafts.find(
-          (d) => d.phoneNumber === lineHistoryForm.phoneNumber || (d.last4 && d.last4 === lineHistoryForm.phoneNumber.slice(-4)),
-        );
-        if (relatedDraft) {
-          const base = new Date(`${latestActivityDate}T00:00:00`);
-          base.setDate(base.getDate() + notificationSettings.reviewIntervalDays);
-          const suggestedDate = base.toISOString().slice(0, 10);
-          setReviewSuggest({ draftId: relatedDraft.id, draftName: relatedDraft.lineName, suggestedDate });
-        }
-      }
-    } catch {
-      setErrorMessage('電話番号・キャリア・契約開始日は必須です。電話番号は 10〜11 桁で入力してください。');
-    }
-  }
-
-  function handleApplyReviewSuggest(): void {
-    if (!reviewSuggest) return;
-    const target = drafts.find((d) => d.id === reviewSuggest.draftId);
-    if (!target) return;
-    const updated = updateLineDraft(target, { ...target, nextReviewDate: reviewSuggest.suggestedDate });
-    persist(drafts.map((d) => (d.id === updated.id ? updated : d)));
-    setReviewSuggest(null);
-    setSuccessMessage(`「${reviewSuggest.draftName}」の次回確認日を ${reviewSuggest.suggestedDate} に更新しました。`);
-  }
-
-  function handleEditLineHistory(entry: LineHistoryEntry): void {
-    resetMessages();
-    setEditingHistoryId(entry.id);
-    setLineHistoryForm(toLineHistoryFormState(entry));
-    setIsFormCollapsed(false);
-  }
-
-  function handleDeleteLineHistory(entryId: string): void {
-    resetMessages();
-    const nextEntries = lineHistoryEntries.filter((entry) => entry.id !== entryId);
-    persistLineHistory(nextEntries);
-
-    if (editingHistoryId === entryId) {
-      resetLineHistoryForm();
-    }
-
-    setSuccessMessage('契約履歴を削除しました。');
-  }
-
   function handleUndo(): void {
     if (!undoState) {
       return;
@@ -1187,38 +665,9 @@ export function LinesPage(): JSX.Element {
     setIsFormCollapsed(false);
   }
 
-  function handleCreateHistoryDraftFromLedger(draft: LineDraft): void {
-    resetMessages();
-    setEditingHistoryId(null);
-    setLineHistoryForm({
-      phoneNumber: draft.phoneNumber,
-      carrier: draft.carrier,
-      status: toLineHistoryStatusFromDraftStatus(draft.status),
-      contractStartDate: draft.contractStartDate,
-      contractEndDate: draft.contractEndDate,
-      activityLogs: [createActivityLogFormState()],
-      memo: buildHistoryDraftMemo(draft),
-    });
-    setTimelinePhoneFilter(null);
-    setSuccessMessage('契約履歴フォームに下書きを入れました。必要に応じて編集して保存してください。');
-    historyFormSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  }
-
   function handleQuickActivityLog(draft: LineDraft): void {
-    resetMessages();
-    setEditingHistoryId(null);
-    setLineHistoryForm({
-      phoneNumber: draft.phoneNumber,
-      carrier: draft.carrier,
-      status: toLineHistoryStatusFromDraftStatus(draft.status),
-      contractStartDate: draft.contractStartDate,
-      contractEndDate: draft.contractEndDate,
-      activityLogs: [createActivityLogFormState({ activityDate: today.toISOString().slice(0, 10) })],
-      memo: '',
-    });
-    setTimelinePhoneFilter(null);
-    setSuccessMessage('今日の活動ログ下書きを入れました。種別・メモを確認して保存してください。');
-    historyFormSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    if (!draft.phoneNumber) return;
+    void navigate(`/lines/history?quickActivity=${encodeURIComponent(draft.phoneNumber)}`);
   }
 
   function handleDelete(draftId: string): void {
@@ -1405,36 +854,12 @@ export function LinesPage(): JSX.Element {
     });
   }, [filteredDrafts, lineHistoryEntries, sortKey]);
 
-  const lineHistoryGroups = useMemo(() => buildLineHistoryGroups(lineHistoryEntries), [lineHistoryEntries]);
-  const visibleLineHistoryGroups = useMemo(() => {
-    return lineHistoryGroups
-      .filter((group) => !timelinePhoneFilter || timelinePhoneFilter.includes(group.phoneNumber))
-      .map((group) => {
-        const visibleEntries = group.entries.filter((entry) =>
-          isEntryVisibleInTimeline(entry, timelineWindow, timelineViewMode, today),
-        );
-
-        return {
-          ...group,
-          visibleEntries,
-          relatedDrafts: findRelatedDrafts(group.entries[0], drafts),
-        } satisfies VisibleLineHistoryGroup;
-      })
-      .filter((group) => group.visibleEntries.length > 0);
-  }, [drafts, lineHistoryGroups, timelinePhoneFilter, timelineViewMode, timelineWindow, today]);
-
-  const totalVisibleTimelineEntries = useMemo(
-    () => visibleLineHistoryGroups.reduce((sum, group) => sum + group.visibleEntries.length, 0),
-    [visibleLineHistoryGroups],
-  );
-
   const visibleIds = useMemo(() => visibleDrafts.map((draft) => draft.id), [visibleDrafts]);
   const selectedVisibleCount = useMemo(() => visibleIds.filter((id) => selectedIds.includes(id)).length, [visibleIds, selectedIds]);
   const allVisibleSelected = visibleIds.length > 0 && selectedVisibleCount === visibleIds.length;
   const hasDrafts = visibleDrafts.length > 0;
   const countLabel = useMemo(() => `${visibleDrafts.length}件`, [visibleDrafts.length]);
   const submitLabel = editingId ? '更新する' : '保存する';
-  const historySubmitLabel = editingHistoryId ? '履歴を更新する' : '履歴を保存する';
   const cardBadge = editingId ? '編集中' : '詳細表示';
 
   function toggleSelectAllVisible(): void {
@@ -1501,16 +926,6 @@ export function LinesPage(): JSX.Element {
     }));
   }, [notificationReasonFromQuery, notificationTargetOnlyFromQuery]);
 
-  const quickActivityParam = searchParams.get('quickActivity');
-  useEffect(() => {
-    if (!quickActivityParam) return;
-    const target = drafts.find((d) => d.phoneNumber === quickActivityParam);
-    if (target) {
-      handleQuickActivityLog(target);
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [quickActivityParam]);
-
   useEffect(() => {
     setSelectedIds((current) => current.filter((id) => drafts.some((draft) => draft.id === id)));
     setExpandedIds((current) => current.filter((id) => drafts.some((draft) => draft.id === id)));
@@ -1552,9 +967,9 @@ export function LinesPage(): JSX.Element {
     <div className="page">
       <header className="page__header">
         <div>
-          <p className="page__eyebrow">回線一覧 / 履歴管理</p>
-          <h2>/lines</h2>
-          <p className="muted">回線ドラフトの追加・編集・履歴追跡を localStorage ベースで行います。数十件規模の巡回に備え、表示状態の保持とクイック導線を追加しています。</p>
+          <p className="eyebrow">Lines</p>
+          <h2>回線一覧</h2>
+          <p className="page__lead">回線ドラフトの追加・編集・一覧管理を行います。活動記録や履歴確認は<Link to="/lines/history">履歴・タイムライン</Link>ページで行えます。</p>
         </div>
         <div className="button-row button-row--tight" style={{ justifyContent: 'flex-end' }}>
           <button type="button" className={`button ${isCompactView ? 'button--primary' : ''}`} onClick={() => setIsCompactView((current) => !current)}>
@@ -1851,7 +1266,6 @@ export function LinesPage(): JSX.Element {
                 const elapsedDays = calculateElapsedDays(draft.contractStartDate);
                 const relatedHistoryEntries = findRelatedHistoryEntries(draft, lineHistoryEntries);
                 const latestActivityDate = getLatestActivityDateFromHistoryEntries(relatedHistoryEntries);
-                const relatedPhoneNumbers = Array.from(new Set(relatedHistoryEntries.map((entry) => entry.phoneNumber)));
 
                 return (
                   <li key={draft.id} className={isSelected ? 'list__item--selected' : ''}>
@@ -1879,7 +1293,6 @@ export function LinesPage(): JSX.Element {
                       {draft.phoneNumber ? <span className="badge">電話番号: {maskPhoneNumber(draft.phoneNumber)}</span> : draft.last4 ? <span className="badge">下4桁: {draft.last4}</span> : null}
                       {!isCompactView && elapsedDays != null ? <span className="badge">契約経過: {elapsedDays}日</span> : null}
                       {!isCompactView && draft.contractEndDate ? <span className="badge">契約終了: {formatDate(draft.contractEndDate)}</span> : null}
-                      {!isCompactView && relatedHistoryEntries.length > 0 ? <span className="badge badge--ok">関連履歴: {relatedHistoryEntries.length}件</span> : null}
                       {latestActivityDate != null ? <span className="badge">最終活動: {formatDate(latestActivityDate)}</span> : null}
                     </div>
                     <div className="button-row button-row--tight">
@@ -1968,37 +1381,14 @@ export function LinesPage(): JSX.Element {
                             <dd>{latestActivityDate != null ? formatDate(latestActivityDate) : '記録なし'}</dd>
                           </div>
                         </div>
-                        <div className="detail-panel" style={{ marginTop: '1rem' }}>
-                          <div className="card__header">
-                            <h3>関連履歴候補</h3>
-                            <span className="badge">{relatedHistoryEntries.length}件</span>
+                        {relatedHistoryEntries.length > 0 ? (
+                          <div className="badge-row" style={{ marginTop: '0.75rem' }}>
+                            <span className="badge badge--ok">関連履歴: {relatedHistoryEntries.length}件</span>
+                            {relatedHistoryEntries.map((entry) => (
+                              <span key={entry.id} className="badge">{entry.carrier} / {maskPhoneNumber(entry.phoneNumber)}</span>
+                            ))}
                           </div>
-                          <p className="muted">電話番号全文がある場合は全文一致を優先し、旧データで電話番号が未設定の回線だけ下4桁一致を補助的に使います。</p>
-                          <div className="button-row button-row--tight" style={{ marginTop: '0.75rem' }}>
-                            <button type="button" className="button" onClick={() => handleQuickActivityLog(draft)} disabled={!draft.phoneNumber}>
-                              今日の活動を記録
-                            </button>
-                            <button type="button" className="button" onClick={() => handleCreateHistoryDraftFromLedger(draft)} disabled={!draft.phoneNumber}>
-                              履歴下書きを作る
-                            </button>
-                          </div>
-                          {!draft.phoneNumber ? <p className="muted">電話番号が未設定の回線は履歴下書きを作れません。</p> : null}
-                          {relatedHistoryEntries.length === 0 ? (
-                            <p className="muted">関連履歴候補はまだありません。</p>
-                          ) : (
-                            <>
-                              <div className="badge-row">
-                                {relatedHistoryEntries.map((entry) => (
-                                  <span key={entry.id} className="badge">{entry.carrier} / {maskPhoneNumber(entry.phoneNumber)}</span>
-                                ))}
-                              </div>
-                              <div className="button-row button-row--tight" style={{ marginTop: '0.75rem' }}>
-                                <button type="button" className="button" onClick={() => focusRelatedHistory(relatedPhoneNumbers)}>関連履歴だけ表示</button>
-                                <button type="button" className="button" onClick={clearTimelinePhoneFilter}>履歴絞り込み解除</button>
-                              </div>
-                            </>
-                          )}
-                        </div>
+                        ) : null}
                       </div>
                     ) : null}
                   </li>
@@ -2008,222 +1398,7 @@ export function LinesPage(): JSX.Element {
           )}
         </article>
       </section>
-
-      <section className="card-grid card-grid--single" ref={historyFormSectionRef}>
-        <article className="card">
-          <div className="card__header">
-            <h3>契約履歴の登録</h3>
-            <span className="badge">{editingHistoryId ? '履歴編集中' : '電話番号単位'}</span>
-          </div>
-          <p className="muted">過去契約や MNP 転出済みの履歴は、現在の回線一覧とは別に軽量な契約エピソードとして記録します。</p>
-          <form className="form-grid" onSubmit={handleLineHistorySubmit}>
-            <label className="field">
-              <span>電話番号 *</span>
-              <input value={lineHistoryForm.phoneNumber} onChange={(event) => updateLineHistoryField('phoneNumber', event.target.value)} placeholder="例: 09012345678" />
-            </label>
-            <label className="field">
-              <span>キャリア *</span>
-              <input value={lineHistoryForm.carrier} onChange={(event) => updateLineHistoryField('carrier', event.target.value)} placeholder="例: NTTドコモ" />
-            </label>
-            <label className="field">
-              <span>契約状態 *</span>
-              <select value={lineHistoryForm.status} onChange={(event) => updateLineHistoryField('status', event.target.value as LineHistoryStatus)}>
-                {LINE_HISTORY_STATUS_OPTIONS.map((option) => (
-                  <option key={option} value={option}>{option}</option>
-                ))}
-              </select>
-            </label>
-            <label className="field">
-              <span>契約開始日 *</span>
-              <input type="date" value={lineHistoryForm.contractStartDate} onChange={(event) => updateLineHistoryField('contractStartDate', event.target.value)} />
-            </label>
-            <label className="field">
-              <span>契約終了日</span>
-              <input type="date" value={lineHistoryForm.contractEndDate} onChange={(event) => updateLineHistoryField('contractEndDate', event.target.value)} />
-            </label>
-            <div className="detail-panel field--full" style={{ marginTop: '0.5rem' }}>
-              <div className="card__header">
-                <h3>活動ログ</h3>
-                <button type="button" className="button" onClick={addActivityLogField}>活動ログを追加</button>
-              </div>
-              <div className="stack" style={{ gap: '0.75rem' }}>
-                {lineHistoryForm.activityLogs.map((activityLog, index) => (
-                  <div key={activityLog.id} className="detail-panel" style={{ margin: 0 }}>
-                    <div className="card__header">
-                      <h3>活動ログ {index + 1}</h3>
-                      <button type="button" className="button button--danger" onClick={() => removeActivityLogField(activityLog.id)}>
-                        このログを削除
-                      </button>
-                    </div>
-                    <div className="form-grid">
-                      <label className="field">
-                        <span>活動日</span>
-                        <input type="date" value={activityLog.activityDate} onChange={(event) => updateActivityLogField(activityLog.id, 'activityDate', event.target.value)} />
-                      </label>
-                      <label className="field">
-                        <span>活動種別</span>
-                        <select value={activityLog.activityType} onChange={(event) => updateActivityLogField(activityLog.id, 'activityType', event.target.value)}>
-                          {allActivityTypes.map((option) => (
-                            <option key={option} value={option}>{option}</option>
-                          ))}
-                        </select>
-                      </label>
-                      <label className="field field--full">
-                        <span>活動メモ</span>
-                        <textarea value={activityLog.activityMemo} onChange={(event) => updateActivityLogField(activityLog.id, 'activityMemo', event.target.value)} rows={2} placeholder="例: 発信テスト実施 / データ通信実施 / 請求確認" />
-                      </label>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-            <label className="field field--full">
-              <span>メモ</span>
-              <textarea value={lineHistoryForm.memo} onChange={(event) => updateLineHistoryField('memo', event.target.value)} rows={3} placeholder="例: au から LINEMO へ MNP など" />
-            </label>
-            {reviewSuggest && (
-              <div className="notice field--full">
-                <p>「{reviewSuggest.draftName}」の次回確認日を <strong>{reviewSuggest.suggestedDate}</strong> に更新しますか？（活動日 +{notificationSettings.reviewIntervalDays}日）</p>
-                <div className="button-row">
-                  <button type="button" className="button button--primary" onClick={handleApplyReviewSuggest}>更新する</button>
-                  <button type="button" className="button" onClick={() => setReviewSuggest(null)}>スキップ</button>
-                </div>
-              </div>
-            )}
-            <div className="button-row field--full">
-              <button type="submit" className="button button--primary">{historySubmitLabel}</button>
-              <button type="button" className="button" onClick={resetLineHistoryForm}>入力をリセット</button>
-              <button type="button" className="button" onClick={handleExportLineHistory}>履歴 JSON をエクスポート</button>
-              <button type="button" className="button button--primary" onClick={handleExportCombined}>統合バックアップをエクスポート</button>
-              <button type="button" className="button" onClick={() => historyImportInputRef.current?.click()}>履歴 JSON をインポート</button>
-              <button type="button" className="button button--primary" onClick={() => combinedImportInputRef.current?.click()}>統合バックアップを復元</button>
-              <input ref={historyImportInputRef} type="file" accept="application/json,.json" style={{ display: 'none' }} onChange={handleImportLineHistory} />
-              <input ref={combinedImportInputRef} type="file" accept="application/json,.json" style={{ display: 'none' }} onChange={handleImportCombined} />
-            </div>
-          </form>
-        </article>
-      </section>
-
-      <section className="card-grid card-grid--single">
-        <article className="card">
-          <div className="card__header">
-            <h3>電話番号単位の履歴タイムライン</h3>
-            <span className="badge">{visibleLineHistoryGroups.length}番号 / {totalVisibleTimelineEntries}件</span>
-          </div>
-          <div className="form-grid">
-            <label className="field">
-              <span>表示期間</span>
-              <select value={timelineWindow} onChange={(event) => setTimelineWindow(event.target.value as TimelineWindowKey)}>
-                {TIMELINE_WINDOW_OPTIONS.map((option) => (
-                  <option key={option.key} value={option.key}>{option.label}</option>
-                ))}
-              </select>
-            </label>
-            <label className="field">
-              <span>表示対象</span>
-              <select value={timelineViewMode} onChange={(event) => setTimelineViewMode(event.target.value as TimelineViewMode)}>
-                {TIMELINE_VIEW_OPTIONS.map((option) => (
-                  <option key={option.key} value={option.key}>{option.label}</option>
-                ))}
-              </select>
-            </label>
-          </div>
-          <p className="muted">表示期間: {getTimelineRangeLabel(timelineWindow)} / 表示対象: {TIMELINE_VIEW_OPTIONS.find((option) => option.key === timelineViewMode)?.label}</p>
-          {timelinePhoneFilter ? (
-            <div className="button-row button-row--tight" style={{ marginBottom: '0.75rem' }}>
-              <span className="badge badge--ok">関連履歴に絞り込み中: {timelinePhoneFilter.length}番号</span>
-              <button type="button" className="button" onClick={clearTimelinePhoneFilter}>絞り込み解除</button>
-            </div>
-          ) : null}
-          {visibleLineHistoryGroups.length === 0 ? (
-            <p className="muted">現在の表示条件に一致する履歴はありません。期間または表示対象を切り替えて確認してください。</p>
-          ) : (
-            <div className="stack">
-              {visibleLineHistoryGroups.map((group) => (
-                <div key={group.phoneNumber} className="detail-panel">
-                  <div className="card__header">
-                    <h3>{group.maskedPhoneNumber}</h3>
-                    <span className="badge">表示 {group.visibleEntries.length}件 / 全 {group.entries.length}件</span>
-                  </div>
-                  <p className="muted">履歴全体: {formatDate(group.earliestDate)} 〜 {formatDate(group.latestDate)}</p>
-                  {group.relatedDrafts.length > 0 ? (
-                    <div className="detail-panel" style={{ marginBottom: '0.75rem' }}>
-                      <div className="card__header">
-                        <h3>関連主台帳候補</h3>
-                        <span className="badge">{group.relatedDrafts.length}件</span>
-                      </div>
-                      <div className="badge-row">
-                        {group.relatedDrafts.map((draft) => (
-                          <span key={draft.id} className="badge badge--ok">{draft.lineName} / {getMaskedDraftPhoneNumber(draft)}</span>
-                        ))}
-                      </div>
-                    </div>
-                  ) : null}
-                  <div className="stack" style={{ gap: '0.75rem' }}>
-                    {group.visibleEntries.map((entry, index) => {
-                      const timelineStyle = calculateTimelineStyleForWindow(entry, timelineWindow, today, group.earliestDate, group.latestDate);
-                      const previousEntry = index > 0 ? group.visibleEntries[index - 1] : null;
-                      return (
-                        <div key={entry.id} className="detail-panel" style={{ margin: 0 }}>
-                          <div className="card__header">
-                            <h3>{entry.carrier}</h3>
-                            <span className={isCurrentHistoryStatus(entry.status) ? 'badge badge--ok' : 'badge'}>{entry.status}</span>
-                          </div>
-                          <div className="list__summary-grid">
-                            <span>開始: {formatDate(entry.contractStartDate)}</span>
-                            <span>終了: {entry.contractEndDate ? formatDate(entry.contractEndDate) : '継続中'}</span>
-                          </div>
-                          {getLatestActivityDate(entry.activityLogs) != null ? (
-                            <div className="badge-row" style={{ marginTop: '0.25rem' }}>
-                              <span className="badge">最終活動: {formatDate(getLatestActivityDate(entry.activityLogs)!)}</span>
-                            </div>
-                          ) : null}
-                          {previousEntry ? <p className="muted">直前の移動: {previousEntry.carrier} → {entry.carrier}</p> : null}
-                          {entry.memo ? <p className="muted">{entry.memo}</p> : null}
-                          {entry.activityLogs.length > 0 ? (
-                            <div className="detail-panel" style={{ marginTop: '0.5rem', marginBottom: '0.5rem' }}>
-                              <div className="card__header">
-                                <h3>活動ログ</h3>
-                                <span className="badge">{entry.activityLogs.length}件</span>
-                              </div>
-                              <div className="stack" style={{ gap: '0.5rem' }}>
-                                {[...entry.activityLogs]
-                                  .sort((a, b) => (b.activityDate || '').localeCompare(a.activityDate || ''))
-                                  .map((activityLog) => (
-                                    <div key={activityLog.id}>
-                                      <div className="badge-row" style={{ marginBottom: '0.25rem' }}>
-                                        {activityLog.activityDate ? <span className="badge">{formatDate(activityLog.activityDate)}</span> : null}
-                                        {activityLog.activityType ? <span className="badge badge--ok">{activityLog.activityType}</span> : null}
-                                      </div>
-                                      {activityLog.activityMemo ? <p className="muted" style={{ margin: 0 }}>{activityLog.activityMemo}</p> : null}
-                                    </div>
-                                  ))}
-                              </div>
-                            </div>
-                          ) : null}
-                          {calculateContractDurationDays(entry.contractStartDate, entry.contractEndDate || '') != null ? (
-                            <p className="muted">契約維持日数: {calculateContractDurationDays(entry.contractStartDate, entry.contractEndDate || '')}日</p>
-                          ) : null}
-                          {group.relatedDrafts.length > 0 ? (
-                            <p className="muted">関連主台帳候補: {group.relatedDrafts.map((draft) => draft.lineName).join(' / ')}</p>
-                          ) : null}
-                          <div style={{ position: 'relative', marginTop: '0.5rem', height: '1.5rem', background: 'rgba(148, 163, 184, 0.2)', borderRadius: '999px', overflow: 'hidden' }}>
-                            <div style={{ position: 'absolute', top: 0, bottom: 0, left: timelineStyle.left, width: timelineStyle.width, borderRadius: '999px', background: 'rgba(59, 130, 246, 0.8)' }} />
-                          </div>
-                          <div className="button-row button-row--tight">
-                            <button type="button" className="button" onClick={() => handleEditLineHistory(entry)}>編集する</button>
-                            <button type="button" className="button button--danger" onClick={() => handleDeleteLineHistory(entry.id)}>削除する</button>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </article>
-      </section>
     </div>
   );
 }
+

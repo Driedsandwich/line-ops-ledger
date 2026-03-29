@@ -4,6 +4,10 @@ export const NOTIFICATION_RELAUNCH_POLICY_OPTIONS = ['none', 'on-app-launch'] as
 export type NotificationReminderWindow = (typeof NOTIFICATION_REMINDER_WINDOW_OPTIONS)[number];
 export type NotificationRelaunchPolicy = (typeof NOTIFICATION_RELAUNCH_POLICY_OPTIONS)[number];
 
+export const REVIEW_INTERVAL_DAYS_DEFAULT = 30;
+export const REVIEW_INTERVAL_DAYS_MIN = 1;
+export const REVIEW_INTERVAL_DAYS_MAX = 365;
+
 export type NotificationSettings = {
   enabled: boolean;
   reminderWindow: NotificationReminderWindow;
@@ -12,10 +16,6 @@ export type NotificationSettings = {
 };
 
 const STORAGE_KEY = 'line-ops-ledger.notification-settings';
-
-export const REVIEW_INTERVAL_DAYS_DEFAULT = 30;
-export const REVIEW_INTERVAL_DAYS_MIN = 1;
-export const REVIEW_INTERVAL_DAYS_MAX = 365;
 
 const defaultNotificationSettings: NotificationSettings = {
   enabled: false,
@@ -44,7 +44,6 @@ function toNotificationSettings(value: unknown): NotificationSettings | null {
   const enabled = typeof value.enabled === 'boolean' ? value.enabled : null;
   const reminderWindow = isReminderWindow(value.reminderWindow) ? value.reminderWindow : null;
   const relaunchPolicy = isRelaunchPolicy(value.relaunchPolicy) ? value.relaunchPolicy : null;
-
   if (enabled == null || !reminderWindow || !relaunchPolicy) {
     return null;
   }
