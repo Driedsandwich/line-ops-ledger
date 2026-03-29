@@ -1,0 +1,1287 @@
+{
+  "exportedAt": "2026-03-29T10:00:00.000Z",
+  "version": 1,
+  "lineDrafts": {
+    "schemaVersion": 4,
+    "updatedAt": "2026-03-29T10:00:00.000Z",
+    "items": [
+      {
+        "id": "d-001",
+        "lineName": "メイン音声（本人）",
+        "carrier": "NTTドコモ",
+        "lineType": "音声SIM",
+        "monthlyCost": 3278,
+        "phoneNumber": "09011110001",
+        "last4": "0001",
+        "contractHolderNote": "本人名義",
+        "contractStartDate": "2022-04-01",
+        "contractEndDate": "",
+        "contractHolder": "山田 太郎",
+        "serviceUser": "本人",
+        "paymentMethod": "クレジットカード",
+        "planName": "eximo / かけ放題オプション",
+        "deviceName": "iPhone 16 Pro",
+        "status": "利用中",
+        "memo": "特典期間 2026-06 まで。月額変動に注意。",
+        "nextReviewDate": "2026-03-24",
+        "createdAt": "2022-04-01T09:00:00.000Z"
+      },
+      {
+        "id": "d-002",
+        "lineName": "サブ音声（本人 ahamo）",
+        "carrier": "ahamo",
+        "lineType": "音声SIM",
+        "monthlyCost": 2970,
+        "phoneNumber": "09011110002",
+        "last4": "0002",
+        "contractHolderNote": "",
+        "contractStartDate": "2023-06-15",
+        "contractEndDate": "",
+        "contractHolder": "山田 太郎",
+        "serviceUser": "本人",
+        "paymentMethod": "クレジットカード",
+        "planName": "ahamo 20GB",
+        "deviceName": "Pixel 9",
+        "status": "利用中",
+        "memo": "仕事用。",
+        "nextReviewDate": "2026-04-01",
+        "createdAt": "2023-06-15T10:00:00.000Z"
+      },
+      {
+        "id": "d-003",
+        "lineName": "タブレット用データ（本人）",
+        "carrier": "IIJmio",
+        "lineType": "データSIM",
+        "monthlyCost": 880,
+        "phoneNumber": "09011110003",
+        "last4": "0003",
+        "contractHolderNote": "",
+        "contractStartDate": "2023-09-01",
+        "contractEndDate": "2026-08-31",
+        "contractHolder": "山田 太郎",
+        "serviceUser": "本人",
+        "paymentMethod": "クレジットカード",
+        "planName": "2ギガプラン",
+        "deviceName": "iPad Pro",
+        "status": "利用中",
+        "memo": "更新月（2026-08）に解約を検討。",
+        "nextReviewDate": "2026-04-04",
+        "createdAt": "2023-09-01T10:00:00.000Z"
+      },
+      {
+        "id": "d-004",
+        "lineName": "ホームルーター（本人）",
+        "carrier": "楽天モバイル",
+        "lineType": "ホームルーター",
+        "monthlyCost": 3278,
+        "phoneNumber": "09011110004",
+        "last4": "0004",
+        "contractHolderNote": "",
+        "contractStartDate": "2023-04-01",
+        "contractEndDate": "",
+        "contractHolder": "山田 太郎",
+        "serviceUser": "本人",
+        "paymentMethod": "クレジットカード",
+        "planName": "Rakuten最強プラン",
+        "deviceName": "Rakuten Turbo 5G",
+        "status": "利用中",
+        "memo": "",
+        "nextReviewDate": "2026-04-18",
+        "createdAt": "2023-04-01T10:00:00.000Z"
+      },
+      {
+        "id": "d-005",
+        "lineName": "光回線（本人）",
+        "carrier": "その他",
+        "lineType": "光回線",
+        "monthlyCost": 5500,
+        "phoneNumber": "",
+        "last4": "",
+        "contractHolderNote": "",
+        "contractStartDate": "2020-01-10",
+        "contractEndDate": "2026-04-16",
+        "contractHolder": "山田 太郎",
+        "serviceUser": "本人",
+        "paymentMethod": "口座振替",
+        "planName": "フレッツ光ネクスト ファミリー・スーパーハイスピードタイプ 隼",
+        "deviceName": "ONU: PR-500KI",
+        "status": "利用中",
+        "memo": "2026-04月に更新か乗り換え要検討。",
+        "nextReviewDate": "2026-04-13",
+        "createdAt": "2020-01-10T10:00:00.000Z"
+      },
+      {
+        "id": "d-006",
+        "lineName": "旧サブ音声（本人 povo）",
+        "carrier": "povo",
+        "lineType": "音声SIM",
+        "monthlyCost": 0,
+        "phoneNumber": "09011110006",
+        "last4": "0006",
+        "contractHolderNote": "",
+        "contractStartDate": "2022-10-01",
+        "contractEndDate": "",
+        "contractHolder": "山田 太郎",
+        "serviceUser": "本人",
+        "paymentMethod": "クレジットカード",
+        "planName": "povo2.0（基本プラン0円）",
+        "deviceName": "",
+        "status": "解約予定",
+        "memo": "MNP予約番号取得済み。2026-04に転出予定。",
+        "nextReviewDate": "2026-04-03",
+        "createdAt": "2022-10-01T10:00:00.000Z"
+      },
+      {
+        "id": "d-007",
+        "lineName": "旧メイン音声（本人 SoftBank）",
+        "carrier": "ソフトバンク",
+        "lineType": "音声SIM",
+        "monthlyCost": null,
+        "phoneNumber": "09011110007",
+        "last4": "0007",
+        "contractHolderNote": "",
+        "contractStartDate": "2018-05-01",
+        "contractEndDate": "2022-03-31",
+        "contractHolder": "山田 太郎",
+        "serviceUser": "本人",
+        "paymentMethod": "クレジットカード",
+        "planName": "ワイモバイル Sプラン（旧）",
+        "deviceName": "",
+        "status": "MNP転出済み",
+        "memo": "NTTドコモ（d-001）へ MNP 転出済み。",
+        "nextReviewDate": "",
+        "createdAt": "2020-01-01T00:00:00.000Z"
+      },
+      {
+        "id": "d-008",
+        "lineName": "メイン音声（配偶者）",
+        "carrier": "au",
+        "lineType": "音声SIM",
+        "monthlyCost": 4928,
+        "phoneNumber": "09022220001",
+        "last4": "0001",
+        "contractHolderNote": "夫名義",
+        "contractStartDate": "2021-01-15",
+        "contractEndDate": "",
+        "contractHolder": "山田 太郎",
+        "serviceUser": "配偶者",
+        "paymentMethod": "家族合算",
+        "planName": "スマートバリュー / 使い放題MAX 5G ALL STAR",
+        "deviceName": "Galaxy S25",
+        "status": "利用中",
+        "memo": "",
+        "nextReviewDate": "2026-03-29",
+        "createdAt": "2021-01-15T10:00:00.000Z"
+      },
+      {
+        "id": "d-009",
+        "lineName": "ウォッチ用（配偶者）",
+        "carrier": "UQ mobile",
+        "lineType": "データSIM",
+        "monthlyCost": 550,
+        "phoneNumber": "09022220002",
+        "last4": "0002",
+        "contractHolderNote": "",
+        "contractStartDate": "2024-02-01",
+        "contractEndDate": "",
+        "contractHolder": "山田 太郎",
+        "serviceUser": "配偶者",
+        "paymentMethod": "家族合算",
+        "planName": "コミコミプラン（ウォッチ）",
+        "deviceName": "Apple Watch Ultra 2",
+        "status": "利用中",
+        "memo": "",
+        "nextReviewDate": "2026-05-13",
+        "createdAt": "2024-02-01T10:00:00.000Z"
+      },
+      {
+        "id": "d-010",
+        "lineName": "旧音声（配偶者 Y!mobile）",
+        "carrier": "Y!mobile",
+        "lineType": "音声SIM",
+        "monthlyCost": null,
+        "phoneNumber": "09022220003",
+        "last4": "0003",
+        "contractHolderNote": "",
+        "contractStartDate": "2019-03-01",
+        "contractEndDate": "2021-01-14",
+        "contractHolder": "山田 太郎",
+        "serviceUser": "配偶者",
+        "paymentMethod": "クレジットカード",
+        "planName": "シンプルS（旧）",
+        "deviceName": "",
+        "status": "解約済み",
+        "memo": "au（d-008）へ番号移行（同番）で解約。",
+        "nextReviewDate": "",
+        "createdAt": "2019-03-01T00:00:00.000Z"
+      },
+      {
+        "id": "d-011",
+        "lineName": "メイン音声（子1）",
+        "carrier": "LINEMO",
+        "lineType": "音声SIM",
+        "monthlyCost": 990,
+        "phoneNumber": "09033330001",
+        "last4": "0001",
+        "contractHolderNote": "親名義",
+        "contractStartDate": "2023-04-01",
+        "contractEndDate": "",
+        "contractHolder": "山田 太郎",
+        "serviceUser": "子1",
+        "paymentMethod": "クレジットカード",
+        "planName": "ミニプラン 3GB",
+        "deviceName": "iPhone SE 第3世代",
+        "status": "利用中",
+        "memo": "高校入学時に開通。",
+        "nextReviewDate": "2026-05-28",
+        "createdAt": "2023-04-01T10:00:00.000Z"
+      },
+      {
+        "id": "d-012",
+        "lineName": "ゲーム機用データ（子1）",
+        "carrier": "mineo",
+        "lineType": "データSIM",
+        "monthlyCost": 250,
+        "phoneNumber": "",
+        "last4": "3312",
+        "contractHolderNote": "",
+        "contractStartDate": "2024-01-01",
+        "contractEndDate": "",
+        "contractHolder": "山田 太郎",
+        "serviceUser": "子1",
+        "paymentMethod": "クレジットカード",
+        "planName": "マイそくスーパーライト",
+        "deviceName": "Nintendo Switch",
+        "status": "利用中",
+        "memo": "ゲーム用低速 SIM。解約検討中。",
+        "nextReviewDate": "2026-04-12",
+        "createdAt": "2024-01-01T10:00:00.000Z"
+      },
+      {
+        "id": "d-013",
+        "lineName": "旧音声（子1 irumo）",
+        "carrier": "irumo",
+        "lineType": "音声SIM",
+        "monthlyCost": null,
+        "phoneNumber": "09033330001",
+        "last4": "0001",
+        "contractHolderNote": "",
+        "contractStartDate": "2022-04-01",
+        "contractEndDate": "2023-03-31",
+        "contractHolder": "山田 太郎",
+        "serviceUser": "子1",
+        "paymentMethod": "クレジットカード",
+        "planName": "irumo 3GB",
+        "deviceName": "",
+        "status": "MNP転出済み",
+        "memo": "LINEMO（d-011）へ MNP 転出済み。",
+        "nextReviewDate": "",
+        "createdAt": "2022-04-01T00:00:00.000Z"
+      },
+      {
+        "id": "d-014",
+        "lineName": "メイン音声（子2）",
+        "carrier": "NUROモバイル",
+        "lineType": "音声SIM",
+        "monthlyCost": 792,
+        "phoneNumber": "09044440001",
+        "last4": "0001",
+        "contractHolderNote": "親名義",
+        "contractStartDate": "2024-04-01",
+        "contractEndDate": "",
+        "contractHolder": "山田 太郎",
+        "serviceUser": "子2",
+        "paymentMethod": "クレジットカード",
+        "planName": "バリュープラス 3GB",
+        "deviceName": "OPPO A79 5G",
+        "status": "利用中",
+        "memo": "中学入学時に開通。月額管理要。",
+        "nextReviewDate": "2026-04-28",
+        "createdAt": "2024-04-01T10:00:00.000Z"
+      },
+      {
+        "id": "d-015",
+        "lineName": "タブレット用（子2）",
+        "carrier": "楽天モバイル",
+        "lineType": "データSIM",
+        "monthlyCost": 1078,
+        "phoneNumber": "09044440002",
+        "last4": "0002",
+        "contractHolderNote": "",
+        "contractStartDate": "2024-04-01",
+        "contractEndDate": "",
+        "contractHolder": "山田 太郎",
+        "serviceUser": "子2",
+        "paymentMethod": "クレジットカード",
+        "planName": "Rakuten最強プラン（データのみ）",
+        "deviceName": "Fire HD 10",
+        "status": "利用中",
+        "memo": "学習タブレット用。",
+        "nextReviewDate": "2026-06-27",
+        "createdAt": "2024-04-01T10:00:00.000Z"
+      },
+      {
+        "id": "d-016",
+        "lineName": "法人用メイン音声",
+        "carrier": "NTTドコモ",
+        "lineType": "音声SIM",
+        "monthlyCost": 5280,
+        "phoneNumber": "09011110016",
+        "last4": "0016",
+        "contractHolderNote": "法人名義（本人が実使用）",
+        "contractStartDate": "2021-10-01",
+        "contractEndDate": "",
+        "contractHolder": "株式会社サンプル",
+        "serviceUser": "本人",
+        "paymentMethod": "請求書",
+        "planName": "ビジネス5Gプラス / かけ放題",
+        "deviceName": "iPhone 16",
+        "status": "利用中",
+        "memo": "会社契約。経費精算あり。",
+        "nextReviewDate": "2026-03-30",
+        "createdAt": "2021-10-01T10:00:00.000Z"
+      },
+      {
+        "id": "d-017",
+        "lineName": "法人用データ回線",
+        "carrier": "ソフトバンク",
+        "lineType": "データSIM",
+        "monthlyCost": 1650,
+        "phoneNumber": "09011110017",
+        "last4": "0017",
+        "contractHolderNote": "",
+        "contractStartDate": "2022-04-01",
+        "contractEndDate": "2026-04-08",
+        "contractHolder": "株式会社サンプル",
+        "serviceUser": "本人",
+        "paymentMethod": "請求書",
+        "planName": "メリハリ無制限+（データ専用）",
+        "deviceName": "モバイルWi-Fi",
+        "status": "解約予定",
+        "memo": "2026-04 解約手続き済み。",
+        "nextReviewDate": "2026-04-06",
+        "createdAt": "2022-04-01T10:00:00.000Z"
+      },
+      {
+        "id": "d-018",
+        "lineName": "旧音声（本人 au）",
+        "carrier": "au",
+        "lineType": "音声SIM",
+        "monthlyCost": null,
+        "phoneNumber": "09011110018",
+        "last4": "0018",
+        "contractHolderNote": "",
+        "contractStartDate": "2016-08-01",
+        "contractEndDate": "2023-05-31",
+        "contractHolder": "山田 太郎",
+        "serviceUser": "本人",
+        "paymentMethod": "クレジットカード",
+        "planName": "au フラットプラン25 Netto（旧）",
+        "deviceName": "",
+        "status": "MNP転出済み",
+        "memo": "ahamo（d-002）へ MNP 転出済み。",
+        "nextReviewDate": "",
+        "createdAt": "2016-08-01T00:00:00.000Z"
+      },
+      {
+        "id": "d-019",
+        "lineName": "旧サブ音声（本人 旧ドコモ）",
+        "carrier": "NTTドコモ",
+        "lineType": "音声SIM",
+        "monthlyCost": null,
+        "phoneNumber": "09011110002",
+        "last4": "0002",
+        "contractHolderNote": "",
+        "contractStartDate": "2019-10-01",
+        "contractEndDate": "2023-06-14",
+        "contractHolder": "山田 太郎",
+        "serviceUser": "本人",
+        "paymentMethod": "クレジットカード",
+        "planName": "ギガライト（旧）",
+        "deviceName": "",
+        "status": "解約済み",
+        "memo": "ahamo（d-002）開通に伴い解約。同番号継続ではなく別番号取得。",
+        "nextReviewDate": "",
+        "createdAt": "2019-10-01T00:00:00.000Z"
+      },
+      {
+        "id": "d-020",
+        "lineName": "旧データ（配偶者 楽天）",
+        "carrier": "楽天モバイル",
+        "lineType": "データSIM",
+        "monthlyCost": null,
+        "phoneNumber": "09022220010",
+        "last4": "0010",
+        "contractHolderNote": "",
+        "contractStartDate": "2021-04-01",
+        "contractEndDate": "2022-09-30",
+        "contractHolder": "山田 太郎",
+        "serviceUser": "配偶者",
+        "paymentMethod": "クレジットカード",
+        "planName": "Rakutenアンリミット（旧）",
+        "deviceName": "",
+        "status": "解約済み",
+        "memo": "無料期間終了に伴い解約。",
+        "nextReviewDate": "",
+        "createdAt": "2021-04-01T00:00:00.000Z"
+      },
+      {
+        "id": "d-021",
+        "lineName": "ウォッチ用（本人）",
+        "carrier": "NTTドコモ",
+        "lineType": "データSIM",
+        "monthlyCost": 550,
+        "phoneNumber": "",
+        "last4": "0021",
+        "contractHolderNote": "",
+        "contractStartDate": "2024-09-20",
+        "contractEndDate": "",
+        "contractHolder": "山田 太郎",
+        "serviceUser": "本人",
+        "paymentMethod": "クレジットカード",
+        "planName": "ワンナンバーサービス",
+        "deviceName": "Apple Watch Series 10",
+        "status": "利用中",
+        "memo": "iPhoneと同番号で共有。",
+        "nextReviewDate": "2026-09-25",
+        "createdAt": "2024-09-20T10:00:00.000Z"
+      },
+      {
+        "id": "d-022",
+        "lineName": "外出用モバイルルーター",
+        "carrier": "NUROモバイル",
+        "lineType": "ホームルーター",
+        "monthlyCost": 1320,
+        "phoneNumber": "",
+        "last4": "0022",
+        "contractHolderNote": "",
+        "contractStartDate": "2023-12-01",
+        "contractEndDate": "",
+        "contractHolder": "山田 太郎",
+        "serviceUser": "本人",
+        "paymentMethod": "クレジットカード",
+        "planName": "NEOプランS 20GB",
+        "deviceName": "Speed Wi-Fi 5G X12",
+        "status": "利用中",
+        "memo": "出張時に活用。",
+        "nextReviewDate": "2026-05-18",
+        "createdAt": "2023-12-01T10:00:00.000Z"
+      },
+      {
+        "id": "d-023",
+        "lineName": "旧旧音声（子1 格安SIM初代）",
+        "carrier": "その他",
+        "lineType": "音声SIM",
+        "monthlyCost": null,
+        "phoneNumber": "09033330001",
+        "last4": "0001",
+        "contractHolderNote": "",
+        "contractStartDate": "2020-04-01",
+        "contractEndDate": "2022-03-31",
+        "contractHolder": "山田 太郎",
+        "serviceUser": "子1",
+        "paymentMethod": "クレジットカード",
+        "planName": "日本通信SIM（旧）",
+        "deviceName": "",
+        "status": "MNP転出済み",
+        "memo": "irumo（d-013）へ MNP 転出済み。",
+        "nextReviewDate": "",
+        "createdAt": "2020-04-01T00:00:00.000Z"
+      },
+      {
+        "id": "d-024",
+        "lineName": "詳細不明回線（要確認）",
+        "carrier": "その他",
+        "lineType": "未分類",
+        "monthlyCost": null,
+        "phoneNumber": "",
+        "last4": "9999",
+        "contractHolderNote": "",
+        "contractStartDate": "",
+        "contractEndDate": "",
+        "contractHolder": "山田 太郎",
+        "serviceUser": "不明",
+        "paymentMethod": "その他",
+        "planName": "",
+        "deviceName": "",
+        "status": "利用中",
+        "memo": "引き落とし明細で発見。詳細を要確認。",
+        "nextReviewDate": "2026-03-19",
+        "createdAt": "2026-01-01T10:00:00.000Z"
+      },
+      {
+        "id": "d-025",
+        "lineName": "楽天音声（本人 サブ）",
+        "carrier": "楽天モバイル",
+        "lineType": "音声SIM",
+        "monthlyCost": 1078,
+        "phoneNumber": "09011110025",
+        "last4": "0025",
+        "contractHolderNote": "",
+        "contractStartDate": "2021-04-01",
+        "contractEndDate": "",
+        "contractHolder": "山田 太郎",
+        "serviceUser": "本人",
+        "paymentMethod": "クレジットカード",
+        "planName": "Rakuten最強プラン",
+        "deviceName": "Rakuten Hand 5G",
+        "status": "利用中",
+        "memo": "楽天経済圏のため維持。ほぼ未使用。",
+        "nextReviewDate": "2026-04-23",
+        "createdAt": "2021-04-01T10:00:00.000Z"
+      }
+    ]
+  },
+  "lineHistory": [
+    {
+      "id": "h-001",
+      "phoneNumber": "09011110001",
+      "carrier": "日本通信SIM",
+      "status": "MNP転出済み",
+      "contractStartDate": "2014-06-01",
+      "contractEndDate": "2018-04-30",
+      "activityLogs": [
+        {
+          "id": "l-001-a",
+          "activityDate": "2018-04-20",
+          "activityType": "その他",
+          "activityMemo": "MNP予約番号取得。ソフトバンクへ転出準備。"
+        }
+      ],
+      "memo": "最初のスマートフォン回線。ソフトバンクへ MNP 転出。",
+      "createdAt": "2020-01-01T00:00:00.000Z"
+    },
+    {
+      "id": "h-002",
+      "phoneNumber": "09011110001",
+      "carrier": "ソフトバンク",
+      "status": "MNP転出済み",
+      "contractStartDate": "2018-05-01",
+      "contractEndDate": "2022-03-31",
+      "activityLogs": [
+        {
+          "id": "l-002-a",
+          "activityDate": "2021-06-01",
+          "activityType": "料金確認",
+          "activityMemo": "請求明細確認。月額 7,920円。"
+        },
+        {
+          "id": "l-002-b",
+          "activityDate": "2022-02-15",
+          "activityType": "その他",
+          "activityMemo": "MNP予約番号取得。ドコモへ転出準備完了。"
+        },
+        {
+          "id": "l-002-c",
+          "activityDate": "2022-03-20",
+          "activityType": "通話実施",
+          "activityMemo": "最終通話テスト実施。正常。"
+        }
+      ],
+      "memo": "iPhone 8 → iPhone 13 Pro と機種変更。ドコモへ MNP 転出。",
+      "createdAt": "2020-01-01T00:00:00.000Z"
+    },
+    {
+      "id": "h-003",
+      "phoneNumber": "09011110001",
+      "carrier": "NTTドコモ",
+      "status": "利用中",
+      "contractStartDate": "2022-04-01",
+      "contractEndDate": "",
+      "activityLogs": [
+        {
+          "id": "l-003-a",
+          "activityDate": "2024-04-01",
+          "activityType": "料金確認",
+          "activityMemo": "請求明細確認。eximo 割引適用中。月額 3,278円。"
+        },
+        {
+          "id": "l-003-b",
+          "activityDate": "2025-04-01",
+          "activityType": "利用実績確認",
+          "activityMemo": "通信速度テスト。下り 320Mbps。正常。"
+        },
+        {
+          "id": "l-003-c",
+          "activityDate": "2025-12-01",
+          "activityType": "料金確認",
+          "activityMemo": "年末請求確認。月額変動なし。"
+        },
+        {
+          "id": "l-003-d",
+          "activityDate": "2026-03-01",
+          "activityType": "料金確認",
+          "activityMemo": "請求明細確認。特典期間（〜2026-06）継続中。"
+        }
+      ],
+      "memo": "iPhone 14 Pro → iPhone 16 Pro へ機種変更済み。",
+      "createdAt": "2022-04-01T09:00:00.000Z"
+    },
+    {
+      "id": "h-004",
+      "phoneNumber": "09011110002",
+      "carrier": "NTTドコモ",
+      "status": "解約済み",
+      "contractStartDate": "2019-10-01",
+      "contractEndDate": "2023-06-14",
+      "activityLogs": [
+        {
+          "id": "l-004-a",
+          "activityDate": "2022-01-01",
+          "activityType": "料金確認",
+          "activityMemo": "ギガライト 月額確認。"
+        },
+        {
+          "id": "l-004-b",
+          "activityDate": "2023-05-01",
+          "activityType": "その他",
+          "activityMemo": "ahamo に切替予定。番号は変更。"
+        }
+      ],
+      "memo": "仕事用サブ回線。ahamo 開通（新規番号）に伴い解約。",
+      "createdAt": "2019-10-01T00:00:00.000Z"
+    },
+    {
+      "id": "h-005",
+      "phoneNumber": "09011110002",
+      "carrier": "ahamo",
+      "status": "利用中",
+      "contractStartDate": "2023-06-15",
+      "contractEndDate": "",
+      "activityLogs": [
+        {
+          "id": "l-005-a",
+          "activityDate": "2023-07-01",
+          "activityType": "通信実施",
+          "activityMemo": "通信速度テスト。下り 180Mbps。"
+        },
+        {
+          "id": "l-005-b",
+          "activityDate": "2024-01-15",
+          "activityType": "料金確認",
+          "activityMemo": "請求確認。月額 2,970円。大盛りオプションなし。"
+        },
+        {
+          "id": "l-005-c",
+          "activityDate": "2025-04-01",
+          "activityType": "利用実績確認",
+          "activityMemo": "発信テスト・通信テスト実施。正常。"
+        },
+        {
+          "id": "l-005-d",
+          "activityDate": "2026-02-20",
+          "activityType": "料金確認",
+          "activityMemo": "請求確認。月額変動なし。"
+        }
+      ],
+      "memo": "仕事用。月 20GB 超過月あり。大盛りオプション検討。",
+      "createdAt": "2023-06-15T10:00:00.000Z"
+    },
+    {
+      "id": "h-006",
+      "phoneNumber": "09011110003",
+      "carrier": "IIJmio",
+      "status": "利用中",
+      "contractStartDate": "2023-09-01",
+      "contractEndDate": "2026-08-31",
+      "activityLogs": [
+        {
+          "id": "l-006-a",
+          "activityDate": "2024-03-01",
+          "activityType": "通信実施",
+          "activityMemo": "iPad Pro にて通信テスト実施。正常。"
+        },
+        {
+          "id": "l-006-b",
+          "activityDate": "2025-09-01",
+          "activityType": "利用実績確認",
+          "activityMemo": "1周年確認。速度・容量問題なし。"
+        },
+        {
+          "id": "l-006-c",
+          "activityDate": "2026-02-10",
+          "activityType": "料金確認",
+          "activityMemo": "月次請求確認。880円/月。"
+        }
+      ],
+      "memo": "2ギガで十分。更新月（2026-08）に解約か乗り換えを検討。",
+      "createdAt": "2023-09-01T10:00:00.000Z"
+    },
+    {
+      "id": "h-007",
+      "phoneNumber": "09022220001",
+      "carrier": "Y!mobile",
+      "status": "解約済み",
+      "contractStartDate": "2019-03-01",
+      "contractEndDate": "2021-01-14",
+      "activityLogs": [
+        {
+          "id": "l-007-a",
+          "activityDate": "2020-06-01",
+          "activityType": "利用実績確認",
+          "activityMemo": "通話テスト実施。正常。"
+        },
+        {
+          "id": "l-007-b",
+          "activityDate": "2021-01-05",
+          "activityType": "その他",
+          "activityMemo": "au へ同番号で移行手続き完了。"
+        }
+      ],
+      "memo": "Y!mobile シンプルS。au へ番号移行（MNP）。",
+      "createdAt": "2019-03-01T00:00:00.000Z"
+    },
+    {
+      "id": "h-008",
+      "phoneNumber": "09022220001",
+      "carrier": "au",
+      "status": "利用中",
+      "contractStartDate": "2021-01-15",
+      "contractEndDate": "",
+      "activityLogs": [
+        {
+          "id": "l-008-a",
+          "activityDate": "2022-04-01",
+          "activityType": "料金確認",
+          "activityMemo": "スマートバリュー割引確認。月額 4,928円。"
+        },
+        {
+          "id": "l-008-b",
+          "activityDate": "2023-06-15",
+          "activityType": "機種変更",
+          "activityMemo": "Galaxy S23 → Galaxy S25 に機種変更。"
+        },
+        {
+          "id": "l-008-c",
+          "activityDate": "2024-04-01",
+          "activityType": "料金確認",
+          "activityMemo": "年次確認。月額変動なし。"
+        },
+        {
+          "id": "l-008-d",
+          "activityDate": "2025-07-10",
+          "activityType": "利用実績確認",
+          "activityMemo": "通話・通信テスト実施。正常。"
+        },
+        {
+          "id": "l-008-e",
+          "activityDate": "2025-12-24",
+          "activityType": "料金確認",
+          "activityMemo": "請求確認。（最終確認）"
+        }
+      ],
+      "memo": "au スマートバリュー適用中。光回線（d-005）とセット割引あり。",
+      "createdAt": "2021-01-15T10:00:00.000Z"
+    },
+    {
+      "id": "h-009",
+      "phoneNumber": "09033330001",
+      "carrier": "その他（日本通信SIM）",
+      "status": "MNP転出済み",
+      "contractStartDate": "2020-04-01",
+      "contractEndDate": "2022-03-31",
+      "activityLogs": [
+        {
+          "id": "l-009-a",
+          "activityDate": "2021-04-01",
+          "activityType": "利用実績確認",
+          "activityMemo": "通信テスト実施。正常。"
+        },
+        {
+          "id": "l-009-b",
+          "activityDate": "2022-03-01",
+          "activityType": "その他",
+          "activityMemo": "MNP予約番号取得。irumo へ転出予定。"
+        }
+      ],
+      "memo": "子1の初回線。日本通信 SIM → irumo へ MNP。",
+      "createdAt": "2020-04-01T00:00:00.000Z"
+    },
+    {
+      "id": "h-010",
+      "phoneNumber": "09033330001",
+      "carrier": "irumo",
+      "status": "MNP転出済み",
+      "contractStartDate": "2022-04-01",
+      "contractEndDate": "2023-03-31",
+      "activityLogs": [
+        {
+          "id": "l-010-a",
+          "activityDate": "2022-05-01",
+          "activityType": "通信実施",
+          "activityMemo": "通信テスト実施。速度良好。"
+        },
+        {
+          "id": "l-010-b",
+          "activityDate": "2022-10-01",
+          "activityType": "料金確認",
+          "activityMemo": "月次確認。irumo 3GB 月額変動なし。"
+        },
+        {
+          "id": "l-010-c",
+          "activityDate": "2023-02-15",
+          "activityType": "その他",
+          "activityMemo": "LINEMO へ MNP 転出予定。予約番号取得。"
+        }
+      ],
+      "memo": "irumo 3GB 利用。LINEMO へ MNP 転出。",
+      "createdAt": "2022-04-01T00:00:00.000Z"
+    },
+    {
+      "id": "h-011",
+      "phoneNumber": "09033330001",
+      "carrier": "LINEMO",
+      "status": "利用中",
+      "contractStartDate": "2023-04-01",
+      "contractEndDate": "",
+      "activityLogs": [
+        {
+          "id": "l-011-a",
+          "activityDate": "2023-05-01",
+          "activityType": "通信実施",
+          "activityMemo": "通信テスト実施。LINEギガフリー確認済み。"
+        },
+        {
+          "id": "l-011-b",
+          "activityDate": "2024-04-01",
+          "activityType": "利用実績確認",
+          "activityMemo": "1周年確認。速度・容量問題なし。"
+        },
+        {
+          "id": "l-011-c",
+          "activityDate": "2025-11-29",
+          "activityType": "料金確認",
+          "activityMemo": "月次請求確認。（最終確認）"
+        }
+      ],
+      "memo": "高校生。LINEギガフリーあり。月 3GB で足りている様子。",
+      "createdAt": "2023-04-01T10:00:00.000Z"
+    },
+    {
+      "id": "h-012",
+      "phoneNumber": "09044440001",
+      "carrier": "NUROモバイル",
+      "status": "利用中",
+      "contractStartDate": "2024-04-01",
+      "contractEndDate": "",
+      "activityLogs": [
+        {
+          "id": "l-012-a",
+          "activityDate": "2024-05-01",
+          "activityType": "通信実施",
+          "activityMemo": "通信テスト実施。正常。"
+        },
+        {
+          "id": "l-012-b",
+          "activityDate": "2024-10-01",
+          "activityType": "料金確認",
+          "activityMemo": "月次確認。792円/月。"
+        },
+        {
+          "id": "l-012-c",
+          "activityDate": "2025-04-01",
+          "activityType": "利用実績確認",
+          "activityMemo": "1周年確認。速度・容量問題なし。"
+        },
+        {
+          "id": "l-012-d",
+          "activityDate": "2026-01-15",
+          "activityType": "料金確認",
+          "activityMemo": "請求確認。月額変動なし。"
+        }
+      ],
+      "memo": "中学生。3GB で不足気味。プランアップ検討。",
+      "createdAt": "2024-04-01T10:00:00.000Z"
+    },
+    {
+      "id": "h-013",
+      "phoneNumber": "09044440002",
+      "carrier": "楽天モバイル",
+      "status": "利用中",
+      "contractStartDate": "2024-04-01",
+      "contractEndDate": "",
+      "activityLogs": [
+        {
+          "id": "l-013-a",
+          "activityDate": "2024-05-01",
+          "activityType": "通信実施",
+          "activityMemo": "通信テスト実施。正常。"
+        },
+        {
+          "id": "l-013-b",
+          "activityDate": "2025-12-19",
+          "activityType": "料金確認",
+          "activityMemo": "月次確認。（最終確認）"
+        }
+      ],
+      "memo": "子2の学習タブレット用。定期確認が漏れがち。",
+      "createdAt": "2024-04-01T10:00:00.000Z"
+    },
+    {
+      "id": "h-014",
+      "phoneNumber": "09011110006",
+      "carrier": "povo",
+      "status": "解約予定",
+      "contractStartDate": "2022-10-01",
+      "contractEndDate": "",
+      "activityLogs": [
+        {
+          "id": "l-014-a",
+          "activityDate": "2022-11-01",
+          "activityType": "通信実施",
+          "activityMemo": "トッピング「1GB 3日間」でテスト利用。"
+        },
+        {
+          "id": "l-014-b",
+          "activityDate": "2023-06-01",
+          "activityType": "SMS送信",
+          "activityMemo": "SMS 送受信テスト実施。正常。"
+        },
+        {
+          "id": "l-014-c",
+          "activityDate": "2024-04-01",
+          "activityType": "利用実績確認",
+          "activityMemo": "半年ごと通話テスト。正常。"
+        },
+        {
+          "id": "l-014-d",
+          "activityDate": "2025-10-01",
+          "activityType": "通話実施",
+          "activityMemo": "180日以内通話テスト実施。"
+        },
+        {
+          "id": "l-014-e",
+          "activityDate": "2026-03-01",
+          "activityType": "その他",
+          "activityMemo": "MNP予約番号取得。2026-04 に転出予定。"
+        }
+      ],
+      "memo": "povo2.0 基本プラン（0円）。維持目的。2026-04 に別回線へ転出予定。",
+      "createdAt": "2022-10-01T10:00:00.000Z"
+    },
+    {
+      "id": "h-015",
+      "phoneNumber": "09011110007",
+      "carrier": "ソフトバンク",
+      "status": "MNP転出済み",
+      "contractStartDate": "2018-05-01",
+      "contractEndDate": "2022-03-31",
+      "activityLogs": [
+        {
+          "id": "l-015-a",
+          "activityDate": "2020-01-01",
+          "activityType": "料金確認",
+          "activityMemo": "月次確認。月額 8,250円（旧プラン）。"
+        },
+        {
+          "id": "l-015-b",
+          "activityDate": "2022-03-01",
+          "activityType": "その他",
+          "activityMemo": "ドコモへ MNP 転出手続き完了。"
+        }
+      ],
+      "memo": "d-001 の前身。当時は主回線として利用。ドコモへ MNP。",
+      "createdAt": "2020-01-01T00:00:00.000Z"
+    },
+    {
+      "id": "h-016",
+      "phoneNumber": "09011110016",
+      "carrier": "NTTドコモ",
+      "status": "利用中",
+      "contractStartDate": "2021-10-01",
+      "contractEndDate": "",
+      "activityLogs": [
+        {
+          "id": "l-016-a",
+          "activityDate": "2022-04-01",
+          "activityType": "料金確認",
+          "activityMemo": "法人請求確認。月額 5,280円。"
+        },
+        {
+          "id": "l-016-b",
+          "activityDate": "2023-04-01",
+          "activityType": "料金確認",
+          "activityMemo": "年次確認。月額変動なし。"
+        },
+        {
+          "id": "l-016-c",
+          "activityDate": "2024-04-01",
+          "activityType": "料金確認",
+          "activityMemo": "年次確認。プラン継続。"
+        },
+        {
+          "id": "l-016-d",
+          "activityDate": "2025-04-01",
+          "activityType": "利用実績確認",
+          "activityMemo": "通信・通話テスト実施。正常。"
+        },
+        {
+          "id": "l-016-e",
+          "activityDate": "2026-02-01",
+          "activityType": "料金確認",
+          "activityMemo": "法人請求確認。月額変動なし。"
+        }
+      ],
+      "memo": "会社名義。経費精算あり。次回確認で法人側との更新有無確認要。",
+      "createdAt": "2021-10-01T10:00:00.000Z"
+    },
+    {
+      "id": "h-017",
+      "phoneNumber": "09011110017",
+      "carrier": "ソフトバンク",
+      "status": "解約予定",
+      "contractStartDate": "2022-04-01",
+      "contractEndDate": "2026-04-08",
+      "activityLogs": [
+        {
+          "id": "l-017-a",
+          "activityDate": "2023-04-01",
+          "activityType": "料金確認",
+          "activityMemo": "法人請求確認。月額 1,650円。"
+        },
+        {
+          "id": "l-017-b",
+          "activityDate": "2024-04-01",
+          "activityType": "料金確認",
+          "activityMemo": "年次確認。"
+        },
+        {
+          "id": "l-017-c",
+          "activityDate": "2026-02-01",
+          "activityType": "その他",
+          "activityMemo": "解約手続き完了。2026-04上旬に終了予定。"
+        }
+      ],
+      "memo": "法人用モバイルWi-Fi。解約手続き済み。返却要。",
+      "createdAt": "2022-04-01T10:00:00.000Z"
+    },
+    {
+      "id": "h-018",
+      "phoneNumber": "09011110018",
+      "carrier": "au",
+      "status": "MNP転出済み",
+      "contractStartDate": "2016-08-01",
+      "contractEndDate": "2023-05-31",
+      "activityLogs": [
+        {
+          "id": "l-018-a",
+          "activityDate": "2020-04-01",
+          "activityType": "料金確認",
+          "activityMemo": "月次確認。"
+        },
+        {
+          "id": "l-018-b",
+          "activityDate": "2022-06-01",
+          "activityType": "利用実績確認",
+          "activityMemo": "通信テスト実施。"
+        },
+        {
+          "id": "l-018-c",
+          "activityDate": "2023-04-15",
+          "activityType": "その他",
+          "activityMemo": "ahamo へ MNP 転出手続き。"
+        }
+      ],
+      "memo": "長期au利用。ahamo（d-002）の前身。MNP 転出済み。",
+      "createdAt": "2016-08-01T00:00:00.000Z"
+    },
+    {
+      "id": "h-019",
+      "phoneNumber": "09011110025",
+      "carrier": "楽天モバイル",
+      "status": "利用中",
+      "contractStartDate": "2021-04-01",
+      "contractEndDate": "",
+      "activityLogs": [
+        {
+          "id": "l-019-a",
+          "activityDate": "2021-05-01",
+          "activityType": "通信実施",
+          "activityMemo": "通信テスト実施。正常。"
+        },
+        {
+          "id": "l-019-b",
+          "activityDate": "2022-04-01",
+          "activityType": "料金確認",
+          "activityMemo": "1周年確認。月額 1,078円。"
+        },
+        {
+          "id": "l-019-c",
+          "activityDate": "2023-04-01",
+          "activityType": "利用実績確認",
+          "activityMemo": "通話テスト。正常。"
+        },
+        {
+          "id": "l-019-d",
+          "activityDate": "2025-12-09",
+          "activityType": "料金確認",
+          "activityMemo": "月次確認。（最終確認）"
+        }
+      ],
+      "memo": "楽天ポイント獲得目的で維持。ほぼ未使用。解約検討中。",
+      "createdAt": "2021-04-01T10:00:00.000Z"
+    },
+    {
+      "id": "h-020",
+      "phoneNumber": "09022220010",
+      "carrier": "楽天モバイル",
+      "status": "解約済み",
+      "contractStartDate": "2021-04-01",
+      "contractEndDate": "2022-09-30",
+      "activityLogs": [
+        {
+          "id": "l-020-a",
+          "activityDate": "2021-06-01",
+          "activityType": "通信実施",
+          "activityMemo": "テスト利用。速度良好。"
+        },
+        {
+          "id": "l-020-b",
+          "activityDate": "2022-08-01",
+          "activityType": "その他",
+          "activityMemo": "無料期間終了予告確認。解約決定。"
+        }
+      ],
+      "memo": "楽天モバイル無料期間後、費用対効果が低いため解約。",
+      "createdAt": "2021-04-01T00:00:00.000Z"
+    },
+    {
+      "id": "h-021",
+      "phoneNumber": "09022220002",
+      "carrier": "UQ mobile",
+      "status": "利用中",
+      "contractStartDate": "2024-02-01",
+      "contractEndDate": "",
+      "activityLogs": [
+        {
+          "id": "l-021-a",
+          "activityDate": "2024-03-01",
+          "activityType": "通信実施",
+          "activityMemo": "ウォッチ単体通信テスト実施。正常。"
+        },
+        {
+          "id": "l-021-b",
+          "activityDate": "2025-02-01",
+          "activityType": "利用実績確認",
+          "activityMemo": "1周年確認。問題なし。"
+        },
+        {
+          "id": "l-021-c",
+          "activityDate": "2026-01-10",
+          "activityType": "料金確認",
+          "activityMemo": "請求確認。550円/月。"
+        }
+      ],
+      "memo": "Apple Watch Ultra 2 用。au回線（d-008）とセット割引適用。",
+      "createdAt": "2024-02-01T10:00:00.000Z"
+    },
+    {
+      "id": "h-022",
+      "phoneNumber": "09033333312",
+      "carrier": "mineo",
+      "status": "利用中",
+      "contractStartDate": "2024-01-01",
+      "contractEndDate": "",
+      "activityLogs": [
+        {
+          "id": "l-022-a",
+          "activityDate": "2024-02-01",
+          "activityType": "通信実施",
+          "activityMemo": "通信テスト実施。低速安定。"
+        },
+        {
+          "id": "l-022-b",
+          "activityDate": "2025-01-01",
+          "activityType": "利用実績確認",
+          "activityMemo": "1周年確認。マイそくスーパーライト問題なし。"
+        },
+        {
+          "id": "l-022-c",
+          "activityDate": "2026-01-01",
+          "activityType": "料金確認",
+          "activityMemo": "請求確認。250円/月。"
+        }
+      ],
+      "memo": "ゲーム機（Switch）のオンライン維持用。低速でも支障なし。",
+      "createdAt": "2024-01-01T10:00:00.000Z"
+    },
+    {
+      "id": "h-023",
+      "phoneNumber": "09011110021",
+      "carrier": "NTTドコモ",
+      "status": "利用中",
+      "contractStartDate": "2024-09-20",
+      "contractEndDate": "",
+      "activityLogs": [
+        {
+          "id": "l-023-a",
+          "activityDate": "2024-10-01",
+          "activityType": "通信実施",
+          "activityMemo": "Apple Watch 単体通信テスト。正常。"
+        },
+        {
+          "id": "l-023-b",
+          "activityDate": "2025-09-20",
+          "activityType": "利用実績確認",
+          "activityMemo": "1周年確認。問題なし。"
+        },
+        {
+          "id": "l-023-c",
+          "activityDate": "2026-03-01",
+          "activityType": "料金確認",
+          "activityMemo": "請求確認。550円/月（ワンナンバー）。"
+        }
+      ],
+      "memo": "iPhoneと同番号シェア。ワンナンバーサービス。",
+      "createdAt": "2024-09-20T10:00:00.000Z"
+    },
+    {
+      "id": "h-024",
+      "phoneNumber": "09011110022",
+      "carrier": "NUROモバイル",
+      "status": "利用中",
+      "contractStartDate": "2023-12-01",
+      "contractEndDate": "",
+      "activityLogs": [
+        {
+          "id": "l-024-a",
+          "activityDate": "2024-01-15",
+          "activityType": "通信実施",
+          "activityMemo": "外出先での通信テスト。下り 120Mbps。"
+        },
+        {
+          "id": "l-024-b",
+          "activityDate": "2024-12-01",
+          "activityType": "利用実績確認",
+          "activityMemo": "1周年確認。容量 20GB で余裕あり。"
+        },
+        {
+          "id": "l-024-c",
+          "activityDate": "2026-01-10",
+          "activityType": "料金確認",
+          "activityMemo": "月次確認。1,320円/月。"
+        }
+      ],
+      "memo": "出張時メイン。20GB で足りている。",
+      "createdAt": "2023-12-01T10:00:00.000Z"
+    },
+    {
+      "id": "h-025",
+      "phoneNumber": "09011110006",
+      "carrier": "povo",
+      "status": "解約予定",
+      "contractStartDate": "2022-10-01",
+      "contractEndDate": "2026-04-03",
+      "activityLogs": [
+        {
+          "id": "l-025-a",
+          "activityDate": "2026-03-25",
+          "activityType": "その他",
+          "activityMemo": "MNP 転出先確定。手数料無料確認。"
+        }
+      ],
+      "memo": "2026-04 に転出確定。ポータビリティ番号は 09011110006 のまま。",
+      "createdAt": "2026-03-01T00:00:00.000Z"
+    }
+  ]
+}
