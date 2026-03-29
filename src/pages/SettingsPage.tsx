@@ -11,6 +11,7 @@ import {
   lineDraftStore,
   type LineDraftStorageInfo,
 } from '../lib/lineDrafts';
+import { lineHistoryStore } from '../lib/lineHistory';
 import {
   getDefaultNotificationSettings,
   loadNotificationSettings,
@@ -149,8 +150,15 @@ export function SettingsPage(): JSX.Element {
 
   function handleExportBackup(): void {
     try {
-      const json = lineDraftStore.exportBackupJson();
-      const filename = lineDraftStore.buildBackupFilename();
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+      const combined = {
+        exportedAt: new Date().toISOString(),
+        version: 1,
+        lineDrafts: JSON.parse(lineDraftStore.exportJson()),
+        lineHistory: JSON.parse(lineHistoryStore.exportJson()),
+      };
+      const json = JSON.stringify(combined, null, 2);
+      const filename = `line-ops-ledger-backup-${timestamp}.json`;
       const blob = new Blob([json], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
@@ -158,9 +166,9 @@ export function SettingsPage(): JSX.Element {
       link.download = filename;
       link.click();
       URL.revokeObjectURL(url);
-      setActionMessage(`JSON バックアップをエクスポートしました: ${filename}`);
+      setActionMessage(`統合バックアップをエクスポートしました: ${filename}`);
     } catch (error) {
-      setActionMessage(error instanceof Error ? error.message : 'バックアップのエクスポートに失敗しました。');
+      setActionMessage(error instanceof Error ? error.message : 'エクスポートに失敗しました。');
     }
   }
 
@@ -172,11 +180,26 @@ export function SettingsPage(): JSX.Element {
 
     try {
       const raw = await file.text();
-      const result = lineDraftStore.importBackupJson(raw);
-      await refresh();
-      setActionMessage(`JSON バックアップをインポートしました。${result.importedCount}件を復元しました。`);
+      const parsed: unknown = JSON.parse(raw);
+
+      if (
+        typeof parsed === 'object' &&
+        parsed !== null &&
+        'lineDrafts' in parsed &&
+        'lineHistory' in parsed
+      ) {
+        const combined = parsed as { lineDrafts: unknown; lineHistory: unknown };
+        const importedDrafts = lineDraftStore.importJson(JSON.stringify(combined.lineDrafts));
+        lineHistoryStore.importJson(JSON.stringify(combined.lineHistory));
+        await refresh();
+        setActionMessage(`統合バックアップを復元しました（主台帳 ${importedDrafts.length} 件）。`);
+      } else {
+        const result = lineDraftStore.importBackupJson(raw);
+        await refresh();
+        setActionMessage(`主台帳バックアップを復元しました（${result.importedCount} 件）。`);
+      }
     } catch (error) {
-      setActionMessage(error instanceof Error ? error.message : 'バックアップのインポートに失敗しました。');
+      setActionMessage(error instanceof Error ? error.message : 'インポートに失敗しました。');
     } finally {
       event.target.value = '';
     }
@@ -304,12 +327,12 @@ export function SettingsPage(): JSX.Element {
 
         <article className="card">
           <div className="card__header">
-            <h3>JSON バックアップ</h3>
+            <h3>統合バックアップ</h3>
             <span className="badge">手動退避</span>
           </div>
 
           <p className="muted">
-            現在の保存データを JSON ファイルとして退避できます。インポートすると現在の保存データを置き換えます。
+            回線台帳と契約履歴をまとめて1ファイルに退避できます。復元時も両方が一括で戻ります。旧形式（台帳のみ）の JSON も読み込めます。
           </p>
 
           <input
@@ -322,10 +345,10 @@ export function SettingsPage(): JSX.Element {
 
           <div className="button-row">
             <button type="button" className="button button--primary" onClick={handleExportBackup}>
-              JSON をエクスポート
+              バックアップをエクスポート
             </button>
             <button type="button" className="button" onClick={() => fileInputRef.current?.click()}>
-              JSON をインポート
+              バックアップを復元
             </button>
           </div>
         </article>
