@@ -11,6 +11,7 @@ import {
 } from '../lib/lineHistory';
 import { loadNotificationSettings } from '../lib/notificationSettings';
 import { updateLineDraft } from '../lib/lineDrafts';
+import { getAllActivityTypes, loadCustomActivityTypes } from '../lib/activityTypeSettings';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -53,7 +54,6 @@ type VisibleLineHistoryGroup = LineHistoryGroup & {
 // Constants
 // ---------------------------------------------------------------------------
 
-const ACTIVITY_TYPE_OPTIONS = ['利用実績確認', '通信実施', '通話実施', 'SMS送信', '料金確認', 'プラン変更', 'その他'] as const;
 const DEFAULT_ACTIVITY_TYPE = '利用実績確認';
 
 const TIMELINE_WINDOW_OPTIONS: Array<{ key: TimelineWindowKey; label: string }> = [
@@ -307,6 +307,7 @@ export function HistoryPage(): JSX.Element {
 
   const notificationSettings = loadNotificationSettings();
   const today = useMemo(() => new Date(), []);
+  const allActivityTypes = useMemo(() => getAllActivityTypes(loadCustomActivityTypes()), []);
 
   // quickActivity パラメータで電話番号が渡された場合フォームにセット
   const quickActivityParam = searchParams.get('quickActivity');
@@ -597,7 +598,7 @@ export function HistoryPage(): JSX.Element {
                       <label className="field">
                         <span>活動種別</span>
                         <select value={activityLog.activityType} onChange={(event) => updateActivityLogField(activityLog.id, 'activityType', event.target.value)}>
-                          {ACTIVITY_TYPE_OPTIONS.map((option) => (
+                          {allActivityTypes.map((option) => (
                             <option key={option} value={option}>{option}</option>
                           ))}
                         </select>

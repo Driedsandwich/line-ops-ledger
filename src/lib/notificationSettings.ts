@@ -17,10 +17,6 @@ export type NotificationSettings = {
 
 const STORAGE_KEY = 'line-ops-ledger.notification-settings';
 
-export const REVIEW_INTERVAL_DAYS_DEFAULT = 30;
-export const REVIEW_INTERVAL_DAYS_MIN = 1;
-export const REVIEW_INTERVAL_DAYS_MAX = 365;
-
 const defaultNotificationSettings: NotificationSettings = {
   enabled: false,
   reminderWindow: 'within-3-days',
@@ -48,15 +44,6 @@ function toNotificationSettings(value: unknown): NotificationSettings | null {
   const enabled = typeof value.enabled === 'boolean' ? value.enabled : null;
   const reminderWindow = isReminderWindow(value.reminderWindow) ? value.reminderWindow : null;
   const relaunchPolicy = isRelaunchPolicy(value.relaunchPolicy) ? value.relaunchPolicy : null;
-  const reviewIntervalDaysRaw = typeof value.reviewIntervalDays === 'number' ? value.reviewIntervalDays : null;
-  const reviewIntervalDays =
-    reviewIntervalDaysRaw != null &&
-    Number.isInteger(reviewIntervalDaysRaw) &&
-    reviewIntervalDaysRaw >= REVIEW_INTERVAL_DAYS_MIN &&
-    reviewIntervalDaysRaw <= REVIEW_INTERVAL_DAYS_MAX
-      ? reviewIntervalDaysRaw
-      : REVIEW_INTERVAL_DAYS_DEFAULT;
-
   if (enabled == null || !reminderWindow || !relaunchPolicy) {
     return null;
   }
