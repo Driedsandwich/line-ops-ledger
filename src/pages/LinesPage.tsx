@@ -721,6 +721,7 @@ export function LinesPage(): JSX.Element {
   const [isCompactView, setIsCompactView] = useState(() => readBooleanPreference(LINES_COMPACT_VIEW_STORAGE_KEY, false));
   const [isFormCollapsed, setIsFormCollapsed] = useState(() => readBooleanPreference(LINES_FORM_COLLAPSED_STORAGE_KEY, false));
   const historyImportInputRef = useRef<HTMLInputElement | null>(null);
+  const combinedImportInputRef = useRef<HTMLInputElement | null>(null);
   const historyFormSectionRef = useRef<HTMLElement | null>(null);
 
   const notificationSettings = loadNotificationSettings();
@@ -885,6 +886,40 @@ export function LinesPage(): JSX.Element {
       setSuccessMessage(`契約履歴を ${imported.length} 件読み込みました。`);
     } catch {
       setErrorMessage('契約履歴 JSON の読み込みに失敗しました。形式を確認してください。');
+    } finally {
+      event.target.value = '';
+    }
+  }
+
+  async function handleImportCombined(event: React.ChangeEvent<HTMLInputElement>): Promise<void> {
+    const file = event.target.files?.[0];
+    if (!file) {
+      return;
+    }
+
+    resetMessages();
+
+    try {
+      const raw = await file.text();
+      const parsed = JSON.parse(raw) as unknown;
+
+      if (!parsed || typeof parsed !== 'object' || !('lineDrafts' in parsed) || !('lineHistory' in parsed)) {
+        throw new Error('統合バックアップの形式が不正です。');
+      }
+
+      const combined = parsed as { lineDrafts: unknown; lineHistory: unknown };
+      const importedDrafts = lineDraftStore.importJson(JSON.stringify(combined.lineDrafts));
+      const importedHistory = lineHistoryStore.importJson(JSON.stringify(combined.lineHistory));
+
+      setDrafts(importedDrafts);
+      setLineHistoryEntries(importedHistory);
+      setEditingHistoryId(null);
+      setTimelinePhoneFilter(null);
+      resetLineHistoryForm();
+      resetForm();
+      setSuccessMessage(`統合バックアップを復元しました（主台帳 ${importedDrafts.length} 件、履歴 ${importedHistory.length} 件）。`);
+    } catch (err) {
+      setErrorMessage(err instanceof Error ? err.message : '統合バックアップの読み込みに失敗しました。形式を確認してください。');
     } finally {
       event.target.value = '';
     }
@@ -2056,7 +2091,9 @@ export function LinesPage(): JSX.Element {
               <button type="button" className="button" onClick={handleExportLineHistory}>履歴 JSON をエクスポート</button>
               <button type="button" className="button button--primary" onClick={handleExportCombined}>統合バックアップをエクスポート</button>
               <button type="button" className="button" onClick={() => historyImportInputRef.current?.click()}>履歴 JSON をインポート</button>
+              <button type="button" className="button button--primary" onClick={() => combinedImportInputRef.current?.click()}>統合バックアップを復元</button>
               <input ref={historyImportInputRef} type="file" accept="application/json,.json" style={{ display: 'none' }} onChange={handleImportLineHistory} />
+              <input ref={combinedImportInputRef} type="file" accept="application/json,.json" style={{ display: 'none' }} onChange={handleImportCombined} />
             </div>
           </form>
         </article>
