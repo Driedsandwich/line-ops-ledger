@@ -1255,11 +1255,11 @@ export function LinesPage(): JSX.Element {
               <p className="muted">保存済み回線はまだありません。最初は回線名・キャリア・電話番号だけでも登録できます。</p>
               <div className="detail-panel">
                 <p className="muted" style={{ marginTop: 0 }}>
-                  既存データがある場合は、`/settings` から統合バックアップを復元すると主台帳と履歴をまとめて戻せます。
+                  既存データがある場合は、`/settings/backup` から統合バックアップを復元すると主台帳と履歴をまとめて戻せます。
                 </p>
                 <div className="button-row button-row--tight">
                   <a className="button button--primary" href="#line-form">回線フォームに戻る</a>
-                  <Link className="button" to="/settings">バックアップを復元する</Link>
+                  <Link className="button" to="/settings/backup">バックアップを復元する</Link>
                   <Link className="button" to="/lines/history">履歴ページを見る</Link>
                 </div>
               </div>

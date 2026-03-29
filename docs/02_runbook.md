@@ -7,7 +7,7 @@
 3. `gh pr list --state open` で open PR を確認する
 4. ローカルで `npm install && npm run dev` を実行する
 5. `.env.local` に `VITE_DEV_LABEL="DEV / <ブランチ名> / PR #NNN"` をセットする
-6. `/`、`/lines`、`/lines/history`、`/settings` の表示を確認する
+6. `/`、`/lines`、`/lines/history`、`/settings/storage`、`/settings/backup`、`/settings/notifications`、`/settings/activity-types` の表示を確認する
 
 ## 動作確認チェックリスト
 
@@ -32,9 +32,12 @@
   - [ ] `活動日` に `今日` / `契約開始日` / `前回活動日` のクイック入力が表示される
   - [ ] 活動記録保存後に次回確認日サジェストが表示される
   - [ ] 既存履歴の未知活動種別を編集しても種別が保持される
-- 設定（`/settings`）
-  - [ ] 通知方針の変更が保存される
-  - [ ] 統合バックアップの復元成功メッセージに主台帳件数と履歴件数が表示される
+- 設定（`/settings/*`）
+  - [ ] `/settings` で `/settings/storage` へリダイレクトされる
+  - [ ] `/settings/storage` で永続化状態と保存データ情報が表示される
+  - [ ] `/settings/backup` で統合バックアップの入出力ができる
+  - [ ] `/settings/notifications` で通知方針の変更が保存される
+  - [ ] `/settings/activity-types` でカスタム活動種別の追加・削除ができる
 
 ## ブランチ命名規則
 

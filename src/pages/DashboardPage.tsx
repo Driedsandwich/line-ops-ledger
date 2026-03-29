@@ -378,7 +378,7 @@ export function DashboardPage(): JSX.Element {
               <span className="badge badge--info">初回ガイド</span>
             </div>
             <p className="muted">
-              まだ回線も履歴もありません。最初は `/lines` で回線を1件登録するか、既存データがある場合は `/settings` から統合バックアップを復元してください。
+              まだ回線も履歴もありません。最初は `/lines` で回線を1件登録するか、既存データがある場合は `/settings/backup` から統合バックアップを復元してください。
             </p>
             <ol className="list">
               <li>
@@ -396,7 +396,7 @@ export function DashboardPage(): JSX.Element {
             </ol>
             <div className="button-row">
               <Link className="button button--primary" to="/lines">回線一覧で1件追加する</Link>
-              <Link className="button" to="/settings">バックアップを復元する</Link>
+              <Link className="button" to="/settings/backup">バックアップを復元する</Link>
               <Link className="button" to="/lines/history">履歴ページを見る</Link>
             </div>
           </article>
@@ -521,7 +521,7 @@ export function DashboardPage(): JSX.Element {
           <p className="muted">
             {notificationSettings.enabled
               ? '現在の設定と次回確認日から、通知対象になり得る回線件数を表示しています。閉アプリ時通知そのものはこの MVP では保証しません。'
-              : '通知は無効です。`/settings` で有効にすると、現在の設定で通知対象になる件数をここで確認できます。'}
+              : '通知は無効です。`/settings/notifications` で有効にすると、現在の設定で通知対象になる件数をここで確認できます。'}
           </p>
         </article>
       </section>
@@ -535,7 +535,7 @@ export function DashboardPage(): JSX.Element {
             </span>
           </div>
           {!notificationSettings.enabled ? (
-            <p className="muted">通知は無効です。`/settings` で通知を有効にすると、理由別件数をここで確認できます。</p>
+            <p className="muted">通知は無効です。`/settings/notifications` で通知を有効にすると、理由別件数をここで確認できます。</p>
           ) : (
             <div className="stats-row">
               <Link className="stat-box" to={buildLinesLink({ reasonLabel: '期限超過' })}>
@@ -566,7 +566,7 @@ export function DashboardPage(): JSX.Element {
             </span>
           </div>
           {!notificationSettings.enabled ? (
-            <p className="muted">通知は無効です。`/settings` で通知を有効にすると、ここに対象回線が表示されます。</p>
+            <p className="muted">通知は無効です。`/settings/notifications` で通知を有効にすると、ここに対象回線が表示されます。</p>
           ) : summary.notificationTargets.length === 0 ? (
             <p className="muted">現在の設定では通知対象になる回線はありません。期限設定か次回確認日を見直すと、ここに候補が表示されます。</p>
           ) : (

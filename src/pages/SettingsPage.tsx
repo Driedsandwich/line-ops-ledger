@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { NavLink } from 'react-router-dom';
 import {
   ACTIVITY_TYPE_LABEL_MAX_LENGTH,
   ACTIVITY_TYPE_MAX_CUSTOM,
@@ -106,7 +107,16 @@ function formatRelaunchPolicy(value: NotificationRelaunchPolicy): string {
   }
 }
 
-export function SettingsPage(): JSX.Element {
+export type SettingsSectionKey = 'storage' | 'backup' | 'notifications' | 'activity-types';
+
+const SETTINGS_SECTIONS: Array<{ key: SettingsSectionKey; label: string; description: string }> = [
+  { key: 'storage', label: 'ストレージ', description: '永続化状態と保存データ情報を確認します。' },
+  { key: 'backup', label: 'バックアップ', description: '主台帳と履歴のエクスポート / 復元を行います。' },
+  { key: 'notifications', label: '通知設定', description: '通知対象と確認間隔の最小方針を調整します。' },
+  { key: 'activity-types', label: '活動種別', description: '履歴入力で使うカスタム活動種別を管理します。' },
+];
+
+export function SettingsPage({ section }: { section: SettingsSectionKey }): JSX.Element {
   const [state, setState] = useState<StoragePersistenceState>(initialState);
   const [storageInfo, setStorageInfo] = useState<LineDraftStorageInfo>(initialStorageInfo);
   const [notificationSettings, setNotificationSettings] = useState<NotificationSettings>(() =>
@@ -247,20 +257,46 @@ export function SettingsPage(): JSX.Element {
       : state.persisted === false
         ? '未許可'
         : '未確認';
+  const currentSection = SETTINGS_SECTIONS.find((item) => item.key === section) ?? SETTINGS_SECTIONS[0];
+  const showStorageSection = section === 'storage';
+  const showBackupSection = section === 'backup';
+  const showNotificationSection = section === 'notifications';
+  const showActivityTypesSection = section === 'activity-types';
 
   return (
     <div className="page">
       <header className="page__header">
         <div>
           <p className="eyebrow">Settings</p>
-          <h2>永続ストレージ状態</h2>
+          <h2>{currentSection.label}</h2>
           <p className="page__lead">
-            永続ストレージ状態に加えて、回線台帳の保存データ情報、JSON バックアップ導線、通知方針を確認できる画面です。
+            {currentSection.description}
           </p>
         </div>
       </header>
 
       <section className="card-grid card-grid--single">
+        <article className="card">
+          <div className="card__header">
+            <h3>設定メニュー</h3>
+            <span className="badge">{currentSection.label}</span>
+          </div>
+          <div className="button-row button-row--tight">
+            {SETTINGS_SECTIONS.map((item) => (
+              <NavLink
+                key={item.key}
+                to={`/settings/${item.key}`}
+                className={({ isActive }: { isActive: boolean }) => (isActive ? 'button button--primary' : 'button')}
+              >
+                {item.label}
+              </NavLink>
+            ))}
+          </div>
+        </article>
+      </section>
+
+      <section className="card-grid card-grid--single">
+        {showStorageSection ? (
         <article className="card">
           <div className="card__header">
             <h3>StorageManager API</h3>
@@ -294,7 +330,9 @@ export function SettingsPage(): JSX.Element {
             </button>
           </div>
         </article>
+        ) : null}
 
+        {showStorageSection ? (
         <article className="card">
           <div className="card__header">
             <h3>保存データ情報</h3>
@@ -324,7 +362,9 @@ export function SettingsPage(): JSX.Element {
             旧配列形式の保存データがある場合、この画面を開いた時点で現行の versioned envelope へ読み替えます。
           </p>
         </article>
+        ) : null}
 
+        {showBackupSection ? (
         <article className="card">
           <div className="card__header">
             <h3>統合バックアップ</h3>
@@ -352,7 +392,9 @@ export function SettingsPage(): JSX.Element {
             </button>
           </div>
         </article>
+        ) : null}
 
+        {showNotificationSection ? (
         <article className="card">
           <div className="card__header">
             <h3>通知設定</h3>
@@ -435,7 +477,9 @@ export function SettingsPage(): JSX.Element {
             「次回起動時に再表示するか」の最小方針だけを保存します。
           </p>
         </article>
+        ) : null}
 
+        {showActivityTypesSection ? (
         <article className="card">
           <div className="card__header">
             <h3>カスタム活動種別</h3>
@@ -484,6 +528,7 @@ export function SettingsPage(): JSX.Element {
             </button>
           </div>
         </article>
+        ) : null}
       </section>
     </div>
   );

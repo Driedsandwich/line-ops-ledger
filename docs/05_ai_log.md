@@ -63,3 +63,6 @@
 - Issue #129: 履歴入力の下書き候補を追加
   - 電話番号に一致する主台帳候補 / 直近履歴候補をワンタップ反映
   - 活動日に `今日` / `契約開始日` / `前回活動日` のクイック入力を追加
+- Issue #131: 設定ページをサブルート分割してサイドバー導線を追加
+  - `/settings/storage` / `/settings/backup` / `/settings/notifications` / `/settings/activity-types` を追加
+  - サイドバー subnav と設定ページ内メニューから各セクションを直接開けるようにした

@@ -1,12 +1,19 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import { createBrowserRouter, RouterProvider } from 'react-router-dom';
+import { createBrowserRouter, Navigate, RouterProvider } from 'react-router-dom';
 import { AppLayout } from './App';
 import { DashboardPage } from './pages/DashboardPage';
 import { HistoryPage } from './pages/HistoryPage';
 import { LinesPage } from './pages/LinesPage';
-import { SettingsPage } from './pages/SettingsPage';
+import { SettingsPage, type SettingsSectionKey } from './pages/SettingsPage';
 import './styles.css';
+
+function settingsRoute(section: SettingsSectionKey): { path: string; element: JSX.Element } {
+  return {
+    path: `settings/${section}`,
+    element: <SettingsPage section={section} />,
+  };
+}
 
 const router = createBrowserRouter([
   {
@@ -16,7 +23,11 @@ const router = createBrowserRouter([
       { index: true, element: <DashboardPage /> },
       { path: 'lines', element: <LinesPage /> },
       { path: 'lines/history', element: <HistoryPage /> },
-      { path: 'settings', element: <SettingsPage /> },
+      { path: 'settings', element: <Navigate to="/settings/storage" replace /> },
+      settingsRoute('storage'),
+      settingsRoute('backup'),
+      settingsRoute('notifications'),
+      settingsRoute('activity-types'),
     ],
   },
 ]);
