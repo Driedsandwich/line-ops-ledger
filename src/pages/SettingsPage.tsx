@@ -190,9 +190,9 @@ export function SettingsPage(): JSX.Element {
       ) {
         const combined = parsed as { lineDrafts: unknown; lineHistory: unknown };
         const importedDrafts = lineDraftStore.importJson(JSON.stringify(combined.lineDrafts));
-        lineHistoryStore.importJson(JSON.stringify(combined.lineHistory));
+        const importedHistory = lineHistoryStore.importJson(JSON.stringify(combined.lineHistory));
         await refresh();
-        setActionMessage(`統合バックアップを復元しました（主台帳 ${importedDrafts.length} 件）。`);
+        setActionMessage(`統合バックアップを復元しました（主台帳 ${importedDrafts.length} 件 / 履歴 ${importedHistory.length} 件）。`);
       } else {
         const result = lineDraftStore.importBackupJson(raw);
         await refresh();

@@ -95,6 +95,15 @@ function toActivityLogFormStates(activityLogs: LineHistoryActivityLog[]): LineHi
   );
 }
 
+function getActivityTypeOptions(baseOptions: string[], currentValue: string): string[] {
+  const normalized = currentValue.trim();
+  if (!normalized || baseOptions.includes(normalized)) {
+    return baseOptions;
+  }
+
+  return [...baseOptions, normalized];
+}
+
 function maskPhoneNumber(phoneNumber: string): string {
   if (phoneNumber.length < 4) return phoneNumber;
   return `${phoneNumber.slice(0, 3)}-****-${phoneNumber.slice(-4)}`;
@@ -598,7 +607,7 @@ export function HistoryPage(): JSX.Element {
                       <label className="field">
                         <span>活動種別</span>
                         <select value={activityLog.activityType} onChange={(event) => updateActivityLogField(activityLog.id, 'activityType', event.target.value)}>
-                          {allActivityTypes.map((option) => (
+                          {getActivityTypeOptions(allActivityTypes, activityLog.activityType).map((option) => (
                             <option key={option} value={option}>{option}</option>
                           ))}
                         </select>

@@ -33,6 +33,12 @@
   - App.tsx のブランチ毎書き換えを廃止 → コンフリクト根本解消
 - PR #109: 統合バックアップエクスポート追加（Issue #108）
   - `{ exportedAt, version, lineDrafts, lineHistory }` を1ファイルに
+- PR #114: 統合バックアップインポート追加（Issue #113）
+  - 主台帳と履歴を1ファイルから同時に復元
+- PR #117: カスタム活動種別管理追加（Issue #116）
+  - `/settings` で独自種別を追加・削除
+- PR #118: 次回確認日サジェスト日数を設定化（Issue #115）
+  - `reviewIntervalDays` を導入し、固定 +30 日を廃止
 - PR #111: 活動記録後「次回確認日を更新しますか？」サジェスト追加（Issue #110）
   - 活動日+30日を提案、ワンクリックで nextReviewDate を更新
 - Issue #91 クローズ漏れ対処（PR #92 マージ済み）
@@ -41,3 +47,7 @@
   - `LinesPage` から履歴フォーム・活動ログ・タイムライン（~855行）を `HistoryPage` へ抽出
   - 「活動を記録」ボタンが `/lines/history?quickActivity=<phone>` へ遷移するよう変更
   - `NotificationSettings.reviewIntervalDays` フィールドを追加（PR #115 依存を前倒し）
+- Issue #121: quick activity 回帰修正と履歴互換保護
+  - ダッシュボードの「活動を記録」を `/lines/history?quickActivity=<phone>` に修正
+  - 既存履歴の未知活動種別を編集しても値を保持
+  - 統合バックアップ復元メッセージに主台帳件数と履歴件数を表示
