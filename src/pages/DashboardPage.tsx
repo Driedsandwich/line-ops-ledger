@@ -356,6 +356,7 @@ export function DashboardPage(): JSX.Element {
   const historyEntries = lineHistoryStore.load();
   const notificationSettings = loadNotificationSettings();
   const summary = buildSummary(drafts, historyEntries, notificationSettings.reminderWindow);
+  const isFirstRun = drafts.length === 0 && historyEntries.length === 0;
 
   return (
     <div className="page">
@@ -368,6 +369,39 @@ export function DashboardPage(): JSX.Element {
           </p>
         </div>
       </header>
+
+      {isFirstRun ? (
+        <section className="card-grid card-grid--single">
+          <article className="card card--accent">
+            <div className="card__header">
+              <h3>最初の1件を登録する</h3>
+              <span className="badge badge--info">初回ガイド</span>
+            </div>
+            <p className="muted">
+              まだ回線も履歴もありません。最初は `/lines` で回線を1件登録するか、既存データがある場合は `/settings` から統合バックアップを復元してください。
+            </p>
+            <ol className="list">
+              <li>
+                <strong>1. 回線一覧で基本情報を入れる</strong>
+                <span>回線名・キャリア・電話番号・次回確認日だけでも保存できます。</span>
+              </li>
+              <li>
+                <strong>2. 必要なら履歴・タイムラインで活動を記録する</strong>
+                <span>過去契約や MNP 転出済みは `/lines/history` で追加できます。</span>
+              </li>
+              <li>
+                <strong>3. 既存データがあるならバックアップから戻す</strong>
+                <span>設定画面の統合バックアップ復元で、主台帳と履歴をまとめて読み込めます。</span>
+              </li>
+            </ol>
+            <div className="button-row">
+              <Link className="button button--primary" to="/lines">回線一覧で1件追加する</Link>
+              <Link className="button" to="/settings">バックアップを復元する</Link>
+              <Link className="button" to="/lines/history">履歴ページを見る</Link>
+            </div>
+          </article>
+        </section>
+      ) : null}
 
       <section className="card-grid">
         <article className="card card--accent">
