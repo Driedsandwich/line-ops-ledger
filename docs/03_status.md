@@ -4,9 +4,9 @@
 
 - Bootstrap Issue: #1（永続 open）
 - Context Hub Issue: #2（永続 open）
-- 直近マージ済み PR: #88〜#136
+- 直近マージ済み PR: #88〜#138
 - オープン PR: なし
-- オープン Issue: #1, #2, #137
+- オープン Issue: #1, #2, #140
 
 ## 実装済み主要機能
 
@@ -29,7 +29,7 @@
 - 電話番号に一致する主台帳候補 / 直近履歴候補のワンタップ反映
 - 活動種別のクイック選択ボタン（頻出種別 + 定義済み種別）
 - 活動種別に応じた活動メモ候補（種別別の頻出文言 + fallback 候補）
-- 活動メモのクイック候補（定型候補 + 最近使った文言）
+- 活動メモのクイック候補（固定候補 + 定型候補 + 最近使った文言）
 - 活動日のクイック入力（今日 / 契約開始日 / 前回活動日）
 - 活動記録後「次回確認日を更新しますか？」サジェスト（活動日+`reviewIntervalDays`日）
 - 既存履歴の未知活動種別を編集しても値を保持
@@ -47,9 +47,10 @@
 - PWA（manifest / SW）/ SW は開発環境で無効 / ビルド時キャッシュバスト
 - `.env.local` の `VITE_DEV_LABEL` でサイドバーにブランチバッジ表示（`PR #NNN` 運用）
 - GitHub Actions: `Repo sanity` に加えて `CI` workflow で `npm run check` / `npm run build` を実行
+- `main` 保護: PR 必須 / 1 approval 必須 / required check `check-and-build`
 
 ## 次の候補
 
-1. `main` 保護と required checks の有効化
-2. 履歴入力の下書き補助強化の継続（例: 活動メモテンプレの pin / 候補の個別管理）
-3. merge 後に stale 化しやすい status / Context 運用の簡素化
+1. 履歴入力の下書き補助強化の継続（例: 活動メモ候補の個別管理 / 並び順整理）
+2. merge 後に stale 化しやすい status / Context 運用の簡素化
+3. `Repo sanity` の役割整理（CI と二重化している確認の扱い見直し）
