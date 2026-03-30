@@ -8,6 +8,7 @@
 4. ローカルで `npm install && npm run dev` を実行する
 5. `.env.local` に `VITE_DEV_LABEL="DEV / <ブランチ名> / PR #NNN"` をセットする
 6. `/`、`/lines`、`/lines/history`、`/settings/storage`、`/settings/backup`、`/settings/notifications`、`/settings/activity-types` の表示を確認する
+7. PR では GitHub Actions の `CI` workflow が成功していることを確認する
 
 ## 動作確認チェックリスト
 

@@ -72,3 +72,6 @@
 - Issue #135: 活動種別に連動した活動メモ候補を追加
   - 履歴データから種別ごとの頻出メモを集計し、`活動メモ` 直下に表示
   - 履歴が少ない種別でも fallback 候補を出し、`活動種別` と `活動メモ` の連動を強化
+- Issue #137: GitHub Actions に最小 CI を追加
+  - `CI` workflow で `npm ci` → `npm run check` → `npm run build` を実行
+  - required checks を安全に有効化する前段として、安定 job `check-and-build` を固定

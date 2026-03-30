@@ -65,6 +65,11 @@ VITE_DEV_LABEL="DEV / feat/xxx / PR #NNN"
 
 未設定時はバッジ非表示。ファイルはコミット不要・ブランチ変更のたびに手動更新。
 
+## GitHub Actions
+
+- `Repo sanity`: 最低限のファイル存在確認
+- `CI`: `npm ci` → `npm run check` → `npm run build`
+
 ## 確認手順
 
 1. `npm run dev` でサーバー起動
@@ -75,6 +80,7 @@ VITE_DEV_LABEL="DEV / feat/xxx / PR #NNN"
 6. `/lines/history` で履歴記録・タイムライン・契約候補反映・活動種別 / 活動メモ / 活動日のクイック入力が動作することを確認
 7. `/settings/storage`、`/settings/backup`、`/settings/notifications`、`/settings/activity-types` が直接開けることを確認
 8. `npx tsc --noEmit` でビルドエラーがないことを確認
+9. PR では GitHub Actions の `CI` workflow が成功していることを確認
 
 ## 重要方針
 
