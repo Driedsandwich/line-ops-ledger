@@ -66,3 +66,6 @@
 - Issue #131: 設定ページをサブルート分割してサイドバー導線を追加
   - `/settings/storage` / `/settings/backup` / `/settings/notifications` / `/settings/activity-types` を追加
   - サイドバー subnav と設定ページ内メニューから各セクションを直接開けるようにした
+- Issue #133: 初回ガイドから確認用サンプルデータを読み込めるようにする
+  - `/`、`/lines`、`/lines/history` のデータ 0 件時に確認用サンプルデータ投入ボタンを追加
+  - クリック直後に主台帳と履歴を localStorage へ復元し、その場で画面を更新

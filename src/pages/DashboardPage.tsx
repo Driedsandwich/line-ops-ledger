@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { lineDraftStore, normalizeReviewDate, type LineDraft } from '../lib/lineDrafts';
 import { lineHistoryStore, type LineHistoryEntry } from '../lib/lineHistory';
@@ -6,6 +7,7 @@ import {
   type NotificationRelaunchPolicy,
   type NotificationReminderWindow,
 } from '../lib/notificationSettings';
+import { importBundledSampleData } from '../lib/sampleData';
 
 function startOfDay(input: Date): Date {
   const date = new Date(input);
@@ -352,11 +354,26 @@ function buildSummary(drafts: LineDraft[], allHistoryEntries: LineHistoryEntry[]
 }
 
 export function DashboardPage(): JSX.Element {
-  const drafts = lineDraftStore.load();
-  const historyEntries = lineHistoryStore.load();
+  const [drafts, setDrafts] = useState<LineDraft[]>(() => lineDraftStore.load());
+  const [historyEntries, setHistoryEntries] = useState<LineHistoryEntry[]>(() => lineHistoryStore.load());
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const notificationSettings = loadNotificationSettings();
   const summary = buildSummary(drafts, historyEntries, notificationSettings.reminderWindow);
   const isFirstRun = drafts.length === 0 && historyEntries.length === 0;
+
+  function handleImportSampleData(): void {
+    try {
+      const result = importBundledSampleData();
+      setDrafts(result.drafts);
+      setHistoryEntries(result.historyEntries);
+      setErrorMessage(null);
+      setSuccessMessage(`確認用サンプルデータを読み込みました（主台帳 ${result.draftCount} 件 / 履歴 ${result.historyCount} 件）。`);
+    } catch {
+      setSuccessMessage(null);
+      setErrorMessage('確認用サンプルデータの読み込みに失敗しました。');
+    }
+  }
 
   return (
     <div className="page">
@@ -369,6 +386,9 @@ export function DashboardPage(): JSX.Element {
           </p>
         </div>
       </header>
+
+      {errorMessage ? <p className="notice notice--warn">{errorMessage}</p> : null}
+      {successMessage ? <p className="notice">{successMessage}</p> : null}
 
       {isFirstRun ? (
         <section className="card-grid card-grid--single">
@@ -396,6 +416,7 @@ export function DashboardPage(): JSX.Element {
             </ol>
             <div className="button-row">
               <Link className="button button--primary" to="/lines">回線一覧で1件追加する</Link>
+              <button type="button" className="button" onClick={handleImportSampleData}>確認用サンプルデータを読み込む</button>
               <Link className="button" to="/settings/backup">バックアップを復元する</Link>
               <Link className="button" to="/lines/history">履歴ページを見る</Link>
             </div>

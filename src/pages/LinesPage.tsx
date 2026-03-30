@@ -28,6 +28,7 @@ import {
   getAllActivityTypes,
   loadCustomActivityTypes,
 } from '../lib/activityTypeSettings';
+import { importBundledSampleData } from '../lib/sampleData';
 
 type FormState = {
   lineName: string;
@@ -443,6 +444,7 @@ export function LinesPage(): JSX.Element {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [isCompactView, setIsCompactView] = useState(() => readBooleanPreference(LINES_COMPACT_VIEW_STORAGE_KEY, false));
   const [isFormCollapsed, setIsFormCollapsed] = useState(() => readBooleanPreference(LINES_FORM_COLLAPSED_STORAGE_KEY, false));
+  const isFirstRun = drafts.length === 0 && lineHistoryEntries.length === 0;
 
   const notificationSettings = loadNotificationSettings();
   const allActivityTypes = useMemo(() => getAllActivityTypes(loadCustomActivityTypes()), []);
@@ -453,6 +455,22 @@ export function LinesPage(): JSX.Element {
   function resetMessages(): void {
     setErrorMessage(null);
     setSuccessMessage(null);
+  }
+
+  function handleImportSampleData(): void {
+    try {
+      const result = importBundledSampleData();
+      setDrafts(result.drafts);
+      setLineHistoryEntries(result.historyEntries);
+      setSelectedIds([]);
+      setExpandedIds([]);
+      setUndoState(null);
+      setErrorMessage(null);
+      setSuccessMessage(`確認用サンプルデータを読み込みました（主台帳 ${result.draftCount} 件 / 履歴 ${result.historyCount} 件）。`);
+    } catch {
+      setSuccessMessage(null);
+      setErrorMessage('確認用サンプルデータの読み込みに失敗しました。');
+    }
   }
 
   function persist(nextDrafts: LineDraft[], options?: { previousDrafts?: LineDraft[]; undoLabel?: string }): void {
@@ -1259,6 +1277,9 @@ export function LinesPage(): JSX.Element {
                 </p>
                 <div className="button-row button-row--tight">
                   <a className="button button--primary" href="#line-form">回線フォームに戻る</a>
+                  {isFirstRun ? (
+                    <button type="button" className="button" onClick={handleImportSampleData}>確認用サンプルデータを読み込む</button>
+                  ) : null}
                   <Link className="button" to="/settings/backup">バックアップを復元する</Link>
                   <Link className="button" to="/lines/history">履歴ページを見る</Link>
                 </div>
