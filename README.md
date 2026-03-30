@@ -26,6 +26,7 @@
 - URLパラメータで並び順を指定可（`?sort=latestActivityAsc` など）
 - 複数選択・一括ステータス変更・一括削除
 - 行ごとの詳細表示の開閉
+- 契約開始日から 181 日後の `解約可能推奨日` を自動表示
 - 行ボタンから「活動を記録」クイックアクション
 
 ### 契約履歴・活動ログ (`/lines/history`)
@@ -96,8 +97,9 @@ VITE_DEV_LABEL="DEV / feat/xxx / PR #NNN"
 14. `入力をリセット` または `履歴を保存する` 後に再読み込みして、下書きが消えていることを確認
 15. `固定候補をクリア` / `非表示候補をクリア` / `候補管理を初期化` が動き、再読み込み後も維持されることを確認
 16. `/settings/storage`、`/settings/backup`、`/settings/notifications`、`/settings/activity-types` が直接開けることを確認
-17. `npx tsc --noEmit` でビルドエラーがないことを確認
-18. PR では GitHub Actions の `CI` workflow が成功していることを確認
+17. `利用中` または `解約予定` の回線詳細に `解約可能推奨日` が表示され、`解約済み` / `MNP転出済み` では表示されないことを確認
+18. `npx tsc --noEmit` でビルドエラーがないことを確認
+19. PR では GitHub Actions の `CI` workflow が成功していることを確認
 
 ## 重要方針
 
