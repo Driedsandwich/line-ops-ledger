@@ -2,7 +2,7 @@ export const LINE_STATUS_OPTIONS = ['利用中', '解約予定', '解約済み',
 export const LINE_TYPE_OPTIONS = ['音声SIM', 'データSIM', 'ホームルーター', '光回線', '未分類'] as const;
 export const PLANNED_EXIT_TYPE_OPTIONS = ['MNP転出', '解約', '未定'] as const;
 export const DEFAULT_LINE_TYPE = '未分類';
-export const CURRENT_LINE_DRAFT_SCHEMA_VERSION = 5;
+export const CURRENT_LINE_DRAFT_SCHEMA_VERSION = 6;
 export const LINE_DRAFT_BACKUP_FILENAME_PREFIX = 'line-ops-ledger-backup';
 
 export type LineStatus = (typeof LINE_STATUS_OPTIONS)[number];
@@ -24,6 +24,9 @@ export type LineDraft = {
   plannedExitDate: string;
   plannedExitType: PlannedExitType | '';
   plannedNextCarrier: string;
+  mnpReservationNumber: string;
+  mnpReservationExpiry: string;
+  freeOptionDeadline: string;
   contractHolder: string;
   serviceUser: string;
   paymentMethod: string;
@@ -78,6 +81,9 @@ type LineDraftInput = {
   plannedExitDate?: string;
   plannedExitType?: PlannedExitType | '';
   plannedNextCarrier?: string;
+  mnpReservationNumber?: string;
+  mnpReservationExpiry?: string;
+  freeOptionDeadline?: string;
   contractHolder?: string;
   serviceUser?: string;
   paymentMethod?: string;
@@ -174,6 +180,9 @@ function normalizeLineDraft(input: Partial<LineDraft> & { lineName: string; carr
     ? (input.plannedExitType as PlannedExitType)
     : '';
   const plannedNextCarrier = (input.plannedNextCarrier ?? '').trim();
+  const mnpReservationNumber = (input.mnpReservationNumber ?? '').trim();
+  const mnpReservationExpiry = normalizeReviewDate(input.mnpReservationExpiry);
+  const freeOptionDeadline = normalizeReviewDate(input.freeOptionDeadline);
   const contractHolder = (input.contractHolder ?? '').trim();
   const serviceUser = (input.serviceUser ?? '').trim();
   const paymentMethod = (input.paymentMethod ?? '').trim();
@@ -202,6 +211,9 @@ function normalizeLineDraft(input: Partial<LineDraft> & { lineName: string; carr
     plannedExitDate,
     plannedExitType,
     plannedNextCarrier,
+    mnpReservationNumber,
+    mnpReservationExpiry,
+    freeOptionDeadline,
     contractHolder,
     serviceUser,
     paymentMethod,

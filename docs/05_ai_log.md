@@ -116,3 +116,6 @@
 - Issue #162: planned exit フィールドと今後のアクション予定を追加する
   - `LineDraft` に `plannedExitDate` / `plannedExitType` / `plannedNextCarrier` を追加
   - `LinesPage` で予定情報を入力・保存し、`DashboardPage` に `今後のアクション予定` を表示する
+- Issue #164: MNP予約番号と無料オプション期限を構造化する
+  - `LineDraft` に `mnpReservationNumber` / `mnpReservationExpiry` / `freeOptionDeadline` を追加
+  - `LinesPage` で MNP予約番号と期限を入力・保存し、`DashboardPage` に `番号・無料オプション期限` アラートを追加した
