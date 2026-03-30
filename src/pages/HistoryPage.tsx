@@ -12,6 +12,7 @@ import {
 import { loadNotificationSettings } from '../lib/notificationSettings';
 import { updateLineDraft } from '../lib/lineDrafts';
 import { getAllActivityTypes, loadCustomActivityTypes } from '../lib/activityTypeSettings';
+import { importBundledSampleData } from '../lib/sampleData';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -490,7 +491,7 @@ const initialLineHistoryFormState: LineHistoryFormState = {
 
 export function HistoryPage(): JSX.Element {
   const [searchParams] = useSearchParams();
-  const [drafts] = useState<LineDraft[]>(() => lineDraftStore.load());
+  const [drafts, setDrafts] = useState<LineDraft[]>(() => lineDraftStore.load());
   const [lineHistoryEntries, setLineHistoryEntries] = useState<LineHistoryEntry[]>(() => lineHistoryStore.load());
   const [lineHistoryForm, setLineHistoryForm] = useState<LineHistoryFormState>(initialLineHistoryFormState);
   const [editingHistoryId, setEditingHistoryId] = useState<string | null>(null);
@@ -526,10 +527,24 @@ export function HistoryPage(): JSX.Element {
     return latestHistoryEntry ? buildHistoryFormEntrySuggestion(latestHistoryEntry) : null;
   }, [editingHistoryId, lineHistoryEntries, normalizedPhoneNumber]);
   const todayDateString = useMemo(() => today.toISOString().slice(0, 10), [today]);
+  const isFirstRun = drafts.length === 0 && lineHistoryEntries.length === 0;
   const activityDateQuickPicks = useMemo(
     () => getActivityDateQuickPicks(todayDateString, lineHistoryForm.contractStartDate, matchingHistorySuggestion?.latestActivityDate ?? ''),
     [lineHistoryForm.contractStartDate, matchingHistorySuggestion?.latestActivityDate, todayDateString],
   );
+
+  function handleImportSampleData(): void {
+    try {
+      const result = importBundledSampleData();
+      setDrafts(result.drafts);
+      setLineHistoryEntries(result.historyEntries);
+      setErrorMessage(null);
+      setSuccessMessage(`確認用サンプルデータを読み込みました（主台帳 ${result.draftCount} 件 / 履歴 ${result.historyCount} 件）。`);
+    } catch {
+      setSuccessMessage(null);
+      setErrorMessage('確認用サンプルデータの読み込みに失敗しました。');
+    }
+  }
 
   // quickActivity パラメータで電話番号が渡された場合フォームにセット
   const quickActivityParam = searchParams.get('quickActivity');
@@ -1005,6 +1020,9 @@ export function HistoryPage(): JSX.Element {
                   </p>
                   <div className="button-row button-row--tight">
                     <a className="button button--primary" href="#history-form">履歴フォームに戻る</a>
+                    {isFirstRun ? (
+                      <button type="button" className="button" onClick={handleImportSampleData}>確認用サンプルデータを読み込む</button>
+                    ) : null}
                     <Link className="button" to="/lines">回線一覧で1件追加する</Link>
                     <Link className="button" to="/settings/backup">バックアップを復元する</Link>
                   </div>
