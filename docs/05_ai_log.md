@@ -113,3 +113,6 @@
 - Issue #160: 主台帳で解約可能推奨日（181日ルール）を表示する
   - `LinesPage` の詳細に、契約開始日から 181 日後の `解約可能推奨日` を表示する
   - `利用中` / `解約予定` だけに出し、開始日未設定時は算出不可を表示する
+- Issue #162: planned exit フィールドと今後のアクション予定を追加する
+  - `LineDraft` に `plannedExitDate` / `plannedExitType` / `plannedNextCarrier` を追加
+  - `LinesPage` で予定情報を入力・保存し、`DashboardPage` に `今後のアクション予定` を表示する

@@ -4,7 +4,7 @@
 
 - Bootstrap Issue: #1（永続 open）
 - Context Hub Issue: #2（永続 open）
-- 現在地: PR #159 まで `main` 反映済み
+- 現在地: PR #161 まで `main` 反映済み
 - 運用前提: PR 必須 / approval 任意 / required check `check-and-build`
 
 ## 実装済み主要機能
@@ -13,6 +13,7 @@
 - データ 0 件時の初回ガイド（回線追加 / 確認用サンプルデータ投入 / 履歴確認 / バックアップ復元）
 - 危険案件サマリー / 近日期限集計（排他）/ 状態別件数 / 月額費用サマリー
 - 契約終了が近い回線アラート（30日以内）
+- 今後のアクション予定（予定日が60日以内または超過の利用中 / 解約予定回線）
 - 長期未活動の回線カード（90日基準）＋「活動を記録」クイックリンク（`/lines/history?quickActivity=<phone>`）
 - 通知方針サマリー / 通知理由別件数 / 通知対象回線一覧
 
@@ -20,6 +21,7 @@
 - CRUD・Undo / 絞り込み・並び替え・一括操作
 - URLパラメータでソート指定（`?sort=latestActivityAsc` など）
 - 契約開始日から 181 日後の `解約可能推奨日` を自動表示
+- `plannedExitDate` / `plannedExitType` / `plannedNextCarrier` を構造化して保存・表示
 - 行ボタンから「活動を記録」→ `/lines/history?quickActivity=<phone>` へ遷移
 - データ 0 件時の空状態ガイド（回線フォーム / 確認用サンプルデータ投入 / バックアップ復元 / 履歴ページ）
 
@@ -59,6 +61,6 @@
 
 ## 次の候補
 
-1. planned exit フィールドの追加（`plannedExitDate` / `plannedExitType` / `plannedNextCarrier`）
-2. MNP予約番号・無料オプション期限の構造化
-3. `Repo sanity` の役割整理（CI と二重化している確認の扱い見直し）
+1. MNP予約番号・無料オプション期限の構造化
+2. `LineDraft.benefits: BenefitRecord[]` 基盤の追加
+3. 利用実績種別バッジ（通 / 話 / S）の追加

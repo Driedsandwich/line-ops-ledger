@@ -1,11 +1,13 @@
 export const LINE_STATUS_OPTIONS = ['利用中', '解約予定', '解約済み', 'MNP転出済み'] as const;
 export const LINE_TYPE_OPTIONS = ['音声SIM', 'データSIM', 'ホームルーター', '光回線', '未分類'] as const;
+export const PLANNED_EXIT_TYPE_OPTIONS = ['MNP転出', '解約', '未定'] as const;
 export const DEFAULT_LINE_TYPE = '未分類';
-export const CURRENT_LINE_DRAFT_SCHEMA_VERSION = 4;
+export const CURRENT_LINE_DRAFT_SCHEMA_VERSION = 5;
 export const LINE_DRAFT_BACKUP_FILENAME_PREFIX = 'line-ops-ledger-backup';
 
 export type LineStatus = (typeof LINE_STATUS_OPTIONS)[number];
 export type LineType = (typeof LINE_TYPE_OPTIONS)[number];
+export type PlannedExitType = (typeof PLANNED_EXIT_TYPE_OPTIONS)[number];
 export type LineDraftStorageFormat = 'empty' | 'legacy-array' | 'versioned-envelope' | 'invalid-data';
 
 export type LineDraft = {
@@ -19,6 +21,9 @@ export type LineDraft = {
   contractHolderNote: string;
   contractStartDate: string;
   contractEndDate: string;
+  plannedExitDate: string;
+  plannedExitType: PlannedExitType | '';
+  plannedNextCarrier: string;
   contractHolder: string;
   serviceUser: string;
   paymentMethod: string;
@@ -70,6 +75,9 @@ type LineDraftInput = {
   contractHolderNote: string;
   contractStartDate?: string;
   contractEndDate?: string;
+  plannedExitDate?: string;
+  plannedExitType?: PlannedExitType | '';
+  plannedNextCarrier?: string;
   contractHolder?: string;
   serviceUser?: string;
   paymentMethod?: string;
@@ -88,6 +96,10 @@ function isLineStatus(value: string): value is LineStatus {
 
 function isLineType(value: string): value is LineType {
   return LINE_TYPE_OPTIONS.includes(value as LineType);
+}
+
+function isPlannedExitType(value: string): value is PlannedExitType {
+  return PLANNED_EXIT_TYPE_OPTIONS.includes(value as PlannedExitType);
 }
 
 function createId(): string {
@@ -157,6 +169,11 @@ function normalizeLineDraft(input: Partial<LineDraft> & { lineName: string; carr
   const contractHolderNote = (input.contractHolderNote ?? '').trim();
   const contractStartDate = normalizeReviewDate(input.contractStartDate);
   const contractEndDate = normalizeReviewDate(input.contractEndDate);
+  const plannedExitDate = normalizeReviewDate(input.plannedExitDate);
+  const plannedExitType = isPlannedExitType(String(input.plannedExitType ?? ''))
+    ? (input.plannedExitType as PlannedExitType)
+    : '';
+  const plannedNextCarrier = (input.plannedNextCarrier ?? '').trim();
   const contractHolder = (input.contractHolder ?? '').trim();
   const serviceUser = (input.serviceUser ?? '').trim();
   const paymentMethod = (input.paymentMethod ?? '').trim();
@@ -182,6 +199,9 @@ function normalizeLineDraft(input: Partial<LineDraft> & { lineName: string; carr
     contractHolderNote,
     contractStartDate,
     contractEndDate,
+    plannedExitDate,
+    plannedExitType,
+    plannedNextCarrier,
     contractHolder,
     serviceUser,
     paymentMethod,
