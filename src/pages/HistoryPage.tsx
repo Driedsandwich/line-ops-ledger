@@ -822,6 +822,25 @@ export function HistoryPage(): JSX.Element {
     setSuccessMessage(`活動メモ候補「${normalized}」を表示に戻しました。`);
   }
 
+  function resetPinnedActivityMemoTemplates(): void {
+    setPinnedActivityMemoTemplates(savePinnedActivityMemoTemplates([]));
+    setErrorMessage(null);
+    setSuccessMessage('固定候補を初期状態に戻しました。');
+  }
+
+  function resetHiddenActivityMemoTemplates(): void {
+    setHiddenActivityMemoTemplates(saveHiddenActivityMemoTemplates([]));
+    setErrorMessage(null);
+    setSuccessMessage('非表示候補を初期状態に戻しました。');
+  }
+
+  function resetActivityMemoTemplateState(): void {
+    setPinnedActivityMemoTemplates(savePinnedActivityMemoTemplates([]));
+    setHiddenActivityMemoTemplates(saveHiddenActivityMemoTemplates([]));
+    setErrorMessage(null);
+    setSuccessMessage('活動メモ候補の管理状態を初期化しました。');
+  }
+
   function persistLineHistory(nextEntries: LineHistoryEntry[]): void {
     setLineHistoryEntries(nextEntries);
     lineHistoryStore.save(nextEntries);
@@ -1170,6 +1189,26 @@ export function HistoryPage(): JSX.Element {
                         <span>活動メモ</span>
                         <textarea value={activityLog.activityMemo} onChange={(event) => updateActivityLogField(activityLog.id, 'activityMemo', event.target.value)} rows={2} placeholder="例: 発信テスト実施 / データ通信実施 / 請求確認" />
                         <div className="detail-panel" style={{ marginTop: '0.5rem' }}>
+                          {pinnedActivityMemoTemplates.length > 0 || hiddenActivityMemoTemplates.length > 0 ? (
+                            <>
+                              <p className="muted" style={{ marginTop: 0, marginBottom: '0.5rem' }}>候補管理</p>
+                              <div className="button-row button-row--tight" style={{ marginBottom: '0.75rem' }}>
+                                {pinnedActivityMemoTemplates.length > 0 ? (
+                                  <button type="button" className="button" onClick={resetPinnedActivityMemoTemplates}>
+                                    固定候補をクリア
+                                  </button>
+                                ) : null}
+                                {hiddenActivityMemoTemplates.length > 0 ? (
+                                  <button type="button" className="button" onClick={resetHiddenActivityMemoTemplates}>
+                                    非表示候補をクリア
+                                  </button>
+                                ) : null}
+                                <button type="button" className="button" onClick={resetActivityMemoTemplateState}>
+                                  候補管理を初期化
+                                </button>
+                              </div>
+                            </>
+                          ) : null}
                           {buildActivityMemoQuickPickSections({
                             pinnedTemplates: pinnedActivityMemoTemplates,
                             hiddenTemplates: hiddenActivityMemoTemplates,
