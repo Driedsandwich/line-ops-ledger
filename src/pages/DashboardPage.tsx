@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { lineDraftStore, normalizeReviewDate, type LineDraft } from '../lib/lineDrafts';
+import { lineDraftStore, normalizeReviewDate, type BenefitRecord, type LineDraft } from '../lib/lineDrafts';
 import { lineHistoryStore, type LineHistoryEntry } from '../lib/lineHistory';
 import {
   loadNotificationSettings,
@@ -45,6 +45,14 @@ function formatReviewDate(value: string): string {
 
 function formatCurrency(value: number): string {
   return `${new Intl.NumberFormat('ja-JP').format(value)}円/月`;
+}
+
+function formatBenefitAmount(value: number | null): string {
+  if (value == null) {
+    return '金額未設定';
+  }
+
+  return `${new Intl.NumberFormat('ja-JP').format(value)}円相当`;
 }
 
 function formatReminderWindow(value: NotificationReminderWindow): string {
@@ -170,6 +178,7 @@ type PlannedActionItem = {
 };
 
 const MNP_DEADLINE_ALERT_DAYS = 3;
+const BENEFIT_ALERT_DAYS = 30;
 
 type DeadlineAlertType = 'mnpReservationExpiry' | 'freeOptionDeadline';
 
@@ -177,6 +186,12 @@ type DeadlineAlertItem = {
   draft: LineDraft;
   type: DeadlineAlertType;
   deadline: string;
+  daysUntilDeadline: number;
+};
+
+type BenefitDeadlineItem = {
+  draft: LineDraft;
+  benefit: BenefitRecord;
   daysUntilDeadline: number;
 };
 
@@ -196,6 +211,7 @@ type DashboardSummary = {
   contractEndAlerts: ContractEndAlertItem[];
   plannedActions: PlannedActionItem[];
   deadlineAlerts: DeadlineAlertItem[];
+  benefitDeadlineAlerts: BenefitDeadlineItem[];
 };
 
 function createEmptyNotificationReasonSummary(): NotificationReasonSummary {
@@ -249,6 +265,16 @@ function formatDeadlineAlertLabel(item: DeadlineAlertItem): string {
 
 function formatDeadlineAlertType(type: DeadlineAlertType): string {
   return type === 'mnpReservationExpiry' ? 'MNP予約番号期限' : '無料オプション期限';
+}
+
+function formatBenefitDeadlineLabel(daysUntilDeadline: number): string {
+  if (daysUntilDeadline < 0) {
+    return '期限超過';
+  }
+  if (daysUntilDeadline === 0) {
+    return '今日期限';
+  }
+  return `あと${daysUntilDeadline}日`;
 }
 
 function buildSummary(drafts: LineDraft[], allHistoryEntries: LineHistoryEntry[], reminderWindow: NotificationReminderWindow): DashboardSummary {
@@ -421,6 +447,37 @@ function buildSummary(drafts: LineDraft[], allHistoryEntries: LineHistoryEntry[]
     .sort((a, b) => a.daysUntilDeadline - b.daysUntilDeadline)
     .slice(0, 5);
 
+  const benefitDeadlineAlerts = drafts
+    .flatMap((draft) => {
+      const alerts: BenefitDeadlineItem[] = [];
+
+      for (const benefit of draft.benefits) {
+        if (benefit.receivedFlag || !benefit.deadlineDate) {
+          continue;
+        }
+
+        const deadlineDate = parseReviewDate(benefit.deadlineDate);
+        if (!deadlineDate) {
+          continue;
+        }
+
+        const daysUntilDeadline = diffInDays(today, deadlineDate);
+        if (daysUntilDeadline > BENEFIT_ALERT_DAYS) {
+          continue;
+        }
+
+        alerts.push({
+          draft,
+          benefit,
+          daysUntilDeadline,
+        });
+      }
+
+      return alerts;
+    })
+    .sort((a, b) => a.daysUntilDeadline - b.daysUntilDeadline)
+    .slice(0, 5);
+
   return {
     dangerCount,
     todayCount,
@@ -437,6 +494,7 @@ function buildSummary(drafts: LineDraft[], allHistoryEntries: LineHistoryEntry[]
     contractEndAlerts,
     plannedActions,
     deadlineAlerts,
+    benefitDeadlineAlerts,
   };
 }
 
@@ -626,6 +684,39 @@ export function DashboardPage(): JSX.Element {
                     <span>{formatDeadlineAlertType(item.type)}: {formatReviewDate(item.deadline)}</span>
                     {item.type === 'mnpReservationExpiry' ? <span>予約番号: {item.draft.mnpReservationNumber}</span> : null}
                     <span className="badge">{formatDeadlineAlertLabel(item)}</span>
+                  </li>
+                ))}
+              </ul>
+              <div className="button-row">
+                <Link className="button" to="/lines">回線一覧で確認する</Link>
+              </div>
+            </>
+          )}
+        </article>
+
+        <article className="card card--accent">
+          <div className="card__header">
+            <h3>特典期限アラート</h3>
+            <span className={summary.benefitDeadlineAlerts.length === 0 ? 'badge badge--ok' : 'badge'}>
+              {summary.benefitDeadlineAlerts.length === 0 ? '該当なし' : `${summary.benefitDeadlineAlerts.length}件`}
+            </span>
+          </div>
+          <p className="muted">未受取かつ受取期限日が{BENEFIT_ALERT_DAYS}日以内、または超過している特典を表示します（最大5件）。</p>
+          {summary.benefitDeadlineAlerts.length === 0 ? (
+            <p className="muted">直近の特典期限アラートはありません。</p>
+          ) : (
+            <>
+              <ul className="list list--drafts">
+                {summary.benefitDeadlineAlerts.map((item) => (
+                  <li key={`${item.draft.id}-${item.benefit.id}`}>
+                    <div className="list__row">
+                      <strong>{item.draft.lineName}</strong>
+                      <span className="badge">{formatBenefitDeadlineLabel(item.daysUntilDeadline)}</span>
+                    </div>
+                    <span>{item.draft.carrier}</span>
+                    <span>特典種別: {item.benefit.benefitType}</span>
+                    <span>金額: {formatBenefitAmount(item.benefit.amount)}</span>
+                    <span>受取期限日: {formatReviewDate(item.benefit.deadlineDate)}</span>
                   </li>
                 ))}
               </ul>
