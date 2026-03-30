@@ -1001,12 +1001,12 @@ export function HistoryPage(): JSX.Element {
                 <p className="muted">履歴はまだありません。主台帳から「活動を記録」で始めるか、上のフォームから過去契約を1件追加するとここにタイムラインが表示されます。</p>
                 <div className="detail-panel">
                   <p className="muted" style={{ marginTop: 0 }}>
-                    既存データがある場合は、`/settings` から統合バックアップを復元できます。
+                    既存データがある場合は、`/settings/backup` から統合バックアップを復元できます。
                   </p>
                   <div className="button-row button-row--tight">
                     <a className="button button--primary" href="#history-form">履歴フォームに戻る</a>
                     <Link className="button" to="/lines">回線一覧で1件追加する</Link>
-                    <Link className="button" to="/settings">バックアップを復元する</Link>
+                    <Link className="button" to="/settings/backup">バックアップを復元する</Link>
                   </div>
                 </div>
               </>

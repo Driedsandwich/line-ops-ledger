@@ -42,6 +42,7 @@
 - 主台帳＋契約履歴の統合バックアップエクスポート / インポート
 
 ### 設定 (`/settings`)
+- `/settings/storage` / `/settings/backup` / `/settings/notifications` / `/settings/activity-types` のサブルート導線
 - 通知方針設定（対象期限・再通知ポリシー）
 - 永続ストレージ状態・schemaVersion・保存件数・最終更新時刻
 - 統合バックアップのエクスポート / インポート
@@ -70,7 +71,7 @@ VITE_DEV_LABEL="DEV / feat/xxx / PR #NNN"
 3. localStorage 空の状態で、`/` に初回ガイド、`/lines` と `/lines/history` に空状態導線が出ることを確認
 4. `/lines` で回線の追加・編集・検索が動作することを確認
 5. `/lines/history` で履歴記録・タイムライン・契約候補反映・活動種別 / 活動メモ / 活動日のクイック入力が動作することを確認
-6. `/settings` で通知設定・バックアップが動作することを確認
+6. `/settings/storage`、`/settings/backup`、`/settings/notifications`、`/settings/activity-types` が直接開けることを確認
 7. `npx tsc --noEmit` でビルドエラーがないことを確認
 
 ## 重要方針

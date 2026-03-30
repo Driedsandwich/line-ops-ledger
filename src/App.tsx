@@ -6,7 +6,11 @@ const navItems: NavItem[] = [
   { to: '/', label: 'ダッシュボード', end: true },
   { to: '/lines', label: '回線一覧', end: true },
   { to: '/lines/history', label: '履歴・タイムライン', indent: true },
-  { to: '/settings', label: '設定' },
+  { to: '/settings/storage', label: '設定' },
+  { to: '/settings/storage', label: 'ストレージ', indent: true },
+  { to: '/settings/backup', label: 'バックアップ', indent: true },
+  { to: '/settings/notifications', label: '通知設定', indent: true },
+  { to: '/settings/activity-types', label: '活動種別', indent: true },
 ];
 
 const devLabel = import.meta.env.VITE_DEV_LABEL as string | undefined;
