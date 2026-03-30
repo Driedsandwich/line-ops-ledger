@@ -4,7 +4,7 @@
 
 - Bootstrap Issue: #1（永続 open）
 - Context Hub Issue: #2（永続 open）
-- 現在地: MNP予約番号 / 無料オプション期限の構造化まで `main` 反映済み
+- 現在地: BenefitRecord 基盤（`LineDraft.benefits: BenefitRecord[]`）まで `main` 反映済み
 - 運用前提: PR 必須 / approval 任意 / required check `check-and-build`
 
 ## 実装済み主要機能
@@ -24,6 +24,8 @@
 - 契約開始日から 181 日後の `解約可能推奨日` を自動表示
 - `plannedExitDate` / `plannedExitType` / `plannedNextCarrier` を構造化して保存・表示
 - `mnpReservationNumber` / `mnpReservationExpiry` / `freeOptionDeadline` を構造化して保存・表示
+- `LineDraft.benefits: BenefitRecord[]` を導入し、特典 / キャッシュバックを構造化して保存・表示
+- 特典の種別 / 金額 / 受取期限日 / 受取条件 / 受取済み / 受取日 / メモを追加・編集・削除可能
 - 行ボタンから「活動を記録」→ `/lines/history?quickActivity=<phone>` へ遷移
 - データ 0 件時の空状態ガイド（回線フォーム / 確認用サンプルデータ投入 / バックアップ復元 / 履歴ページ）
 
@@ -63,6 +65,6 @@
 
 ## 次の候補
 
-1. `LineDraft.benefits: BenefitRecord[]` 基盤の追加
+1. `DashboardPage` に特典期限アラートを追加
 2. 利用実績種別バッジ（通 / 話 / S）の追加
 3. 光回線固有フィールド（fiber 系 scalar fields）の追加

@@ -119,3 +119,6 @@
 - Issue #164: MNP予約番号と無料オプション期限を構造化する
   - `LineDraft` に `mnpReservationNumber` / `mnpReservationExpiry` / `freeOptionDeadline` を追加
   - `LinesPage` で MNP予約番号と期限を入力・保存し、`DashboardPage` に `番号・無料オプション期限` アラートを追加した
+- Issue #166: BenefitRecord で特典管理を構造化する
+  - `LineDraft` に `benefits: BenefitRecord[]` を追加し、schemaVersion を 7 に更新
+  - `LinesPage` で特典 / キャッシュバックの追加・編集・削除と詳細表示を実装した
