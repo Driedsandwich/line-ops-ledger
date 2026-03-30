@@ -95,6 +95,7 @@ const TIMELINE_VIEW_OPTIONS: Array<{ key: TimelineViewMode; label: string }> = [
 ];
 const ACTIVITY_TYPE_QUICK_PICK_LIMIT = 6;
 const ACTIVITY_MEMO_RECENT_LIMIT = 4;
+const ACTIVITY_MEMO_TYPE_QUICK_PICK_LIMIT = 4;
 const ACTIVITY_MEMO_TEMPLATE_OPTIONS = [
   '請求確認。',
   '通信テスト実施。正常。',
@@ -103,6 +104,15 @@ const ACTIVITY_MEMO_TEMPLATE_OPTIONS = [
   'MNP予約番号取得。',
   '月額変動なし。',
 ] as const;
+const ACTIVITY_MEMO_FALLBACK_BY_TYPE: Record<string, string[]> = {
+  利用実績確認: ['通話・通信テスト実施。正常。', '1周年確認。問題なし。'],
+  通信実施: ['通信テスト実施。正常。', '通信速度テスト。正常。'],
+  通話実施: ['通話テスト実施。正常。', '最終通話テスト実施。正常。'],
+  SMS送信: ['SMS送受信テスト実施。正常。'],
+  料金確認: ['請求確認。月額変動なし。', '月次確認。', '年次確認。月額変動なし。'],
+  プラン変更: ['プラン変更を実施。', 'オプション変更内容を確認。'],
+  その他: ['MNP予約番号取得。転出準備。', '解約手続き完了。'],
+};
 
 // ---------------------------------------------------------------------------
 // Pure helpers
@@ -212,6 +222,70 @@ function getRecentActivityMemoQuickPicks(lineHistoryEntries: LineHistoryEntry[])
     })
     .slice(0, ACTIVITY_MEMO_RECENT_LIMIT)
     .map(([memo]) => memo);
+}
+
+function buildActivityMemoQuickPickIndex(lineHistoryEntries: LineHistoryEntry[]): Map<string, string[]> {
+  const memoStatsByType = new Map<string, Map<string, { count: number; latestActivityDate: string }>>();
+
+  for (const entry of lineHistoryEntries) {
+    for (const log of entry.activityLogs) {
+      const activityType = log.activityType.trim();
+      const memo = log.activityMemo.trim();
+
+      if (!activityType || !memo) {
+        continue;
+      }
+
+      const typeStats = memoStatsByType.get(activityType) ?? new Map<string, { count: number; latestActivityDate: string }>();
+      const existing = typeStats.get(memo);
+
+      if (!existing) {
+        typeStats.set(memo, {
+          count: 1,
+          latestActivityDate: log.activityDate || '',
+        });
+      } else {
+        existing.count += 1;
+        if ((log.activityDate || '') > existing.latestActivityDate) {
+          existing.latestActivityDate = log.activityDate || '';
+        }
+      }
+
+      memoStatsByType.set(activityType, typeStats);
+    }
+  }
+
+  return new Map(
+    [...memoStatsByType.entries()].map(([activityType, memoStats]) => [
+      activityType,
+      [...memoStats.entries()]
+        .sort((a, b) => {
+          if (b[1].count !== a[1].count) {
+            return b[1].count - a[1].count;
+          }
+          if (b[1].latestActivityDate !== a[1].latestActivityDate) {
+            return b[1].latestActivityDate.localeCompare(a[1].latestActivityDate);
+          }
+          return a[0].localeCompare(b[0], 'ja-JP');
+        })
+        .map(([memo]) => memo),
+    ]),
+  );
+}
+
+function getTypeSpecificActivityMemoQuickPicks(
+  memoQuickPickIndex: Map<string, string[]>,
+  activityType: string,
+): string[] {
+  const normalized = activityType.trim();
+  if (!normalized) {
+    return [];
+  }
+
+  return [...new Set([
+    ...(memoQuickPickIndex.get(normalized) ?? []),
+    ...(ACTIVITY_MEMO_FALLBACK_BY_TYPE[normalized] ?? []),
+  ])].slice(0, ACTIVITY_MEMO_TYPE_QUICK_PICK_LIMIT);
 }
 
 function applyActivityMemoQuickPick(currentValue: string, quickPick: string): string {
@@ -512,6 +586,10 @@ export function HistoryPage(): JSX.Element {
   );
   const recentActivityMemoQuickPicks = useMemo(
     () => getRecentActivityMemoQuickPicks(lineHistoryEntries),
+    [lineHistoryEntries],
+  );
+  const activityMemoQuickPickIndex = useMemo(
+    () => buildActivityMemoQuickPickIndex(lineHistoryEntries),
     [lineHistoryEntries],
   );
   const normalizedPhoneNumber = useMemo(() => normalizePhoneNumber(lineHistoryForm.phoneNumber), [lineHistoryForm.phoneNumber]);
@@ -916,6 +994,23 @@ export function HistoryPage(): JSX.Element {
                         <span>活動メモ</span>
                         <textarea value={activityLog.activityMemo} onChange={(event) => updateActivityLogField(activityLog.id, 'activityMemo', event.target.value)} rows={2} placeholder="例: 発信テスト実施 / データ通信実施 / 請求確認" />
                         <div className="detail-panel" style={{ marginTop: '0.5rem' }}>
+                          {getTypeSpecificActivityMemoQuickPicks(activityMemoQuickPickIndex, activityLog.activityType).length > 0 ? (
+                            <>
+                              <p className="muted" style={{ marginTop: 0, marginBottom: '0.5rem' }}>この種別でよく使う文言</p>
+                              <div className="button-row button-row--tight">
+                                {getTypeSpecificActivityMemoQuickPicks(activityMemoQuickPickIndex, activityLog.activityType).map((option) => (
+                                  <button
+                                    key={`${activityLog.id}-${activityLog.activityType}-${option}`}
+                                    type="button"
+                                    className="button"
+                                    onClick={() => updateActivityLogField(activityLog.id, 'activityMemo', applyActivityMemoQuickPick(activityLog.activityMemo, option))}
+                                  >
+                                    {option}
+                                  </button>
+                                ))}
+                              </div>
+                            </>
+                          ) : null}
                           <p className="muted" style={{ marginTop: 0, marginBottom: '0.5rem' }}>定型候補</p>
                           <div className="button-row button-row--tight">
                             {ACTIVITY_MEMO_TEMPLATE_OPTIONS.map((option) => (
