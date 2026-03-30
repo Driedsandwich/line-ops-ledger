@@ -47,6 +47,7 @@
 - 履歴 JSON エクスポート / インポート
 - 主台帳＋契約履歴の統合バックアップエクスポート / インポート
 - 履歴入力フォームの下書きを localStorage に自動保存し、再読み込み後に復元
+- 復元した下書きを `破棄して新規入力` でその場で捨てられる
 
 ### 設定 (`/settings`)
 - `/settings/storage` / `/settings/backup` / `/settings/notifications` / `/settings/activity-types` のサブルート導線
@@ -91,11 +92,12 @@ VITE_DEV_LABEL="DEV / feat/xxx / PR #NNN"
 10. custom 候補の `上へ` / `下へ` で表示順が変わり、再読み込み後も維持されることを確認
 11. 候補セクションの `折りたたむ` / `展開` が動き、再読み込み後も状態が維持されることを確認
 12. 履歴フォームを途中まで入力して再読み込みすると、入力内容が復元されることを確認
-13. `入力をリセット` または `履歴を保存する` 後に再読み込みして、下書きが消えていることを確認
-14. `固定候補をクリア` / `非表示候補をクリア` / `候補管理を初期化` が動き、再読み込み後も維持されることを確認
-15. `/settings/storage`、`/settings/backup`、`/settings/notifications`、`/settings/activity-types` が直接開けることを確認
-16. `npx tsc --noEmit` でビルドエラーがないことを確認
-17. PR では GitHub Actions の `CI` workflow が成功していることを確認
+13. 復元通知の `破棄して新規入力` を押すとフォームが空に戻り、再読み込みしても下書きが戻らないことを確認
+14. `入力をリセット` または `履歴を保存する` 後に再読み込みして、下書きが消えていることを確認
+15. `固定候補をクリア` / `非表示候補をクリア` / `候補管理を初期化` が動き、再読み込み後も維持されることを確認
+16. `/settings/storage`、`/settings/backup`、`/settings/notifications`、`/settings/activity-types` が直接開けることを確認
+17. `npx tsc --noEmit` でビルドエラーがないことを確認
+18. PR では GitHub Actions の `CI` workflow が成功していることを確認
 
 ## 重要方針
 
