@@ -15,6 +15,7 @@ import { getAllActivityTypes, loadCustomActivityTypes } from '../lib/activityTyp
 import { loadCollapsedActivityMemoSections, saveCollapsedActivityMemoSections } from '../lib/collapsedActivityMemoSections';
 import { loadCustomActivityMemoTemplates, saveCustomActivityMemoTemplates } from '../lib/customActivityMemoTemplates';
 import { loadHiddenActivityMemoTemplates, saveHiddenActivityMemoTemplates } from '../lib/hiddenActivityMemoTemplates';
+import { clearHistoryFormDraft, loadHistoryFormDraft, saveHistoryFormDraft } from '../lib/historyFormDraft';
 import { loadPinnedActivityMemoTemplates, savePinnedActivityMemoTemplates } from '../lib/pinnedActivityMemoTemplates';
 import { importBundledSampleData } from '../lib/sampleData';
 
@@ -633,16 +634,46 @@ const initialLineHistoryFormState: LineHistoryFormState = {
   memo: '',
 };
 
+function isLineHistoryFormEmpty(form: LineHistoryFormState): boolean {
+  return (
+    !form.phoneNumber.trim() &&
+    !form.carrier.trim() &&
+    form.status === '利用中' &&
+    !form.contractStartDate &&
+    !form.contractEndDate &&
+    !form.memo.trim() &&
+    form.activityLogs.every(
+      (log) => !log.activityDate && (!log.activityType || log.activityType === DEFAULT_ACTIVITY_TYPE) && !log.activityMemo.trim(),
+    )
+  );
+}
+
 // ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
 
 export function HistoryPage(): JSX.Element {
+  const restoredHistoryFormDraft = useMemo(() => loadHistoryFormDraft(), []);
   const [searchParams] = useSearchParams();
   const [drafts, setDrafts] = useState<LineDraft[]>(() => lineDraftStore.load());
   const [lineHistoryEntries, setLineHistoryEntries] = useState<LineHistoryEntry[]>(() => lineHistoryStore.load());
-  const [lineHistoryForm, setLineHistoryForm] = useState<LineHistoryFormState>(initialLineHistoryFormState);
-  const [editingHistoryId, setEditingHistoryId] = useState<string | null>(null);
+  const [lineHistoryForm, setLineHistoryForm] = useState<LineHistoryFormState>(() =>
+    restoredHistoryFormDraft
+      ? {
+          phoneNumber: restoredHistoryFormDraft.phoneNumber,
+          carrier: restoredHistoryFormDraft.carrier,
+          status: restoredHistoryFormDraft.status,
+          contractStartDate: restoredHistoryFormDraft.contractStartDate,
+          contractEndDate: restoredHistoryFormDraft.contractEndDate,
+          activityLogs:
+            restoredHistoryFormDraft.activityLogs.length > 0
+              ? restoredHistoryFormDraft.activityLogs.map((log) => createActivityLogFormState(log))
+              : [createActivityLogFormState()],
+          memo: restoredHistoryFormDraft.memo,
+        }
+      : initialLineHistoryFormState,
+  );
+  const [editingHistoryId, setEditingHistoryId] = useState<string | null>(() => restoredHistoryFormDraft?.editingHistoryId ?? null);
   const [timelineWindow, setTimelineWindow] = useState<TimelineWindowKey>('6m');
   const [timelineViewMode, setTimelineViewMode] = useState<TimelineViewMode>('all');
   const [timelinePhoneFilter, setTimelinePhoneFilter] = useState<string[] | null>(null);
@@ -846,6 +877,7 @@ export function HistoryPage(): JSX.Element {
     if (!quickActivityParam) return;
     const target = drafts.find((d) => d.phoneNumber === quickActivityParam);
     if (!target) return;
+    setEditingHistoryId(null);
     setLineHistoryForm({
       phoneNumber: target.phoneNumber,
       carrier: target.carrier,
@@ -857,6 +889,32 @@ export function HistoryPage(): JSX.Element {
     });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [quickActivityParam]);
+
+  useEffect(() => {
+    if (!restoredHistoryFormDraft || quickActivityParam) {
+      return;
+    }
+
+    setSuccessMessage('前回の履歴入力下書きを復元しました。');
+  }, [quickActivityParam, restoredHistoryFormDraft]);
+
+  useEffect(() => {
+    if (!editingHistoryId && isLineHistoryFormEmpty(lineHistoryForm)) {
+      clearHistoryFormDraft();
+      return;
+    }
+
+    saveHistoryFormDraft({
+      ...lineHistoryForm,
+      editingHistoryId,
+      activityLogs: lineHistoryForm.activityLogs.map((log) => ({
+        id: log.id,
+        activityDate: log.activityDate,
+        activityType: log.activityType,
+        activityMemo: log.activityMemo,
+      })),
+    });
+  }, [editingHistoryId, lineHistoryForm, quickActivityParam]);
 
   function resetMessages(): void {
     setErrorMessage(null);
@@ -1062,6 +1120,7 @@ export function HistoryPage(): JSX.Element {
   }
 
   function resetLineHistoryForm(): void {
+    clearHistoryFormDraft();
     setLineHistoryForm(initialLineHistoryFormState);
     setEditingHistoryId(null);
   }
@@ -1096,6 +1155,7 @@ export function HistoryPage(): JSX.Element {
       if (editingHistoryId) {
         const current = lineHistoryEntries.find((entry) => entry.id === editingHistoryId);
         if (!current) {
+          clearHistoryFormDraft();
           setErrorMessage('編集中の契約履歴が見つかりませんでした。');
           setEditingHistoryId(null);
           return;

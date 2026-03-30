@@ -46,6 +46,7 @@
 - 電話番号単位のタイムライン（期間切替・表示対象切替）
 - 履歴 JSON エクスポート / インポート
 - 主台帳＋契約履歴の統合バックアップエクスポート / インポート
+- 履歴入力フォームの下書きを localStorage に自動保存し、再読み込み後に復元
 
 ### 設定 (`/settings`)
 - `/settings/storage` / `/settings/backup` / `/settings/notifications` / `/settings/activity-types` のサブルート導線
@@ -89,10 +90,12 @@ VITE_DEV_LABEL="DEV / feat/xxx / PR #NNN"
 9. `この文言を候補に追加` で custom 候補が増え、`現在の文言で更新` と `削除` が動くことを確認
 10. custom 候補の `上へ` / `下へ` で表示順が変わり、再読み込み後も維持されることを確認
 11. 候補セクションの `折りたたむ` / `展開` が動き、再読み込み後も状態が維持されることを確認
-12. `固定候補をクリア` / `非表示候補をクリア` / `候補管理を初期化` が動き、再読み込み後も維持されることを確認
-13. `/settings/storage`、`/settings/backup`、`/settings/notifications`、`/settings/activity-types` が直接開けることを確認
-14. `npx tsc --noEmit` でビルドエラーがないことを確認
-15. PR では GitHub Actions の `CI` workflow が成功していることを確認
+12. 履歴フォームを途中まで入力して再読み込みすると、入力内容が復元されることを確認
+13. `入力をリセット` または `履歴を保存する` 後に再読み込みして、下書きが消えていることを確認
+14. `固定候補をクリア` / `非表示候補をクリア` / `候補管理を初期化` が動き、再読み込み後も維持されることを確認
+15. `/settings/storage`、`/settings/backup`、`/settings/notifications`、`/settings/activity-types` が直接開けることを確認
+16. `npx tsc --noEmit` でビルドエラーがないことを確認
+17. PR では GitHub Actions の `CI` workflow が成功していることを確認
 
 ## 重要方針
 
