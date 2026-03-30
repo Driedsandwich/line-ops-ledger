@@ -4,9 +4,9 @@
 
 - Bootstrap Issue: #1（永続 open）
 - Context Hub Issue: #2（永続 open）
-- 直近マージ済み PR: #88〜#134
+- 直近マージ済み PR: #88〜#136
 - オープン PR: なし
-- オープン Issue: #1, #2, #135
+- オープン Issue: #1, #2, #137
 
 ## 実装済み主要機能
 
@@ -46,9 +46,10 @@
 ### インフラ
 - PWA（manifest / SW）/ SW は開発環境で無効 / ビルド時キャッシュバスト
 - `.env.local` の `VITE_DEV_LABEL` でサイドバーにブランチバッジ表示（`PR #NNN` 運用）
+- GitHub Actions: `Repo sanity` に加えて `CI` workflow で `npm run check` / `npm run build` を実行
 
 ## 次の候補
 
-1. 履歴入力の下書き補助強化の継続（例: 活動メモテンプレの pin / 候補の個別管理）
-2. `main` 保護と最小 CI 強化の整理
+1. `main` 保護と required checks の有効化
+2. 履歴入力の下書き補助強化の継続（例: 活動メモテンプレの pin / 候補の個別管理）
 3. merge 後に stale 化しやすい status / Context 運用の簡素化
