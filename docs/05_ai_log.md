@@ -122,3 +122,6 @@
 - Issue #166: BenefitRecord で特典管理を構造化する
   - `LineDraft` に `benefits: BenefitRecord[]` を追加し、schemaVersion を 7 に更新
   - `LinesPage` で特典 / キャッシュバックの追加・編集・削除と詳細表示を実装した
+- Issue #168: ダッシュボードに特典期限アラートを追加する
+  - 未受取かつ受取期限日が 30 日以内または超過している特典を `DashboardPage` に一覧表示する
+  - 回線名 / キャリア / 特典種別 / 金額 / 受取期限日 / 状態ラベルを表示する

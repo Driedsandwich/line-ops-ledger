@@ -4,7 +4,7 @@
 
 - Bootstrap Issue: #1（永続 open）
 - Context Hub Issue: #2（永続 open）
-- 現在地: BenefitRecord 基盤（`LineDraft.benefits: BenefitRecord[]`）まで `main` 反映済み
+- 現在地: 特典期限アラートまで `main` 反映済み
 - 運用前提: PR 必須 / approval 任意 / required check `check-and-build`
 
 ## 実装済み主要機能
@@ -15,6 +15,7 @@
 - 契約終了が近い回線アラート（30日以内）
 - 今後のアクション予定（予定日が60日以内または超過の利用中 / 解約予定回線）
 - 番号・無料オプション期限アラート（MNP予約番号期限 / 無料オプション期限が3日以内または超過の利用中 / 解約予定回線）
+- 特典期限アラート（未受取かつ受取期限日が30日以内または超過の特典）
 - 長期未活動の回線カード（90日基準）＋「活動を記録」クイックリンク（`/lines/history?quickActivity=<phone>`）
 - 通知方針サマリー / 通知理由別件数 / 通知対象回線一覧
 
@@ -65,6 +66,6 @@
 
 ## 次の候補
 
-1. `DashboardPage` に特典期限アラートを追加
-2. 利用実績種別バッジ（通 / 話 / S）の追加
-3. 光回線固有フィールド（fiber 系 scalar fields）の追加
+1. 利用実績種別バッジ（通 / 話 / S）の追加
+2. 光回線固有フィールド（fiber 系 scalar fields）の追加
+3. 名義別サマリーの追加
