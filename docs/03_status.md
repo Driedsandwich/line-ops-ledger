@@ -4,7 +4,7 @@
 
 - Bootstrap Issue: #1（永続 open）
 - Context Hub Issue: #2（永続 open）
-- 現在地: PR #157 まで `main` 反映済み
+- 現在地: PR #159 まで `main` 反映済み
 - 運用前提: PR 必須 / approval 任意 / required check `check-and-build`
 
 ## 実装済み主要機能
@@ -19,6 +19,7 @@
 ### 主台帳 (`/lines`)
 - CRUD・Undo / 絞り込み・並び替え・一括操作
 - URLパラメータでソート指定（`?sort=latestActivityAsc` など）
+- 契約開始日から 181 日後の `解約可能推奨日` を自動表示
 - 行ボタンから「活動を記録」→ `/lines/history?quickActivity=<phone>` へ遷移
 - データ 0 件時の空状態ガイド（回線フォーム / 確認用サンプルデータ投入 / バックアップ復元 / 履歴ページ）
 
@@ -58,6 +59,6 @@
 
 ## 次の候補
 
-1. 履歴入力の下書き補助強化の継続（例: custom 候補管理の整理 / 並び順・優先度の見直し）
-2. merge 後に stale 化しやすい status / Context 運用の簡素化
+1. planned exit フィールドの追加（`plannedExitDate` / `plannedExitType` / `plannedNextCarrier`）
+2. MNP予約番号・無料オプション期限の構造化
 3. `Repo sanity` の役割整理（CI と二重化している確認の扱い見直し）
