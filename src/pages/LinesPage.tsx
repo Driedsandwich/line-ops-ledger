@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import {
+  BENEFIT_TYPE_OPTIONS,
   createLineDraft,
   DEFAULT_LINE_TYPE,
   lineDraftStore,
@@ -11,6 +12,8 @@ import {
   normalizeMonthlyCost,
   normalizePhoneNumber,
   normalizeReviewDate,
+  type BenefitRecord,
+  type BenefitType,
   type PlannedExitType,
   updateLineDraft,
   type LineDraft,
@@ -32,6 +35,17 @@ import {
 } from '../lib/activityTypeSettings';
 import { importBundledSampleData } from '../lib/sampleData';
 
+type BenefitFormState = {
+  id: string;
+  benefitType: BenefitType;
+  amount: string;
+  deadlineDate: string;
+  condition: string;
+  receivedFlag: boolean;
+  receivedDate: string;
+  memo: string;
+};
+
 type FormState = {
   lineName: string;
   carrier: string;
@@ -48,6 +62,7 @@ type FormState = {
   mnpReservationNumber: string;
   mnpReservationExpiry: string;
   freeOptionDeadline: string;
+  benefits: BenefitFormState[];
   contractHolder: string;
   serviceUser: string;
   paymentMethod: string;
@@ -159,6 +174,7 @@ const initialFormState: FormState = {
   mnpReservationNumber: '',
   mnpReservationExpiry: '',
   freeOptionDeadline: '',
+  benefits: [],
   contractHolder: '',
   serviceUser: '',
   paymentMethod: 'クレジットカード',
@@ -179,6 +195,36 @@ const initialFilterState: FilterState = {
 };
 
 const initialSortKey: SortKey = 'nextReviewDate';
+
+function createLocalId(prefix: string): string {
+  return globalThis.crypto?.randomUUID?.() ?? `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+}
+
+function createEmptyBenefitFormState(): BenefitFormState {
+  return {
+    id: createLocalId('benefit'),
+    benefitType: '現金',
+    amount: '',
+    deadlineDate: '',
+    condition: '',
+    receivedFlag: false,
+    receivedDate: '',
+    memo: '',
+  };
+}
+
+function toBenefitFormState(benefit: BenefitRecord): BenefitFormState {
+  return {
+    id: benefit.id,
+    benefitType: benefit.benefitType,
+    amount: benefit.amount == null ? '' : String(benefit.amount),
+    deadlineDate: benefit.deadlineDate,
+    condition: benefit.condition,
+    receivedFlag: benefit.receivedFlag,
+    receivedDate: benefit.receivedDate,
+    memo: benefit.memo,
+  };
+}
 
 function parseSortKeyParam(value: string | null): SortKey {
   if (value && (SORT_KEYS as string[]).includes(value)) {
@@ -426,6 +472,14 @@ function formatMonthlyCost(value: number | null): string {
   return `${new Intl.NumberFormat('ja-JP').format(value)}円/月`;
 }
 
+function formatBenefitAmount(value: number | null): string {
+  if (value == null) {
+    return '未設定';
+  }
+
+  return `${new Intl.NumberFormat('ja-JP').format(value)}円相当`;
+}
+
 function maskPhoneNumber(phoneNumber: string): string {
   if (phoneNumber.length < 4) {
     return phoneNumber;
@@ -478,6 +532,7 @@ function toFormState(draft: LineDraft): FormState {
     mnpReservationNumber: draft.mnpReservationNumber,
     mnpReservationExpiry: draft.mnpReservationExpiry,
     freeOptionDeadline: draft.freeOptionDeadline,
+    benefits: draft.benefits.map(toBenefitFormState),
     contractHolder: draft.contractHolder,
     serviceUser: draft.serviceUser,
     paymentMethod: draft.paymentMethod || 'クレジットカード',
@@ -574,6 +629,29 @@ export function LinesPage(): JSX.Element {
     setForm((current) => ({ ...current, [key]: value }));
   }
 
+  function updateBenefitField<K extends keyof BenefitFormState>(index: number, key: K, value: BenefitFormState[K]): void {
+    setForm((current) => ({
+      ...current,
+      benefits: current.benefits.map((benefit, benefitIndex) =>
+        benefitIndex === index ? { ...benefit, [key]: value } : benefit,
+      ),
+    }));
+  }
+
+  function addBenefit(): void {
+    setForm((current) => ({
+      ...current,
+      benefits: [...current.benefits, createEmptyBenefitFormState()],
+    }));
+  }
+
+  function removeBenefit(index: number): void {
+    setForm((current) => ({
+      ...current,
+      benefits: current.benefits.filter((_, benefitIndex) => benefitIndex !== index),
+    }));
+  }
+
   function updateFilter<K extends keyof FilterState>(key: K, value: FilterState[K]): void {
     setFilters((current) => ({ ...current, [key]: value }));
   }
@@ -643,6 +721,7 @@ export function LinesPage(): JSX.Element {
     mnpReservationNumber: string;
     mnpReservationExpiry: string;
     freeOptionDeadline: string;
+    benefits: BenefitRecord[];
     contractHolder: string;
     serviceUser: string;
     paymentMethod: string;
@@ -665,6 +744,7 @@ export function LinesPage(): JSX.Element {
     const mnpReservationNumber = form.mnpReservationNumber.trim();
     const mnpReservationExpiry = form.mnpReservationExpiry;
     const freeOptionDeadline = form.freeOptionDeadline;
+    const benefits: BenefitRecord[] = [];
     const contractHolder = form.contractHolder.trim();
     const serviceUser = form.serviceUser.trim();
     const paymentMethod = form.paymentMethod.trim();
@@ -713,6 +793,45 @@ export function LinesPage(): JSX.Element {
       return null;
     }
 
+    for (const [index, benefit] of form.benefits.entries()) {
+      const normalizedAmount = normalizeMonthlyCost(benefit.amount);
+      const amountProvided = benefit.amount.trim() !== '';
+      if (amountProvided && normalizedAmount == null) {
+        setErrorMessage(`特典 ${index + 1} の金額は 0 以上の整数だけ保存できます。`);
+        return null;
+      }
+
+      const deadlineDate = normalizeReviewDate(benefit.deadlineDate);
+      if (benefit.deadlineDate && !deadlineDate) {
+        setErrorMessage(`特典 ${index + 1} の期限日は YYYY-MM-DD 形式の実在日付だけ保存できます。`);
+        return null;
+      }
+
+      const receivedDate = normalizeReviewDate(benefit.receivedDate);
+      if (benefit.receivedDate && !receivedDate) {
+        setErrorMessage(`特典 ${index + 1} の受取日は YYYY-MM-DD 形式の実在日付だけ保存できます。`);
+        return null;
+      }
+
+      const condition = benefit.condition.trim();
+      const memo = benefit.memo.trim();
+      const isBlank = normalizedAmount == null && !deadlineDate && !condition && !benefit.receivedFlag && !receivedDate && !memo;
+      if (isBlank) {
+        continue;
+      }
+
+      benefits.push({
+        id: benefit.id,
+        benefitType: benefit.benefitType,
+        amount: normalizedAmount,
+        deadlineDate,
+        condition,
+        receivedFlag: benefit.receivedFlag,
+        receivedDate,
+        memo,
+      });
+    }
+
     if (form.phoneNumber && !phoneNumber) {
       setErrorMessage('電話番号は数字10〜11桁だけ保存できます。');
       return null;
@@ -739,6 +858,7 @@ export function LinesPage(): JSX.Element {
       mnpReservationNumber,
       mnpReservationExpiry,
       freeOptionDeadline,
+      benefits,
       contractHolder,
       serviceUser,
       paymentMethod,
@@ -1209,6 +1329,76 @@ export function LinesPage(): JSX.Element {
                 </>
               ) : null}
 
+              <div className="detail-panel field--full">
+                <div className="card__header">
+                  <h3>特典 / キャッシュバック</h3>
+                  <span className="badge">{form.benefits.length}件</span>
+                </div>
+                {form.benefits.length === 0 ? (
+                  <p className="muted">未登録です。受取期限や受取状況を構造化して残せます。</p>
+                ) : (
+                  form.benefits.map((benefit, index) => (
+                    <div key={benefit.id} className="detail-panel" style={{ marginTop: index === 0 ? '0.75rem' : '1rem' }}>
+                      <div className="card__header">
+                        <h3>特典 {index + 1}</h3>
+                        <div className="button-row button-row--tight">
+                          <span className={benefit.receivedFlag ? 'badge badge--ok' : 'badge'}>
+                            {benefit.receivedFlag ? '受取済み' : '未受取'}
+                          </span>
+                          <button type="button" className="button button--danger" onClick={() => removeBenefit(index)}>
+                            削除
+                          </button>
+                        </div>
+                      </div>
+                      <div className="form-grid">
+                        <label className="field">
+                          <span>特典種別</span>
+                          <select value={benefit.benefitType} onChange={(event) => updateBenefitField(index, 'benefitType', event.target.value as BenefitType)}>
+                            {BENEFIT_TYPE_OPTIONS.map((option) => (
+                              <option key={option} value={option}>{option}</option>
+                            ))}
+                          </select>
+                        </label>
+
+                        <label className="field">
+                          <span>特典額</span>
+                          <input inputMode="numeric" value={benefit.amount} onChange={(event) => updateBenefitField(index, 'amount', event.target.value)} placeholder="例: 16000" />
+                        </label>
+
+                        <label className="field">
+                          <span>受取期限日</span>
+                          <input type="date" value={benefit.deadlineDate} onChange={(event) => updateBenefitField(index, 'deadlineDate', event.target.value)} />
+                        </label>
+
+                        <label className="field checkbox-row">
+                          <input type="checkbox" checked={benefit.receivedFlag} onChange={(event) => updateBenefitField(index, 'receivedFlag', event.target.checked)} />
+                          <span>受取済み</span>
+                        </label>
+
+                        <label className="field">
+                          <span>受取日</span>
+                          <input type="date" value={benefit.receivedDate} onChange={(event) => updateBenefitField(index, 'receivedDate', event.target.value)} />
+                        </label>
+
+                        <label className="field field--full">
+                          <span>受取条件</span>
+                          <input value={benefit.condition} onChange={(event) => updateBenefitField(index, 'condition', event.target.value)} placeholder="例: 開通月を含む7か月後に自動付与" />
+                        </label>
+
+                        <label className="field field--full">
+                          <span>メモ</span>
+                          <textarea value={benefit.memo} onChange={(event) => updateBenefitField(index, 'memo', event.target.value)} rows={2} placeholder="申請 URL や補足メモなど" />
+                        </label>
+                      </div>
+                    </div>
+                  ))
+                )}
+
+                <div className="button-row button-row--tight" style={{ marginTop: '0.75rem' }}>
+                  <button type="button" className="button" onClick={addBenefit}>特典を追加</button>
+                </div>
+              </div>
+
               <label className="field">
                 <span>月額費用</span>
                 <input inputMode="numeric" value={form.monthlyCost} onChange={(event) => updateField('monthlyCost', event.target.value)} placeholder="例: 2980" />
@@ -1466,6 +1656,7 @@ export function LinesPage(): JSX.Element {
                   : null;
                 const relatedHistoryEntries = findRelatedHistoryEntries(draft, lineHistoryEntries);
                 const latestActivityDate = getLatestActivityDateFromHistoryEntries(relatedHistoryEntries);
+                const pendingBenefitCount = draft.benefits.filter((benefit) => !benefit.receivedFlag).length;
 
                 return (
                   <li key={draft.id} className={isSelected ? 'list__item--selected' : ''}>
@@ -1496,6 +1687,8 @@ export function LinesPage(): JSX.Element {
                       {!isCompactView && draft.plannedExitDate ? <span className="badge">予定: {formatPlannedExitSchedule(draft.plannedExitDate)}</span> : null}
                       {!isCompactView && draft.mnpReservationExpiry ? <span className="badge">MNP期限: {formatDate(draft.mnpReservationExpiry)}</span> : null}
                       {!isCompactView && draft.freeOptionDeadline ? <span className="badge">無料OP期限: {formatDate(draft.freeOptionDeadline)}</span> : null}
+                      {!isCompactView && pendingBenefitCount > 0 ? <span className="badge">未受取特典: {pendingBenefitCount}件</span> : null}
+                      {!isCompactView && pendingBenefitCount === 0 && draft.benefits.length > 0 ? <span className="badge badge--ok">特典管理: {draft.benefits.length}件</span> : null}
                       {latestActivityDate != null ? <span className="badge">最終活動: {formatDate(latestActivityDate)}</span> : null}
                     </div>
                     <div className="button-row button-row--tight">
@@ -1620,6 +1813,31 @@ export function LinesPage(): JSX.Element {
                             {relatedHistoryEntries.map((entry) => (
                               <span key={entry.id} className="badge">{entry.carrier} / {maskPhoneNumber(entry.phoneNumber)}</span>
                             ))}
+                          </div>
+                        ) : null}
+                        {draft.benefits.length > 0 ? (
+                          <div className="detail-panel" style={{ marginTop: '0.75rem' }}>
+                            <div className="card__header">
+                              <h3>特典 / キャッシュバック</h3>
+                              <span className="badge">{draft.benefits.length}件</span>
+                            </div>
+                            <ul className="list list--drafts">
+                              {draft.benefits.map((benefit, index) => (
+                                <li key={benefit.id}>
+                                  <div className="list__row">
+                                    <strong>{`特典 ${index + 1}: ${benefit.benefitType}`}</strong>
+                                    <span className={benefit.receivedFlag ? 'badge badge--ok' : 'badge'}>
+                                      {benefit.receivedFlag ? '受取済み' : '未受取'}
+                                    </span>
+                                  </div>
+                                  <span>金額: {formatBenefitAmount(benefit.amount)}</span>
+                                  <span>受取期限日: {formatDate(benefit.deadlineDate)}</span>
+                                  <span>受取条件: {benefit.condition || '未設定'}</span>
+                                  <span>受取日: {formatDate(benefit.receivedDate)}</span>
+                                  <span>メモ: {benefit.memo || '未設定'}</span>
+                                </li>
+                              ))}
+                            </ul>
                           </div>
                         ) : null}
                       </div>

@@ -2,7 +2,7 @@
   "exportedAt": "2026-03-29T10:00:00.000Z",
   "version": 1,
   "lineDrafts": {
-    "schemaVersion": 4,
+    "schemaVersion": 7,
     "updatedAt": "2026-03-29T10:00:00.000Z",
     "items": [
       {
@@ -65,6 +65,18 @@
         "deviceName": "iPad Pro",
         "status": "利用中",
         "memo": "更新月（2026-08）に解約を検討。",
+        "benefits": [
+          {
+            "id": "b-003-1",
+            "benefitType": "ポイント",
+            "amount": 10000,
+            "deadlineDate": "2026-04-05",
+            "condition": "開通月を含む7か月後に専用サイトで申請",
+            "receivedFlag": false,
+            "receivedDate": "",
+            "memo": "ポイント付与前に判定条件を再確認する"
+          }
+        ],
         "nextReviewDate": "2026-04-04",
         "createdAt": "2023-09-01T10:00:00.000Z"
       },
@@ -128,6 +140,18 @@
         "deviceName": "",
         "status": "解約予定",
         "memo": "MNP予約番号取得済み。2026-04に転出予定。",
+        "benefits": [
+          {
+            "id": "b-006-1",
+            "benefitType": "現金",
+            "amount": 16000,
+            "deadlineDate": "2026-03-31",
+            "condition": "開通4か月後に口座振込",
+            "receivedFlag": true,
+            "receivedDate": "2026-03-15",
+            "memo": "受取確認済み"
+          }
+        ],
         "nextReviewDate": "2026-04-03",
         "createdAt": "2022-10-01T10:00:00.000Z"
       },

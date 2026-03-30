@@ -1,14 +1,27 @@
 export const LINE_STATUS_OPTIONS = ['利用中', '解約予定', '解約済み', 'MNP転出済み'] as const;
 export const LINE_TYPE_OPTIONS = ['音声SIM', 'データSIM', 'ホームルーター', '光回線', '未分類'] as const;
 export const PLANNED_EXIT_TYPE_OPTIONS = ['MNP転出', '解約', '未定'] as const;
+export const BENEFIT_TYPE_OPTIONS = ['現金', 'ポイント', '商品券', 'その他'] as const;
 export const DEFAULT_LINE_TYPE = '未分類';
-export const CURRENT_LINE_DRAFT_SCHEMA_VERSION = 6;
+export const CURRENT_LINE_DRAFT_SCHEMA_VERSION = 7;
 export const LINE_DRAFT_BACKUP_FILENAME_PREFIX = 'line-ops-ledger-backup';
 
 export type LineStatus = (typeof LINE_STATUS_OPTIONS)[number];
 export type LineType = (typeof LINE_TYPE_OPTIONS)[number];
 export type PlannedExitType = (typeof PLANNED_EXIT_TYPE_OPTIONS)[number];
+export type BenefitType = (typeof BENEFIT_TYPE_OPTIONS)[number];
 export type LineDraftStorageFormat = 'empty' | 'legacy-array' | 'versioned-envelope' | 'invalid-data';
+
+export type BenefitRecord = {
+  id: string;
+  benefitType: BenefitType;
+  amount: number | null;
+  deadlineDate: string;
+  condition: string;
+  receivedFlag: boolean;
+  receivedDate: string;
+  memo: string;
+};
 
 export type LineDraft = {
   id: string;
@@ -27,6 +40,7 @@ export type LineDraft = {
   mnpReservationNumber: string;
   mnpReservationExpiry: string;
   freeOptionDeadline: string;
+  benefits: BenefitRecord[];
   contractHolder: string;
   serviceUser: string;
   paymentMethod: string;
@@ -68,6 +82,17 @@ export type LineDraftStore = {
   getMetadata: () => { schemaVersion: number; itemCount: number; updatedAt: string | null; storageFormat: string };
 };
 
+type BenefitRecordInput = {
+  id?: string;
+  benefitType?: BenefitType;
+  amount?: string | number | null;
+  deadlineDate?: string;
+  condition?: string;
+  receivedFlag?: boolean;
+  receivedDate?: string;
+  memo?: string;
+};
+
 type LineDraftInput = {
   lineName: string;
   carrier: string;
@@ -84,6 +109,7 @@ type LineDraftInput = {
   mnpReservationNumber?: string;
   mnpReservationExpiry?: string;
   freeOptionDeadline?: string;
+  benefits?: BenefitRecordInput[];
   contractHolder?: string;
   serviceUser?: string;
   paymentMethod?: string;
@@ -92,6 +118,12 @@ type LineDraftInput = {
   status: LineStatus;
   memo: string;
   nextReviewDate: string;
+};
+
+type NormalizableLineDraftInput = Omit<Partial<LineDraft>, 'benefits'> & {
+  lineName: string;
+  carrier: string;
+  benefits?: BenefitRecordInput[] | BenefitRecord[];
 };
 
 const STORAGE_KEY = 'line-ops-ledger.line-drafts';
@@ -106,6 +138,10 @@ function isLineType(value: string): value is LineType {
 
 function isPlannedExitType(value: string): value is PlannedExitType {
   return PLANNED_EXIT_TYPE_OPTIONS.includes(value as PlannedExitType);
+}
+
+function isBenefitType(value: string): value is BenefitType {
+  return BENEFIT_TYPE_OPTIONS.includes(value as BenefitType);
 }
 
 function createId(): string {
@@ -165,7 +201,7 @@ export function normalizeLast4(value: string | null | undefined): string {
   return digits.length === 4 ? digits : '';
 }
 
-function normalizeLineDraft(input: Partial<LineDraft> & { lineName: string; carrier: string }): LineDraft | null {
+function normalizeLineDraft(input: NormalizableLineDraftInput): LineDraft | null {
   const lineName = input.lineName.trim();
   const carrier = input.carrier.trim();
   const lineType = isLineType(String(input.lineType ?? '')) ? (input.lineType as LineType) : DEFAULT_LINE_TYPE;
@@ -183,6 +219,11 @@ function normalizeLineDraft(input: Partial<LineDraft> & { lineName: string; carr
   const mnpReservationNumber = (input.mnpReservationNumber ?? '').trim();
   const mnpReservationExpiry = normalizeReviewDate(input.mnpReservationExpiry);
   const freeOptionDeadline = normalizeReviewDate(input.freeOptionDeadline);
+  const benefits = Array.isArray(input.benefits)
+    ? input.benefits
+      .map((item) => (item && typeof item === 'object' ? normalizeBenefitRecord(item) : null))
+      .filter((item): item is BenefitRecord => item != null)
+    : [];
   const contractHolder = (input.contractHolder ?? '').trim();
   const serviceUser = (input.serviceUser ?? '').trim();
   const paymentMethod = (input.paymentMethod ?? '').trim();
@@ -214,6 +255,7 @@ function normalizeLineDraft(input: Partial<LineDraft> & { lineName: string; carr
     mnpReservationNumber,
     mnpReservationExpiry,
     freeOptionDeadline,
+    benefits,
     contractHolder,
     serviceUser,
     paymentMethod,
@@ -223,6 +265,55 @@ function normalizeLineDraft(input: Partial<LineDraft> & { lineName: string; carr
     memo,
     nextReviewDate,
     createdAt,
+  };
+}
+
+function normalizeBenefitRecord(input: BenefitRecordInput | BenefitRecord): BenefitRecord | null {
+  const amountRaw = input.amount ?? null;
+  const amountInputProvided = amountRaw != null && String(amountRaw).trim() !== '';
+  const amount = normalizeMonthlyCost(amountRaw);
+  if (amountInputProvided && amount == null) {
+    return null;
+  }
+
+  const deadlineDateRaw = String(input.deadlineDate ?? '').trim();
+  const deadlineDate = normalizeReviewDate(deadlineDateRaw);
+  if (deadlineDateRaw && !deadlineDate) {
+    return null;
+  }
+
+  const receivedDateRaw = String(input.receivedDate ?? '').trim();
+  let receivedDate = normalizeReviewDate(receivedDateRaw);
+  if (receivedDateRaw && !receivedDate) {
+    return null;
+  }
+
+  const condition = String(input.condition ?? '').trim();
+  const memo = String(input.memo ?? '').trim();
+  const receivedFlag = Boolean(input.receivedFlag);
+  const benefitType = isBenefitType(String(input.benefitType ?? '')) ? (input.benefitType as BenefitType) : '現金';
+
+  const isBlank = amount == null && !deadlineDate && !condition && !receivedFlag && !receivedDate && !memo;
+  if (isBlank) {
+    return null;
+  }
+
+  if (receivedFlag && !receivedDate) {
+    receivedDate = new Date().toISOString().slice(0, 10);
+  }
+  if (!receivedFlag) {
+    receivedDate = '';
+  }
+
+  return {
+    id: input.id ?? createId(),
+    benefitType,
+    amount,
+    deadlineDate,
+    condition,
+    receivedFlag,
+    receivedDate,
+    memo,
   };
 }
 
