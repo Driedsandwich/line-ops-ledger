@@ -711,6 +711,16 @@ export function HistoryPage(): JSX.Element {
               {isCustomActivityMemoTemplate(customActivityMemoTemplates, option) ? (
                 <button
                   type="button"
+                  className="button"
+                  disabled={!activityLog.activityMemo.trim() || activityLog.activityMemo.trim() === option}
+                  onClick={() => replaceCustomActivityMemoTemplate(option, activityLog.activityMemo)}
+                >
+                  現在の文言で更新
+                </button>
+              ) : null}
+              {isCustomActivityMemoTemplate(customActivityMemoTemplates, option) ? (
+                <button
+                  type="button"
                   className="button button--danger"
                   onClick={() => removeCustomActivityMemoTemplate(option)}
                 >
@@ -838,6 +848,39 @@ export function HistoryPage(): JSX.Element {
     setCustomActivityMemoTemplates(nextCustom);
     setErrorMessage(null);
     setSuccessMessage(`活動メモ候補「${normalized}」を削除しました。`);
+  }
+
+  function replaceCustomActivityMemoTemplate(template: string, nextTemplate: string): void {
+    const normalizedCurrent = template.trim();
+    const normalizedNext = nextTemplate.trim();
+
+    if (!normalizedNext) {
+      setErrorMessage('更新後の活動メモを入力してください。');
+      setSuccessMessage(null);
+      return;
+    }
+
+    if (normalizedCurrent === normalizedNext) {
+      setErrorMessage(null);
+      setSuccessMessage(`活動メモ候補「${normalizedCurrent}」は最新です。`);
+      return;
+    }
+
+    const nextCustom = saveCustomActivityMemoTemplates(
+      customActivityMemoTemplates.map((item) => (item === normalizedCurrent ? normalizedNext : item)),
+    );
+    const nextPinned = savePinnedActivityMemoTemplates(
+      pinnedActivityMemoTemplates.map((item) => (item === normalizedCurrent ? normalizedNext : item)),
+    );
+    const nextHidden = saveHiddenActivityMemoTemplates(
+      hiddenActivityMemoTemplates.map((item) => (item === normalizedCurrent ? normalizedNext : item)),
+    );
+
+    setCustomActivityMemoTemplates(nextCustom);
+    setPinnedActivityMemoTemplates(nextPinned);
+    setHiddenActivityMemoTemplates(nextHidden);
+    setErrorMessage(null);
+    setSuccessMessage(`活動メモ候補「${normalizedCurrent}」を「${normalizedNext}」に更新しました。`);
   }
 
   function unpinActivityMemoTemplate(template: string): void {

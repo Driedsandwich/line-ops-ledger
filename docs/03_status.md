@@ -4,7 +4,7 @@
 
 - Bootstrap Issue: #1（永続 open）
 - Context Hub Issue: #2（永続 open）
-- 現在地: PR #147 まで `main` 反映済み
+- 現在地: PR #149 まで `main` 反映済み
 - 運用前提: PR 必須 / approval 任意 / required check `check-and-build`
 
 ## 実装済み主要機能
@@ -30,6 +30,7 @@
 - 活動種別に応じた活動メモ候補（種別別の頻出文言 + fallback 候補）
 - 活動メモのクイック候補（固定候補 + 定型候補 + 最近使った文言 + 非表示候補）
 - 現在の活動メモ文言を custom 候補として追加・削除可能
+- custom 候補を現在の入力文言で更新可能
 - 活動メモ候補の pin / unpin / 非表示 / 復帰を localStorage で保持
 - 候補の重複を優先順で整理し、現在値と一致する候補を選択中表示
 - 固定候補 / 非表示候補 / 候補管理全体を一括で初期化可能
