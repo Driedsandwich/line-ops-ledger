@@ -75,3 +75,11 @@
 - Issue #137: GitHub Actions に最小 CI を追加
   - `CI` workflow で `npm ci` → `npm run check` → `npm run build` を実行
   - required checks を安全に有効化する前段として、安定 job `check-and-build` を固定
+
+## 2026-03-30
+- Issue #139: `main` 保護と required checks を有効化
+  - `main` に PR 必須 / 1 approval 必須 / force push 禁止 / deletion 禁止を設定
+  - required check として `CI / check-and-build` を採用
+- Issue #140: 履歴入力で活動メモ候補を固定できるようにする
+  - `活動メモ` の候補を `固定候補` として pin/unpin できるようにする
+  - 固定候補は localStorage に保存し、再読み込み後も保持する

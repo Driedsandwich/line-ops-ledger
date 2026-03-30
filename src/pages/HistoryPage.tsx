@@ -12,6 +12,7 @@ import {
 import { loadNotificationSettings } from '../lib/notificationSettings';
 import { updateLineDraft } from '../lib/lineDrafts';
 import { getAllActivityTypes, loadCustomActivityTypes } from '../lib/activityTypeSettings';
+import { loadPinnedActivityMemoTemplates, savePinnedActivityMemoTemplates } from '../lib/pinnedActivityMemoTemplates';
 import { importBundledSampleData } from '../lib/sampleData';
 
 // ---------------------------------------------------------------------------
@@ -299,6 +300,10 @@ function applyActivityMemoQuickPick(currentValue: string, quickPick: string): st
   return `${normalized} ${quickPick}`;
 }
 
+function isPinnedActivityMemoTemplate(pinnedTemplates: string[], candidate: string): boolean {
+  return pinnedTemplates.includes(candidate.trim());
+}
+
 function getLatestMatchingHistoryEntry(entries: LineHistoryEntry[], phoneNumber: string, editingHistoryId: string | null): LineHistoryEntry | null {
   if (!phoneNumber) {
     return null;
@@ -575,6 +580,7 @@ export function HistoryPage(): JSX.Element {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [reviewSuggest, setReviewSuggest] = useState<{ draftId: string; draftName: string; suggestedDate: string } | null>(null);
+  const [pinnedActivityMemoTemplates, setPinnedActivityMemoTemplates] = useState<string[]>(() => loadPinnedActivityMemoTemplates());
   const historyImportInputRef = useRef<HTMLInputElement | null>(null);
 
   const notificationSettings = loadNotificationSettings();
@@ -611,11 +617,50 @@ export function HistoryPage(): JSX.Element {
     [lineHistoryForm.contractStartDate, matchingHistorySuggestion?.latestActivityDate, todayDateString],
   );
 
+  function renderActivityMemoQuickPickSection(
+    activityLog: LineHistoryActivityLogFormState,
+    title: string,
+    quickPicks: string[],
+    pinAction: 'pin' | 'unpin',
+    sectionKey: string,
+  ): JSX.Element | null {
+    if (quickPicks.length === 0) {
+      return null;
+    }
+
+    return (
+      <>
+        <p className="muted" style={{ marginTop: sectionKey === 'pinned' ? 0 : '0.75rem', marginBottom: '0.5rem' }}>{title}</p>
+        <div className="stack" style={{ gap: '0.5rem' }}>
+          {quickPicks.map((option) => (
+            <div key={`${activityLog.id}-${sectionKey}-${option}`} className="button-row button-row--tight">
+              <button
+                type="button"
+                className="button"
+                onClick={() => updateActivityLogField(activityLog.id, 'activityMemo', applyActivityMemoQuickPick(activityLog.activityMemo, option))}
+              >
+                {option}
+              </button>
+              <button
+                type="button"
+                className="button"
+                onClick={() => (pinAction === 'pin' ? pinActivityMemoTemplate(option) : unpinActivityMemoTemplate(option))}
+              >
+                {pinAction === 'pin' ? '固定' : '固定解除'}
+              </button>
+            </div>
+          ))}
+        </div>
+      </>
+    );
+  }
+
   function handleImportSampleData(): void {
     try {
       const result = importBundledSampleData();
       setDrafts(result.drafts);
       setLineHistoryEntries(result.historyEntries);
+      setPinnedActivityMemoTemplates(loadPinnedActivityMemoTemplates());
       setErrorMessage(null);
       setSuccessMessage(`確認用サンプルデータを読み込みました（主台帳 ${result.draftCount} 件 / 履歴 ${result.historyCount} 件）。`);
     } catch {
@@ -646,6 +691,33 @@ export function HistoryPage(): JSX.Element {
     setErrorMessage(null);
     setSuccessMessage(null);
     setReviewSuggest(null);
+  }
+
+  function pinActivityMemoTemplate(template: string): void {
+    const normalized = template.trim();
+    if (!normalized) {
+      return;
+    }
+
+    const nextPinned = savePinnedActivityMemoTemplates([
+      normalized,
+      ...pinnedActivityMemoTemplates.filter((item) => item !== normalized),
+    ]);
+
+    setPinnedActivityMemoTemplates(nextPinned);
+    setErrorMessage(null);
+    setSuccessMessage(`活動メモ候補「${normalized}」を固定しました。`);
+  }
+
+  function unpinActivityMemoTemplate(template: string): void {
+    const normalized = template.trim();
+    const nextPinned = savePinnedActivityMemoTemplates(
+      pinnedActivityMemoTemplates.filter((item) => item !== normalized),
+    );
+
+    setPinnedActivityMemoTemplates(nextPinned);
+    setErrorMessage(null);
+    setSuccessMessage(`活動メモ候補「${normalized}」の固定を解除しました。`);
   }
 
   function persistLineHistory(nextEntries: LineHistoryEntry[]): void {
@@ -821,6 +893,7 @@ export function HistoryPage(): JSX.Element {
       setLineHistoryEntries(imported);
       setEditingHistoryId(null);
       setTimelinePhoneFilter(null);
+      setPinnedActivityMemoTemplates(loadPinnedActivityMemoTemplates());
       resetLineHistoryForm();
       setSuccessMessage(`契約履歴を ${imported.length} 件読み込みました。`);
     } catch {
@@ -994,53 +1067,40 @@ export function HistoryPage(): JSX.Element {
                         <span>活動メモ</span>
                         <textarea value={activityLog.activityMemo} onChange={(event) => updateActivityLogField(activityLog.id, 'activityMemo', event.target.value)} rows={2} placeholder="例: 発信テスト実施 / データ通信実施 / 請求確認" />
                         <div className="detail-panel" style={{ marginTop: '0.5rem' }}>
-                          {getTypeSpecificActivityMemoQuickPicks(activityMemoQuickPickIndex, activityLog.activityType).length > 0 ? (
-                            <>
-                              <p className="muted" style={{ marginTop: 0, marginBottom: '0.5rem' }}>この種別でよく使う文言</p>
-                              <div className="button-row button-row--tight">
-                                {getTypeSpecificActivityMemoQuickPicks(activityMemoQuickPickIndex, activityLog.activityType).map((option) => (
-                                  <button
-                                    key={`${activityLog.id}-${activityLog.activityType}-${option}`}
-                                    type="button"
-                                    className="button"
-                                    onClick={() => updateActivityLogField(activityLog.id, 'activityMemo', applyActivityMemoQuickPick(activityLog.activityMemo, option))}
-                                  >
-                                    {option}
-                                  </button>
-                                ))}
-                              </div>
-                            </>
-                          ) : null}
-                          <p className="muted" style={{ marginTop: 0, marginBottom: '0.5rem' }}>定型候補</p>
-                          <div className="button-row button-row--tight">
-                            {ACTIVITY_MEMO_TEMPLATE_OPTIONS.map((option) => (
-                              <button
-                                key={option}
-                                type="button"
-                                className="button"
-                                onClick={() => updateActivityLogField(activityLog.id, 'activityMemo', applyActivityMemoQuickPick(activityLog.activityMemo, option))}
-                              >
-                                {option}
-                              </button>
-                            ))}
-                          </div>
-                          {recentActivityMemoQuickPicks.length > 0 ? (
-                            <>
-                              <p className="muted" style={{ marginTop: '0.75rem', marginBottom: '0.5rem' }}>最近使った文言</p>
-                              <div className="button-row button-row--tight">
-                                {recentActivityMemoQuickPicks.map((option) => (
-                                  <button
-                                    key={option}
-                                    type="button"
-                                    className="button"
-                                    onClick={() => updateActivityLogField(activityLog.id, 'activityMemo', applyActivityMemoQuickPick(activityLog.activityMemo, option))}
-                                  >
-                                    {option}
-                                  </button>
-                                ))}
-                              </div>
-                            </>
-                          ) : null}
+                          {renderActivityMemoQuickPickSection(
+                            activityLog,
+                            '固定候補',
+                            pinnedActivityMemoTemplates,
+                            'unpin',
+                            'pinned',
+                          )}
+                          {renderActivityMemoQuickPickSection(
+                            activityLog,
+                            'この種別でよく使う文言',
+                            getTypeSpecificActivityMemoQuickPicks(activityMemoQuickPickIndex, activityLog.activityType).filter(
+                              (option) => !isPinnedActivityMemoTemplate(pinnedActivityMemoTemplates, option),
+                            ),
+                            'pin',
+                            'type-specific',
+                          )}
+                          {renderActivityMemoQuickPickSection(
+                            activityLog,
+                            '定型候補',
+                            ACTIVITY_MEMO_TEMPLATE_OPTIONS.filter(
+                              (option) => !isPinnedActivityMemoTemplate(pinnedActivityMemoTemplates, option),
+                            ),
+                            'pin',
+                            'templates',
+                          )}
+                          {renderActivityMemoQuickPickSection(
+                            activityLog,
+                            '最近使った文言',
+                            recentActivityMemoQuickPicks.filter(
+                              (option) => !isPinnedActivityMemoTemplate(pinnedActivityMemoTemplates, option),
+                            ),
+                            'pin',
+                            'recent',
+                          )}
                         </div>
                       </label>
                     </div>
