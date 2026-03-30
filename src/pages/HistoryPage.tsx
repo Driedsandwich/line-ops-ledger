@@ -321,6 +321,23 @@ function isCustomActivityMemoTemplate(customTemplates: string[], candidate: stri
   return customTemplates.includes(candidate.trim());
 }
 
+function moveItemInList(items: string[], target: string, direction: 'up' | 'down'): string[] {
+  const currentIndex = items.indexOf(target);
+  if (currentIndex === -1) {
+    return items;
+  }
+
+  const nextIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1;
+  if (nextIndex < 0 || nextIndex >= items.length) {
+    return items;
+  }
+
+  const nextItems = [...items];
+  const [moved] = nextItems.splice(currentIndex, 1);
+  nextItems.splice(nextIndex, 0, moved);
+  return nextItems;
+}
+
 function buildActivityMemoQuickPickSections(params: {
   pinnedTemplates: string[];
   hiddenTemplates: string[];
@@ -686,48 +703,73 @@ export function HistoryPage(): JSX.Element {
         <p className="muted" style={{ marginTop: sectionKey === 'pinned' ? 0 : '0.75rem', marginBottom: '0.5rem' }}>{title}</p>
         <div className="stack" style={{ gap: '0.5rem' }}>
           {quickPicks.map((option) => (
-            <div key={`${activityLog.id}-${sectionKey}-${option}`} className="button-row button-row--tight">
-              <button
-                type="button"
-                className={activityLog.activityMemo.trim() === option ? 'button button--primary' : 'button'}
-                onClick={() => updateActivityLogField(activityLog.id, 'activityMemo', applyActivityMemoQuickPick(activityLog.activityMemo, option))}
-              >
-                {option}
-              </button>
-              <button
-                type="button"
-                className="button"
-                onClick={() => (pinAction === 'pin' ? pinActivityMemoTemplate(option) : unpinActivityMemoTemplate(option))}
-              >
-                {pinAction === 'pin' ? '固定' : '固定解除'}
-              </button>
-              <button
-                type="button"
-                className="button"
-                onClick={() => hideActivityMemoTemplate(option)}
-              >
-                非表示
-              </button>
-              {isCustomActivityMemoTemplate(customActivityMemoTemplates, option) ? (
-                <button
-                  type="button"
-                  className="button"
-                  disabled={!activityLog.activityMemo.trim() || activityLog.activityMemo.trim() === option}
-                  onClick={() => replaceCustomActivityMemoTemplate(option, activityLog.activityMemo)}
-                >
-                  現在の文言で更新
-                </button>
-              ) : null}
-              {isCustomActivityMemoTemplate(customActivityMemoTemplates, option) ? (
-                <button
-                  type="button"
-                  className="button button--danger"
-                  onClick={() => removeCustomActivityMemoTemplate(option)}
-                >
-                  削除
-                </button>
-              ) : null}
-            </div>
+            (() => {
+              const isCustom = isCustomActivityMemoTemplate(customActivityMemoTemplates, option);
+              const customIndex = isCustom ? customActivityMemoTemplates.indexOf(option) : -1;
+              const canMoveUp = isCustom && customIndex > 0;
+              const canMoveDown = isCustom && customIndex >= 0 && customIndex < customActivityMemoTemplates.length - 1;
+
+              return (
+                <div key={`${activityLog.id}-${sectionKey}-${option}`} className="button-row button-row--tight">
+                  <button
+                    type="button"
+                    className={activityLog.activityMemo.trim() === option ? 'button button--primary' : 'button'}
+                    onClick={() => updateActivityLogField(activityLog.id, 'activityMemo', applyActivityMemoQuickPick(activityLog.activityMemo, option))}
+                  >
+                    {option}
+                  </button>
+                  <button
+                    type="button"
+                    className="button"
+                    onClick={() => (pinAction === 'pin' ? pinActivityMemoTemplate(option) : unpinActivityMemoTemplate(option))}
+                  >
+                    {pinAction === 'pin' ? '固定' : '固定解除'}
+                  </button>
+                  <button
+                    type="button"
+                    className="button"
+                    onClick={() => hideActivityMemoTemplate(option)}
+                  >
+                    非表示
+                  </button>
+                  {isCustom ? (
+                    <>
+                      <button
+                        type="button"
+                        className="button"
+                        onClick={() => reorderCustomActivityMemoTemplate(option, 'up')}
+                        disabled={!canMoveUp}
+                      >
+                        上へ
+                      </button>
+                      <button
+                        type="button"
+                        className="button"
+                        onClick={() => reorderCustomActivityMemoTemplate(option, 'down')}
+                        disabled={!canMoveDown}
+                      >
+                        下へ
+                      </button>
+                      <button
+                        type="button"
+                        className="button"
+                        disabled={!activityLog.activityMemo.trim() || activityLog.activityMemo.trim() === option}
+                        onClick={() => replaceCustomActivityMemoTemplate(option, activityLog.activityMemo)}
+                      >
+                        現在の文言で更新
+                      </button>
+                      <button
+                        type="button"
+                        className="button button--danger"
+                        onClick={() => removeCustomActivityMemoTemplate(option)}
+                      >
+                        削除
+                      </button>
+                    </>
+                  ) : null}
+                </div>
+              );
+            })()
           ))}
         </div>
       </>
@@ -881,6 +923,22 @@ export function HistoryPage(): JSX.Element {
     setHiddenActivityMemoTemplates(nextHidden);
     setErrorMessage(null);
     setSuccessMessage(`活動メモ候補「${normalizedCurrent}」を「${normalizedNext}」に更新しました。`);
+  }
+
+  function reorderCustomActivityMemoTemplate(template: string, direction: 'up' | 'down'): void {
+    const normalized = template.trim();
+    if (!normalized) {
+      return;
+    }
+
+    const nextCustom = moveItemInList(customActivityMemoTemplates, normalized, direction);
+    if (nextCustom === customActivityMemoTemplates) {
+      return;
+    }
+
+    setCustomActivityMemoTemplates(saveCustomActivityMemoTemplates(nextCustom));
+    setErrorMessage(null);
+    setSuccessMessage(`活動メモ候補「${normalized}」を${direction === 'up' ? '上へ' : '下へ'}移動しました。`);
   }
 
   function unpinActivityMemoTemplate(template: string): void {
