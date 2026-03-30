@@ -674,6 +674,7 @@ export function HistoryPage(): JSX.Element {
       : initialLineHistoryFormState,
   );
   const [editingHistoryId, setEditingHistoryId] = useState<string | null>(() => restoredHistoryFormDraft?.editingHistoryId ?? null);
+  const [showRestoredDraftActions, setShowRestoredDraftActions] = useState(false);
   const [timelineWindow, setTimelineWindow] = useState<TimelineWindowKey>('6m');
   const [timelineViewMode, setTimelineViewMode] = useState<TimelineViewMode>('all');
   const [timelinePhoneFilter, setTimelinePhoneFilter] = useState<string[] | null>(null);
@@ -877,6 +878,7 @@ export function HistoryPage(): JSX.Element {
     if (!quickActivityParam) return;
     const target = drafts.find((d) => d.phoneNumber === quickActivityParam);
     if (!target) return;
+    setShowRestoredDraftActions(false);
     setEditingHistoryId(null);
     setLineHistoryForm({
       phoneNumber: target.phoneNumber,
@@ -895,6 +897,7 @@ export function HistoryPage(): JSX.Element {
       return;
     }
 
+    setShowRestoredDraftActions(true);
     setSuccessMessage('前回の履歴入力下書きを復元しました。');
   }, [quickActivityParam, restoredHistoryFormDraft]);
 
@@ -1123,6 +1126,13 @@ export function HistoryPage(): JSX.Element {
     clearHistoryFormDraft();
     setLineHistoryForm(initialLineHistoryFormState);
     setEditingHistoryId(null);
+    setShowRestoredDraftActions(false);
+  }
+
+  function handleDiscardRestoredHistoryDraft(): void {
+    resetMessages();
+    resetLineHistoryForm();
+    setSuccessMessage('復元した履歴入力下書きを破棄し、新規入力に戻しました。');
   }
 
   function applyHistoryFormSuggestion(
@@ -1231,6 +1241,7 @@ export function HistoryPage(): JSX.Element {
 
   function handleEditLineHistory(entry: LineHistoryEntry): void {
     resetMessages();
+    setShowRestoredDraftActions(false);
     setEditingHistoryId(entry.id);
     setLineHistoryForm(toLineHistoryFormState(entry));
   }
@@ -1509,7 +1520,16 @@ export function HistoryPage(): JSX.Element {
               </div>
             )}
             {errorMessage ? <p className="notice notice--warn field--full">{errorMessage}</p> : null}
-            {successMessage ? <p className="notice field--full">{successMessage}</p> : null}
+            {successMessage ? (
+              <div className="notice field--full">
+                <p>{successMessage}</p>
+                {showRestoredDraftActions ? (
+                  <div className="button-row">
+                    <button type="button" className="button" onClick={handleDiscardRestoredHistoryDraft}>破棄して新規入力</button>
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
             <div className="button-row field--full">
               <button type="submit" className="button button--primary">{historySubmitLabel}</button>
               <button type="button" className="button" onClick={resetLineHistoryForm}>入力をリセット</button>
