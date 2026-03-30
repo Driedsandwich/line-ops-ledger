@@ -12,6 +12,7 @@ import {
 import { loadNotificationSettings } from '../lib/notificationSettings';
 import { updateLineDraft } from '../lib/lineDrafts';
 import { getAllActivityTypes, loadCustomActivityTypes } from '../lib/activityTypeSettings';
+import { loadCollapsedActivityMemoSections, saveCollapsedActivityMemoSections } from '../lib/collapsedActivityMemoSections';
 import { loadCustomActivityMemoTemplates, saveCustomActivityMemoTemplates } from '../lib/customActivityMemoTemplates';
 import { loadHiddenActivityMemoTemplates, saveHiddenActivityMemoTemplates } from '../lib/hiddenActivityMemoTemplates';
 import { loadPinnedActivityMemoTemplates, savePinnedActivityMemoTemplates } from '../lib/pinnedActivityMemoTemplates';
@@ -651,6 +652,7 @@ export function HistoryPage(): JSX.Element {
   const [customActivityMemoTemplates, setCustomActivityMemoTemplates] = useState<string[]>(() => loadCustomActivityMemoTemplates());
   const [hiddenActivityMemoTemplates, setHiddenActivityMemoTemplates] = useState<string[]>(() => loadHiddenActivityMemoTemplates());
   const [pinnedActivityMemoTemplates, setPinnedActivityMemoTemplates] = useState<string[]>(() => loadPinnedActivityMemoTemplates());
+  const [collapsedActivityMemoSections, setCollapsedActivityMemoSections] = useState<string[]>(() => loadCollapsedActivityMemoSections());
   const historyImportInputRef = useRef<HTMLInputElement | null>(null);
 
   const notificationSettings = loadNotificationSettings();
@@ -698,10 +700,18 @@ export function HistoryPage(): JSX.Element {
       return null;
     }
 
+    const isCollapsed = collapsedActivityMemoSections.includes(sectionKey);
+
     return (
       <>
-        <p className="muted" style={{ marginTop: sectionKey === 'pinned' ? 0 : '0.75rem', marginBottom: '0.5rem' }}>{title}</p>
-        <div className="stack" style={{ gap: '0.5rem' }}>
+        <div className="button-row button-row--tight" style={{ marginTop: sectionKey === 'pinned' ? 0 : '0.75rem', marginBottom: '0.5rem' }}>
+          <p className="muted" style={{ margin: 0 }}>{title}（{quickPicks.length}件）</p>
+          <button type="button" className="button" onClick={() => toggleActivityMemoSection(sectionKey)}>
+            {isCollapsed ? '展開' : '折りたたむ'}
+          </button>
+        </div>
+        {isCollapsed ? null : (
+          <div className="stack" style={{ gap: '0.5rem' }}>
           {quickPicks.map((option) => (
             (() => {
               const isCustom = isCustomActivityMemoTemplate(customActivityMemoTemplates, option);
@@ -771,7 +781,8 @@ export function HistoryPage(): JSX.Element {
               );
             })()
           ))}
-        </div>
+          </div>
+        )}
       </>
     );
   }
@@ -781,10 +792,19 @@ export function HistoryPage(): JSX.Element {
       return null;
     }
 
+    const sectionKey = 'hidden';
+    const isCollapsed = collapsedActivityMemoSections.includes(sectionKey);
+
     return (
       <>
-        <p className="muted" style={{ marginTop: '0.75rem', marginBottom: '0.5rem' }}>非表示候補</p>
-        <div className="stack" style={{ gap: '0.5rem' }}>
+        <div className="button-row button-row--tight" style={{ marginTop: '0.75rem', marginBottom: '0.5rem' }}>
+          <p className="muted" style={{ margin: 0 }}>非表示候補（{quickPicks.length}件）</p>
+          <button type="button" className="button" onClick={() => toggleActivityMemoSection(sectionKey)}>
+            {isCollapsed ? '展開' : '折りたたむ'}
+          </button>
+        </div>
+        {isCollapsed ? null : (
+          <div className="stack" style={{ gap: '0.5rem' }}>
           {quickPicks.map((option) => (
             <div key={`hidden-${option}`} className="button-row button-row--tight">
               <span className="badge">{option}</span>
@@ -798,7 +818,8 @@ export function HistoryPage(): JSX.Element {
               ) : null}
             </div>
           ))}
-        </div>
+          </div>
+        )}
       </>
     );
   }
@@ -841,6 +862,13 @@ export function HistoryPage(): JSX.Element {
     setErrorMessage(null);
     setSuccessMessage(null);
     setReviewSuggest(null);
+  }
+
+  function toggleActivityMemoSection(sectionKey: string): void {
+    const nextCollapsed = collapsedActivityMemoSections.includes(sectionKey)
+      ? collapsedActivityMemoSections.filter((item) => item !== sectionKey)
+      : [...collapsedActivityMemoSections, sectionKey];
+    setCollapsedActivityMemoSections(saveCollapsedActivityMemoSections(nextCollapsed));
   }
 
   function pinActivityMemoTemplate(template: string): void {
