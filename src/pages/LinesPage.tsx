@@ -45,6 +45,9 @@ type FormState = {
   plannedExitDate: string;
   plannedExitType: PlannedExitType | '';
   plannedNextCarrier: string;
+  mnpReservationNumber: string;
+  mnpReservationExpiry: string;
+  freeOptionDeadline: string;
   contractHolder: string;
   serviceUser: string;
   paymentMethod: string;
@@ -153,6 +156,9 @@ const initialFormState: FormState = {
   plannedExitDate: '',
   plannedExitType: '',
   plannedNextCarrier: '',
+  mnpReservationNumber: '',
+  mnpReservationExpiry: '',
+  freeOptionDeadline: '',
   contractHolder: '',
   serviceUser: '',
   paymentMethod: 'クレジットカード',
@@ -286,6 +292,15 @@ function formatPlannedExitSchedule(value: string): string {
   }
 
   return `${formattedDate}（あと ${remainingDays} 日）`;
+}
+
+function shouldShowMnpFields(
+  status: LineStatus,
+  mnpReservationNumber: string,
+  mnpReservationExpiry: string,
+  freeOptionDeadline: string,
+): boolean {
+  return isCurrentContract(status) || Boolean(mnpReservationNumber || mnpReservationExpiry || freeOptionDeadline);
 }
 
 function isNotificationTarget(diff: number, window: NotificationReminderWindow): boolean {
@@ -460,6 +475,9 @@ function toFormState(draft: LineDraft): FormState {
     plannedExitDate: draft.plannedExitDate,
     plannedExitType: draft.plannedExitType,
     plannedNextCarrier: draft.plannedNextCarrier,
+    mnpReservationNumber: draft.mnpReservationNumber,
+    mnpReservationExpiry: draft.mnpReservationExpiry,
+    freeOptionDeadline: draft.freeOptionDeadline,
     contractHolder: draft.contractHolder,
     serviceUser: draft.serviceUser,
     paymentMethod: draft.paymentMethod || 'クレジットカード',
@@ -622,6 +640,9 @@ export function LinesPage(): JSX.Element {
     plannedExitDate: string;
     plannedExitType: PlannedExitType | '';
     plannedNextCarrier: string;
+    mnpReservationNumber: string;
+    mnpReservationExpiry: string;
+    freeOptionDeadline: string;
     contractHolder: string;
     serviceUser: string;
     paymentMethod: string;
@@ -641,6 +662,9 @@ export function LinesPage(): JSX.Element {
     const plannedExitDate = form.plannedExitDate;
     const plannedExitType = form.plannedExitType;
     const plannedNextCarrier = form.plannedNextCarrier.trim();
+    const mnpReservationNumber = form.mnpReservationNumber.trim();
+    const mnpReservationExpiry = form.mnpReservationExpiry;
+    const freeOptionDeadline = form.freeOptionDeadline;
     const contractHolder = form.contractHolder.trim();
     const serviceUser = form.serviceUser.trim();
     const paymentMethod = form.paymentMethod.trim();
@@ -666,6 +690,16 @@ export function LinesPage(): JSX.Element {
 
     if (plannedExitDate && !normalizeReviewDate(plannedExitDate)) {
       setErrorMessage('今後のアクション予定日は YYYY-MM-DD 形式の実在日付だけ保存できます。');
+      return null;
+    }
+
+    if (mnpReservationExpiry && !normalizeReviewDate(mnpReservationExpiry)) {
+      setErrorMessage('MNP予約番号の有効期限は YYYY-MM-DD 形式の実在日付だけ保存できます。');
+      return null;
+    }
+
+    if (freeOptionDeadline && !normalizeReviewDate(freeOptionDeadline)) {
+      setErrorMessage('無料オプション期限は YYYY-MM-DD 形式の実在日付だけ保存できます。');
       return null;
     }
 
@@ -702,6 +736,9 @@ export function LinesPage(): JSX.Element {
       plannedExitDate,
       plannedExitType,
       plannedNextCarrier,
+      mnpReservationNumber,
+      mnpReservationExpiry,
+      freeOptionDeadline,
       contractHolder,
       serviceUser,
       paymentMethod,
@@ -1153,6 +1190,25 @@ export function LinesPage(): JSX.Element {
                 </>
               ) : null}
 
+              {shouldShowMnpFields(form.status, form.mnpReservationNumber, form.mnpReservationExpiry, form.freeOptionDeadline) ? (
+                <>
+                  <label className="field">
+                    <span>MNP予約番号</span>
+                    <input value={form.mnpReservationNumber} onChange={(event) => updateField('mnpReservationNumber', event.target.value)} placeholder="例: 1234-5678-9012" />
+                  </label>
+
+                  <label className="field">
+                    <span>MNP予約番号の有効期限</span>
+                    <input type="date" value={form.mnpReservationExpiry} onChange={(event) => updateField('mnpReservationExpiry', event.target.value)} />
+                  </label>
+
+                  <label className="field">
+                    <span>無料オプション期限</span>
+                    <input type="date" value={form.freeOptionDeadline} onChange={(event) => updateField('freeOptionDeadline', event.target.value)} />
+                  </label>
+                </>
+              ) : null}
+
               <label className="field">
                 <span>月額費用</span>
                 <input inputMode="numeric" value={form.monthlyCost} onChange={(event) => updateField('monthlyCost', event.target.value)} placeholder="例: 2980" />
@@ -1438,6 +1494,8 @@ export function LinesPage(): JSX.Element {
                       {!isCompactView && elapsedDays != null ? <span className="badge">契約経過: {elapsedDays}日</span> : null}
                       {!isCompactView && draft.contractEndDate ? <span className="badge">契約終了: {formatDate(draft.contractEndDate)}</span> : null}
                       {!isCompactView && draft.plannedExitDate ? <span className="badge">予定: {formatPlannedExitSchedule(draft.plannedExitDate)}</span> : null}
+                      {!isCompactView && draft.mnpReservationExpiry ? <span className="badge">MNP期限: {formatDate(draft.mnpReservationExpiry)}</span> : null}
+                      {!isCompactView && draft.freeOptionDeadline ? <span className="badge">無料OP期限: {formatDate(draft.freeOptionDeadline)}</span> : null}
                       {latestActivityDate != null ? <span className="badge">最終活動: {formatDate(latestActivityDate)}</span> : null}
                     </div>
                     <div className="button-row button-row--tight">
@@ -1488,6 +1546,18 @@ export function LinesPage(): JSX.Element {
                           <div>
                             <dt>次に移るキャリア</dt>
                             <dd>{draft.plannedNextCarrier || '未設定'}</dd>
+                          </div>
+                          <div>
+                            <dt>MNP予約番号</dt>
+                            <dd>{draft.mnpReservationNumber || '未設定'}</dd>
+                          </div>
+                          <div>
+                            <dt>MNP予約番号の有効期限</dt>
+                            <dd>{formatDate(draft.mnpReservationExpiry)}</dd>
+                          </div>
+                          <div>
+                            <dt>無料オプション期限</dt>
+                            <dd>{formatDate(draft.freeOptionDeadline)}</dd>
                           </div>
                           <div>
                             <dt>契約経過日数</dt>

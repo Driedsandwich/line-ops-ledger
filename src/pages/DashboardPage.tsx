@@ -169,6 +169,17 @@ type PlannedActionItem = {
   daysUntilAction: number;
 };
 
+const MNP_DEADLINE_ALERT_DAYS = 3;
+
+type DeadlineAlertType = 'mnpReservationExpiry' | 'freeOptionDeadline';
+
+type DeadlineAlertItem = {
+  draft: LineDraft;
+  type: DeadlineAlertType;
+  deadline: string;
+  daysUntilDeadline: number;
+};
+
 type DashboardSummary = {
   dangerCount: number;
   todayCount: number;
@@ -184,6 +195,7 @@ type DashboardSummary = {
   inactiveLines: InactiveLineItem[];
   contractEndAlerts: ContractEndAlertItem[];
   plannedActions: PlannedActionItem[];
+  deadlineAlerts: DeadlineAlertItem[];
 };
 
 function createEmptyNotificationReasonSummary(): NotificationReasonSummary {
@@ -223,6 +235,20 @@ function incrementReasonSummary(summary: NotificationReasonSummary, reasonLabel:
       summary.within7Days += 1;
       return;
   }
+}
+
+function formatDeadlineAlertLabel(item: DeadlineAlertItem): string {
+  if (item.daysUntilDeadline < 0) {
+    return '期限超過';
+  }
+  if (item.daysUntilDeadline === 0) {
+    return '今日期限';
+  }
+  return `あと${item.daysUntilDeadline}日`;
+}
+
+function formatDeadlineAlertType(type: DeadlineAlertType): string {
+  return type === 'mnpReservationExpiry' ? 'MNP予約番号期限' : '無料オプション期限';
 }
 
 function buildSummary(drafts: LineDraft[], allHistoryEntries: LineHistoryEntry[], reminderWindow: NotificationReminderWindow): DashboardSummary {
@@ -360,6 +386,41 @@ function buildSummary(drafts: LineDraft[], allHistoryEntries: LineHistoryEntry[]
     .sort((a, b) => a.daysUntilAction - b.daysUntilAction)
     .slice(0, 5);
 
+  const deadlineAlerts = drafts
+    .filter((draft) => draft.status === '利用中' || draft.status === '解約予定')
+    .flatMap((draft) => {
+      const alerts: DeadlineAlertItem[] = [];
+      const mnpExpiry = parseReviewDate(draft.mnpReservationExpiry);
+      if (draft.mnpReservationNumber && mnpExpiry) {
+        const daysUntilDeadline = diffInDays(today, mnpExpiry);
+        if (daysUntilDeadline <= MNP_DEADLINE_ALERT_DAYS) {
+          alerts.push({
+            draft,
+            type: 'mnpReservationExpiry',
+            deadline: draft.mnpReservationExpiry,
+            daysUntilDeadline,
+          });
+        }
+      }
+
+      const freeOptionDeadline = parseReviewDate(draft.freeOptionDeadline);
+      if (freeOptionDeadline) {
+        const daysUntilDeadline = diffInDays(today, freeOptionDeadline);
+        if (daysUntilDeadline <= MNP_DEADLINE_ALERT_DAYS) {
+          alerts.push({
+            draft,
+            type: 'freeOptionDeadline',
+            deadline: draft.freeOptionDeadline,
+            daysUntilDeadline,
+          });
+        }
+      }
+
+      return alerts;
+    })
+    .sort((a, b) => a.daysUntilDeadline - b.daysUntilDeadline)
+    .slice(0, 5);
+
   return {
     dangerCount,
     todayCount,
@@ -375,6 +436,7 @@ function buildSummary(drafts: LineDraft[], allHistoryEntries: LineHistoryEntry[]
     inactiveLines,
     contractEndAlerts,
     plannedActions,
+    deadlineAlerts,
   };
 }
 
@@ -531,6 +593,39 @@ export function DashboardPage(): JSX.Element {
                           ? '今日'
                           : `あと${item.daysUntilAction}日`}
                     </span>
+                  </li>
+                ))}
+              </ul>
+              <div className="button-row">
+                <Link className="button" to="/lines">回線一覧で確認する</Link>
+              </div>
+            </>
+          )}
+        </article>
+
+        <article className="card card--accent">
+          <div className="card__header">
+            <h3>番号・無料オプション期限</h3>
+            <span className={summary.deadlineAlerts.length === 0 ? 'badge badge--ok' : 'badge'}>
+              {summary.deadlineAlerts.length === 0 ? '該当なし' : `${summary.deadlineAlerts.length}件`}
+            </span>
+          </div>
+          <p className="muted">MNP予約番号の有効期限と無料オプション期限が3日以内、または超過している利用中・解約予定回線を表示します（最大5件）。</p>
+          {summary.deadlineAlerts.length === 0 ? (
+            <p className="muted">直近の番号・無料オプション期限アラートはありません。</p>
+          ) : (
+            <>
+              <ul className="list list--drafts">
+                {summary.deadlineAlerts.map((item) => (
+                  <li key={`${item.draft.id}-${item.type}`}>
+                    <div className="list__row">
+                      <strong>{item.draft.lineName}</strong>
+                      <span className={item.draft.status === '利用中' ? 'badge badge--ok' : 'badge'}>{item.draft.status}</span>
+                    </div>
+                    <span>{item.draft.carrier}</span>
+                    <span>{formatDeadlineAlertType(item.type)}: {formatReviewDate(item.deadline)}</span>
+                    {item.type === 'mnpReservationExpiry' ? <span>予約番号: {item.draft.mnpReservationNumber}</span> : null}
+                    <span className="badge">{formatDeadlineAlertLabel(item)}</span>
                   </li>
                 ))}
               </ul>
