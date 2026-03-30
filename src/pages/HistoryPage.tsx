@@ -79,6 +79,13 @@ type ActivityDateQuickPick = {
   value: string;
 };
 
+type ActivityMemoQuickPickSection = {
+  key: string;
+  title: string;
+  quickPicks: string[];
+  pinAction: 'pin' | 'unpin';
+};
+
 // ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
@@ -307,6 +314,38 @@ function isPinnedActivityMemoTemplate(pinnedTemplates: string[], candidate: stri
 
 function isHiddenActivityMemoTemplate(hiddenTemplates: string[], candidate: string): boolean {
   return hiddenTemplates.includes(candidate.trim());
+}
+
+function buildActivityMemoQuickPickSections(params: {
+  pinnedTemplates: string[];
+  hiddenTemplates: string[];
+  typeSpecificQuickPicks: string[];
+  templateQuickPicks: string[];
+  recentQuickPicks: string[];
+}): ActivityMemoQuickPickSection[] {
+  const seen = new Set<string>();
+  const hiddenTemplates = new Set(params.hiddenTemplates.map((item) => item.trim()).filter(Boolean));
+
+  const sections: ActivityMemoQuickPickSection[] = [
+    { key: 'pinned', title: '固定候補', quickPicks: params.pinnedTemplates, pinAction: 'unpin' },
+    { key: 'type-specific', title: 'この種別でよく使う文言', quickPicks: params.typeSpecificQuickPicks, pinAction: 'pin' },
+    { key: 'templates', title: '定型候補', quickPicks: params.templateQuickPicks, pinAction: 'pin' },
+    { key: 'recent', title: '最近使った文言', quickPicks: params.recentQuickPicks, pinAction: 'pin' },
+  ];
+
+  return sections
+    .map((section) => ({
+      ...section,
+      quickPicks: section.quickPicks.filter((candidate) => {
+        const normalized = candidate.trim();
+        if (!normalized || hiddenTemplates.has(normalized) || seen.has(normalized)) {
+          return false;
+        }
+        seen.add(normalized);
+        return true;
+      }),
+    }))
+    .filter((section) => section.quickPicks.length > 0);
 }
 
 function getLatestMatchingHistoryEntry(entries: LineHistoryEntry[], phoneNumber: string, editingHistoryId: string | null): LineHistoryEntry | null {
@@ -642,7 +681,7 @@ export function HistoryPage(): JSX.Element {
             <div key={`${activityLog.id}-${sectionKey}-${option}`} className="button-row button-row--tight">
               <button
                 type="button"
-                className="button"
+                className={activityLog.activityMemo.trim() === option ? 'button button--primary' : 'button'}
                 onClick={() => updateActivityLogField(activityLog.id, 'activityMemo', applyActivityMemoQuickPick(activityLog.activityMemo, option))}
               >
                 {option}
@@ -1131,47 +1170,26 @@ export function HistoryPage(): JSX.Element {
                         <span>活動メモ</span>
                         <textarea value={activityLog.activityMemo} onChange={(event) => updateActivityLogField(activityLog.id, 'activityMemo', event.target.value)} rows={2} placeholder="例: 発信テスト実施 / データ通信実施 / 請求確認" />
                         <div className="detail-panel" style={{ marginTop: '0.5rem' }}>
-                          {renderActivityMemoQuickPickSection(
-                            activityLog,
-                            '固定候補',
-                            pinnedActivityMemoTemplates.filter(
-                              (option) => !isHiddenActivityMemoTemplate(hiddenActivityMemoTemplates, option),
+                          {buildActivityMemoQuickPickSections({
+                            pinnedTemplates: pinnedActivityMemoTemplates,
+                            hiddenTemplates: hiddenActivityMemoTemplates,
+                            typeSpecificQuickPicks: getTypeSpecificActivityMemoQuickPicks(activityMemoQuickPickIndex, activityLog.activityType).filter(
+                              (option) => !isPinnedActivityMemoTemplate(pinnedActivityMemoTemplates, option),
                             ),
-                            'unpin',
-                            'pinned',
-                          )}
-                          {renderActivityMemoQuickPickSection(
-                            activityLog,
-                            'この種別でよく使う文言',
-                            getTypeSpecificActivityMemoQuickPicks(activityMemoQuickPickIndex, activityLog.activityType).filter(
-                              (option) =>
-                                !isPinnedActivityMemoTemplate(pinnedActivityMemoTemplates, option)
-                                && !isHiddenActivityMemoTemplate(hiddenActivityMemoTemplates, option),
+                            templateQuickPicks: ACTIVITY_MEMO_TEMPLATE_OPTIONS.filter(
+                              (option) => !isPinnedActivityMemoTemplate(pinnedActivityMemoTemplates, option),
                             ),
-                            'pin',
-                            'type-specific',
-                          )}
-                          {renderActivityMemoQuickPickSection(
-                            activityLog,
-                            '定型候補',
-                            ACTIVITY_MEMO_TEMPLATE_OPTIONS.filter(
-                              (option) =>
-                                !isPinnedActivityMemoTemplate(pinnedActivityMemoTemplates, option)
-                                && !isHiddenActivityMemoTemplate(hiddenActivityMemoTemplates, option),
+                            recentQuickPicks: recentActivityMemoQuickPicks.filter(
+                              (option) => !isPinnedActivityMemoTemplate(pinnedActivityMemoTemplates, option),
                             ),
-                            'pin',
-                            'templates',
-                          )}
-                          {renderActivityMemoQuickPickSection(
-                            activityLog,
-                            '最近使った文言',
-                            recentActivityMemoQuickPicks.filter(
-                              (option) =>
-                                !isPinnedActivityMemoTemplate(pinnedActivityMemoTemplates, option)
-                                && !isHiddenActivityMemoTemplate(hiddenActivityMemoTemplates, option),
+                          }).map((section) =>
+                            renderActivityMemoQuickPickSection(
+                              activityLog,
+                              section.title,
+                              section.quickPicks,
+                              section.pinAction,
+                              section.key,
                             ),
-                            'pin',
-                            'recent',
                           )}
                           {renderHiddenActivityMemoQuickPickSection(hiddenActivityMemoTemplates)}
                         </div>
