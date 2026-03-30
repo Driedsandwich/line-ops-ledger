@@ -6,10 +6,12 @@ import {
   lineDraftStore,
   LINE_STATUS_OPTIONS,
   LINE_TYPE_OPTIONS,
+  PLANNED_EXIT_TYPE_OPTIONS,
   normalizeLast4,
   normalizeMonthlyCost,
   normalizePhoneNumber,
   normalizeReviewDate,
+  type PlannedExitType,
   updateLineDraft,
   type LineDraft,
   type LineStatus,
@@ -40,6 +42,9 @@ type FormState = {
   contractHolderNote: string;
   contractStartDate: string;
   contractEndDate: string;
+  plannedExitDate: string;
+  plannedExitType: PlannedExitType | '';
+  plannedNextCarrier: string;
   contractHolder: string;
   serviceUser: string;
   paymentMethod: string;
@@ -145,6 +150,9 @@ const initialFormState: FormState = {
   contractHolderNote: '',
   contractStartDate: '',
   contractEndDate: '',
+  plannedExitDate: '',
+  plannedExitType: '',
+  plannedNextCarrier: '',
   contractHolder: '',
   serviceUser: '',
   paymentMethod: 'クレジットカード',
@@ -251,6 +259,33 @@ function formatSafeExitRecommendation(contractStartDate: string): string {
 
 function isCurrentContract(status: LineStatus): boolean {
   return status === '利用中' || status === '解約予定';
+}
+
+function formatPlannedExitType(value: PlannedExitType | ''): string {
+  return value || '未設定';
+}
+
+function formatPlannedExitSchedule(value: string): string {
+  const plannedDate = parseDate(value);
+  if (!plannedDate) {
+    return '未設定';
+  }
+
+  const remainingDays = diffInDays(new Date(), plannedDate);
+  const formattedDate = new Intl.DateTimeFormat('ja-JP', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(plannedDate);
+
+  if (remainingDays < 0) {
+    return `${formattedDate}（予定日超過）`;
+  }
+  if (remainingDays === 0) {
+    return `${formattedDate}（今日）`;
+  }
+
+  return `${formattedDate}（あと ${remainingDays} 日）`;
 }
 
 function isNotificationTarget(diff: number, window: NotificationReminderWindow): boolean {
@@ -422,6 +457,9 @@ function toFormState(draft: LineDraft): FormState {
     contractHolderNote: draft.contractHolderNote,
     contractStartDate: draft.contractStartDate,
     contractEndDate: draft.contractEndDate,
+    plannedExitDate: draft.plannedExitDate,
+    plannedExitType: draft.plannedExitType,
+    plannedNextCarrier: draft.plannedNextCarrier,
     contractHolder: draft.contractHolder,
     serviceUser: draft.serviceUser,
     paymentMethod: draft.paymentMethod || 'クレジットカード',
@@ -581,6 +619,9 @@ export function LinesPage(): JSX.Element {
     contractHolderNote: string;
     contractStartDate: string;
     contractEndDate: string;
+    plannedExitDate: string;
+    plannedExitType: PlannedExitType | '';
+    plannedNextCarrier: string;
     contractHolder: string;
     serviceUser: string;
     paymentMethod: string;
@@ -597,6 +638,9 @@ export function LinesPage(): JSX.Element {
     const contractHolderNote = form.contractHolderNote.trim();
     const contractStartDate = form.contractStartDate;
     const contractEndDate = form.contractEndDate;
+    const plannedExitDate = form.plannedExitDate;
+    const plannedExitType = form.plannedExitType;
+    const plannedNextCarrier = form.plannedNextCarrier.trim();
     const contractHolder = form.contractHolder.trim();
     const serviceUser = form.serviceUser.trim();
     const paymentMethod = form.paymentMethod.trim();
@@ -617,6 +661,11 @@ export function LinesPage(): JSX.Element {
 
     if (contractEndDate && !normalizeReviewDate(contractEndDate)) {
       setErrorMessage('契約終了日は YYYY-MM-DD 形式の実在日付だけ保存できます。');
+      return null;
+    }
+
+    if (plannedExitDate && !normalizeReviewDate(plannedExitDate)) {
+      setErrorMessage('今後のアクション予定日は YYYY-MM-DD 形式の実在日付だけ保存できます。');
       return null;
     }
 
@@ -650,6 +699,9 @@ export function LinesPage(): JSX.Element {
       contractHolderNote,
       contractStartDate,
       contractEndDate,
+      plannedExitDate,
+      plannedExitType,
+      plannedNextCarrier,
       contractHolder,
       serviceUser,
       paymentMethod,
@@ -1077,6 +1129,30 @@ export function LinesPage(): JSX.Element {
                 <input type="date" value={form.contractEndDate} onChange={(event) => updateField('contractEndDate', event.target.value)} />
               </label>
 
+              {isCurrentContract(form.status) || form.plannedExitDate || form.plannedExitType || form.plannedNextCarrier ? (
+                <>
+                  <label className="field">
+                    <span>今後のアクション予定日</span>
+                    <input type="date" value={form.plannedExitDate} onChange={(event) => updateField('plannedExitDate', event.target.value)} />
+                  </label>
+
+                  <label className="field">
+                    <span>今後のアクション種別</span>
+                    <select value={form.plannedExitType} onChange={(event) => updateField('plannedExitType', event.target.value as PlannedExitType | '')}>
+                      <option value="">未設定</option>
+                      {PLANNED_EXIT_TYPE_OPTIONS.map((option) => (
+                        <option key={option} value={option}>{option}</option>
+                      ))}
+                    </select>
+                  </label>
+
+                  <label className="field">
+                    <span>次に移るキャリア</span>
+                    <input value={form.plannedNextCarrier} onChange={(event) => updateField('plannedNextCarrier', event.target.value)} placeholder="例: ahamo / LINEMO" />
+                  </label>
+                </>
+              ) : null}
+
               <label className="field">
                 <span>月額費用</span>
                 <input inputMode="numeric" value={form.monthlyCost} onChange={(event) => updateField('monthlyCost', event.target.value)} placeholder="例: 2980" />
@@ -1361,6 +1437,7 @@ export function LinesPage(): JSX.Element {
                       {draft.phoneNumber ? <span className="badge">電話番号: {maskPhoneNumber(draft.phoneNumber)}</span> : draft.last4 ? <span className="badge">下4桁: {draft.last4}</span> : null}
                       {!isCompactView && elapsedDays != null ? <span className="badge">契約経過: {elapsedDays}日</span> : null}
                       {!isCompactView && draft.contractEndDate ? <span className="badge">契約終了: {formatDate(draft.contractEndDate)}</span> : null}
+                      {!isCompactView && draft.plannedExitDate ? <span className="badge">予定: {formatPlannedExitSchedule(draft.plannedExitDate)}</span> : null}
                       {latestActivityDate != null ? <span className="badge">最終活動: {formatDate(latestActivityDate)}</span> : null}
                     </div>
                     <div className="button-row button-row--tight">
@@ -1399,6 +1476,18 @@ export function LinesPage(): JSX.Element {
                           <div>
                             <dt>契約終了日</dt>
                             <dd>{formatDate(draft.contractEndDate)}</dd>
+                          </div>
+                          <div>
+                            <dt>今後のアクション予定日</dt>
+                            <dd>{formatPlannedExitSchedule(draft.plannedExitDate)}</dd>
+                          </div>
+                          <div>
+                            <dt>今後のアクション種別</dt>
+                            <dd>{formatPlannedExitType(draft.plannedExitType)}</dd>
+                          </div>
+                          <div>
+                            <dt>次に移るキャリア</dt>
+                            <dd>{draft.plannedNextCarrier || '未設定'}</dd>
                           </div>
                           <div>
                             <dt>契約経過日数</dt>

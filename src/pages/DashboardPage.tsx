@@ -162,6 +162,13 @@ type ContractEndAlertItem = {
   daysUntilEnd: number;
 };
 
+const PLANNED_ACTION_ALERT_DAYS = 60;
+
+type PlannedActionItem = {
+  draft: LineDraft;
+  daysUntilAction: number;
+};
+
 type DashboardSummary = {
   dangerCount: number;
   todayCount: number;
@@ -176,6 +183,7 @@ type DashboardSummary = {
   nearest: LineDraft[];
   inactiveLines: InactiveLineItem[];
   contractEndAlerts: ContractEndAlertItem[];
+  plannedActions: PlannedActionItem[];
 };
 
 function createEmptyNotificationReasonSummary(): NotificationReasonSummary {
@@ -336,6 +344,22 @@ function buildSummary(drafts: LineDraft[], allHistoryEntries: LineHistoryEntry[]
     .sort((a, b) => a.daysUntilEnd - b.daysUntilEnd)
     .slice(0, 5);
 
+  const plannedActions = drafts
+    .filter((draft) => (draft.status === '利用中' || draft.status === '解約予定') && draft.plannedExitDate)
+    .flatMap((draft) => {
+      const plannedDate = parseReviewDate(draft.plannedExitDate);
+      if (!plannedDate) {
+        return [];
+      }
+      const daysUntilAction = diffInDays(today, plannedDate);
+      if (daysUntilAction > PLANNED_ACTION_ALERT_DAYS) {
+        return [];
+      }
+      return [{ draft, daysUntilAction }];
+    })
+    .sort((a, b) => a.daysUntilAction - b.daysUntilAction)
+    .slice(0, 5);
+
   return {
     dangerCount,
     todayCount,
@@ -350,6 +374,7 @@ function buildSummary(drafts: LineDraft[], allHistoryEntries: LineHistoryEntry[]
     nearest,
     inactiveLines,
     contractEndAlerts,
+    plannedActions,
   };
 }
 
@@ -465,6 +490,46 @@ export function DashboardPage(): JSX.Element {
                         : item.daysUntilEnd === 0
                           ? '今日終了'
                           : `あと${item.daysUntilEnd}日`}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+              <div className="button-row">
+                <Link className="button" to="/lines">回線一覧で確認する</Link>
+              </div>
+            </>
+          )}
+        </article>
+
+        <article className="card card--accent">
+          <div className="card__header">
+            <h3>今後のアクション予定</h3>
+            <span className={summary.plannedActions.length === 0 ? 'badge badge--ok' : 'badge'}>
+              {summary.plannedActions.length === 0 ? '該当なし' : `${summary.plannedActions.length}件`}
+            </span>
+          </div>
+          <p className="muted">予定日が{PLANNED_ACTION_ALERT_DAYS}日以内、または超過している利用中・解約予定回線を表示します（最大5件）。</p>
+          {summary.plannedActions.length === 0 ? (
+            <p className="muted">直近のアクション予定はありません。</p>
+          ) : (
+            <>
+              <ul className="list list--drafts">
+                {summary.plannedActions.map((item) => (
+                  <li key={item.draft.id}>
+                    <div className="list__row">
+                      <strong>{item.draft.lineName}</strong>
+                      <span className={item.draft.status === '利用中' ? 'badge badge--ok' : 'badge'}>{item.draft.status}</span>
+                    </div>
+                    <span>{item.draft.carrier}</span>
+                    <span>予定種別: {item.draft.plannedExitType || '未設定'}</span>
+                    <span>予定日: {formatReviewDate(item.draft.plannedExitDate)}</span>
+                    <span>次キャリア: {item.draft.plannedNextCarrier || '未設定'}</span>
+                    <span className="badge">
+                      {item.daysUntilAction < 0
+                        ? '予定日超過'
+                        : item.daysUntilAction === 0
+                          ? '今日'
+                          : `あと${item.daysUntilAction}日`}
                     </span>
                   </li>
                 ))}
