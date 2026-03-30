@@ -34,7 +34,7 @@
 - 1件の履歴に複数の活動ログ
 - 活動種別のクイック選択ボタン（よく使う種別 / 定義済み種別）
 - 活動種別に応じた活動メモ候補（種別別の頻出文言 + fallback 候補）
-- 活動メモのクイック候補（固定候補 / 定型候補 / 最近使った文言）
+- 活動メモのクイック候補（固定候補 / 定型候補 / 最近使った文言 / 非表示候補）
 - 電話番号に一致する主台帳候補 / 直近履歴候補のワンタップ反映
 - 活動日のクイック入力（今日 / 契約開始日 / 前回活動日）
 - 活動記録保存後に「次回確認日を更新しますか？」サジェスト（活動日+設定日数）
@@ -69,7 +69,7 @@ VITE_DEV_LABEL="DEV / feat/xxx / PR #NNN"
 
 - `Repo sanity`: 最低限のファイル存在確認
 - `CI`: `npm ci` → `npm run check` → `npm run build`
-- `main` 保護: PR 必須 / 1 approval 必須 / required check `check-and-build`
+- `main` 保護: PR 必須 / approval 任意 / required check `check-and-build`
 
 ## 確認手順
 
@@ -79,7 +79,7 @@ VITE_DEV_LABEL="DEV / feat/xxx / PR #NNN"
 4. 初回ガイドの `確認用サンプルデータを読み込む` で、主台帳と履歴が即時反映されることを確認
 5. `/lines` で回線の追加・編集・検索が動作することを確認
 6. `/lines/history` で履歴記録・タイムライン・契約候補反映・活動種別 / 活動メモ / 活動日のクイック入力が動作することを確認
-7. `活動メモ` 候補の `固定` / `固定解除` が再読み込み後も保持されることを確認
+7. `活動メモ` 候補の `固定` / `固定解除` / `非表示` / `戻す` が再読み込み後も保持されることを確認
 8. `/settings/storage`、`/settings/backup`、`/settings/notifications`、`/settings/activity-types` が直接開けることを確認
 9. `npx tsc --noEmit` でビルドエラーがないことを確認
 10. PR では GitHub Actions の `CI` workflow が成功していることを確認

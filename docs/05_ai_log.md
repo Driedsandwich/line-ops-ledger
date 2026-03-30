@@ -78,8 +78,11 @@
 
 ## 2026-03-30
 - Issue #139: `main` 保護と required checks を有効化
-  - `main` に PR 必須 / 1 approval 必須 / force push 禁止 / deletion 禁止を設定
+  - `main` に PR 必須 / approval 任意 / force push 禁止 / deletion 禁止を設定
   - required check として `CI / check-and-build` を採用
 - Issue #140: 履歴入力で活動メモ候補を固定できるようにする
   - `活動メモ` の候補を `固定候補` として pin/unpin できるようにする
   - 固定候補は localStorage に保存し、再読み込み後も保持する
+- Issue #142: 履歴入力で活動メモ候補を個別に非表示・復元できるようにする
+  - `活動メモ` の候補を非表示にし、全候補セクションから除外できるようにする
+  - `非表示候補` セクションから `戻す` で復帰し、状態を localStorage に保存する

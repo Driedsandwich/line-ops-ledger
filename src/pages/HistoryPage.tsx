@@ -12,6 +12,7 @@ import {
 import { loadNotificationSettings } from '../lib/notificationSettings';
 import { updateLineDraft } from '../lib/lineDrafts';
 import { getAllActivityTypes, loadCustomActivityTypes } from '../lib/activityTypeSettings';
+import { loadHiddenActivityMemoTemplates, saveHiddenActivityMemoTemplates } from '../lib/hiddenActivityMemoTemplates';
 import { loadPinnedActivityMemoTemplates, savePinnedActivityMemoTemplates } from '../lib/pinnedActivityMemoTemplates';
 import { importBundledSampleData } from '../lib/sampleData';
 
@@ -304,6 +305,10 @@ function isPinnedActivityMemoTemplate(pinnedTemplates: string[], candidate: stri
   return pinnedTemplates.includes(candidate.trim());
 }
 
+function isHiddenActivityMemoTemplate(hiddenTemplates: string[], candidate: string): boolean {
+  return hiddenTemplates.includes(candidate.trim());
+}
+
 function getLatestMatchingHistoryEntry(entries: LineHistoryEntry[], phoneNumber: string, editingHistoryId: string | null): LineHistoryEntry | null {
   if (!phoneNumber) {
     return null;
@@ -580,6 +585,7 @@ export function HistoryPage(): JSX.Element {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [reviewSuggest, setReviewSuggest] = useState<{ draftId: string; draftName: string; suggestedDate: string } | null>(null);
+  const [hiddenActivityMemoTemplates, setHiddenActivityMemoTemplates] = useState<string[]>(() => loadHiddenActivityMemoTemplates());
   const [pinnedActivityMemoTemplates, setPinnedActivityMemoTemplates] = useState<string[]>(() => loadPinnedActivityMemoTemplates());
   const historyImportInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -648,6 +654,35 @@ export function HistoryPage(): JSX.Element {
               >
                 {pinAction === 'pin' ? '固定' : '固定解除'}
               </button>
+              <button
+                type="button"
+                className="button"
+                onClick={() => hideActivityMemoTemplate(option)}
+              >
+                非表示
+              </button>
+            </div>
+          ))}
+        </div>
+      </>
+    );
+  }
+
+  function renderHiddenActivityMemoQuickPickSection(quickPicks: string[]): JSX.Element | null {
+    if (quickPicks.length === 0) {
+      return null;
+    }
+
+    return (
+      <>
+        <p className="muted" style={{ marginTop: '0.75rem', marginBottom: '0.5rem' }}>非表示候補</p>
+        <div className="stack" style={{ gap: '0.5rem' }}>
+          {quickPicks.map((option) => (
+            <div key={`hidden-${option}`} className="button-row button-row--tight">
+              <span className="badge">{option}</span>
+              <button type="button" className="button" onClick={() => unhideActivityMemoTemplate(option)}>
+                戻す
+              </button>
             </div>
           ))}
         </div>
@@ -660,6 +695,7 @@ export function HistoryPage(): JSX.Element {
       const result = importBundledSampleData();
       setDrafts(result.drafts);
       setLineHistoryEntries(result.historyEntries);
+      setHiddenActivityMemoTemplates(loadHiddenActivityMemoTemplates());
       setPinnedActivityMemoTemplates(loadPinnedActivityMemoTemplates());
       setErrorMessage(null);
       setSuccessMessage(`確認用サンプルデータを読み込みました（主台帳 ${result.draftCount} 件 / 履歴 ${result.historyCount} 件）。`);
@@ -718,6 +754,33 @@ export function HistoryPage(): JSX.Element {
     setPinnedActivityMemoTemplates(nextPinned);
     setErrorMessage(null);
     setSuccessMessage(`活動メモ候補「${normalized}」の固定を解除しました。`);
+  }
+
+  function hideActivityMemoTemplate(template: string): void {
+    const normalized = template.trim();
+    if (!normalized) {
+      return;
+    }
+
+    const nextHidden = saveHiddenActivityMemoTemplates([
+      normalized,
+      ...hiddenActivityMemoTemplates.filter((item) => item !== normalized),
+    ]);
+
+    setHiddenActivityMemoTemplates(nextHidden);
+    setErrorMessage(null);
+    setSuccessMessage(`活動メモ候補「${normalized}」を非表示にしました。`);
+  }
+
+  function unhideActivityMemoTemplate(template: string): void {
+    const normalized = template.trim();
+    const nextHidden = saveHiddenActivityMemoTemplates(
+      hiddenActivityMemoTemplates.filter((item) => item !== normalized),
+    );
+
+    setHiddenActivityMemoTemplates(nextHidden);
+    setErrorMessage(null);
+    setSuccessMessage(`活動メモ候補「${normalized}」を表示に戻しました。`);
   }
 
   function persistLineHistory(nextEntries: LineHistoryEntry[]): void {
@@ -893,6 +956,7 @@ export function HistoryPage(): JSX.Element {
       setLineHistoryEntries(imported);
       setEditingHistoryId(null);
       setTimelinePhoneFilter(null);
+      setHiddenActivityMemoTemplates(loadHiddenActivityMemoTemplates());
       setPinnedActivityMemoTemplates(loadPinnedActivityMemoTemplates());
       resetLineHistoryForm();
       setSuccessMessage(`契約履歴を ${imported.length} 件読み込みました。`);
@@ -1070,7 +1134,9 @@ export function HistoryPage(): JSX.Element {
                           {renderActivityMemoQuickPickSection(
                             activityLog,
                             '固定候補',
-                            pinnedActivityMemoTemplates,
+                            pinnedActivityMemoTemplates.filter(
+                              (option) => !isHiddenActivityMemoTemplate(hiddenActivityMemoTemplates, option),
+                            ),
                             'unpin',
                             'pinned',
                           )}
@@ -1078,7 +1144,9 @@ export function HistoryPage(): JSX.Element {
                             activityLog,
                             'この種別でよく使う文言',
                             getTypeSpecificActivityMemoQuickPicks(activityMemoQuickPickIndex, activityLog.activityType).filter(
-                              (option) => !isPinnedActivityMemoTemplate(pinnedActivityMemoTemplates, option),
+                              (option) =>
+                                !isPinnedActivityMemoTemplate(pinnedActivityMemoTemplates, option)
+                                && !isHiddenActivityMemoTemplate(hiddenActivityMemoTemplates, option),
                             ),
                             'pin',
                             'type-specific',
@@ -1087,7 +1155,9 @@ export function HistoryPage(): JSX.Element {
                             activityLog,
                             '定型候補',
                             ACTIVITY_MEMO_TEMPLATE_OPTIONS.filter(
-                              (option) => !isPinnedActivityMemoTemplate(pinnedActivityMemoTemplates, option),
+                              (option) =>
+                                !isPinnedActivityMemoTemplate(pinnedActivityMemoTemplates, option)
+                                && !isHiddenActivityMemoTemplate(hiddenActivityMemoTemplates, option),
                             ),
                             'pin',
                             'templates',
@@ -1096,11 +1166,14 @@ export function HistoryPage(): JSX.Element {
                             activityLog,
                             '最近使った文言',
                             recentActivityMemoQuickPicks.filter(
-                              (option) => !isPinnedActivityMemoTemplate(pinnedActivityMemoTemplates, option),
+                              (option) =>
+                                !isPinnedActivityMemoTemplate(pinnedActivityMemoTemplates, option)
+                                && !isHiddenActivityMemoTemplate(hiddenActivityMemoTemplates, option),
                             ),
                             'pin',
                             'recent',
                           )}
+                          {renderHiddenActivityMemoQuickPickSection(hiddenActivityMemoTemplates)}
                         </div>
                       </label>
                     </div>
