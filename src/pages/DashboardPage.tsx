@@ -215,6 +215,13 @@ type BalanceSummary = {
   coveredLineCount: number;
 };
 
+type FiberDebtItem = {
+  draft: LineDraft;
+  debtClearDate: string | null;
+  daysUntilClear: number | null;
+  remainingDebt: number | null;
+};
+
 type DashboardSummary = {
   dangerCount: number;
   todayCount: number;
@@ -234,6 +241,7 @@ type DashboardSummary = {
   benefitDeadlineAlerts: BenefitDeadlineItem[];
   contractHolderSummary: ContractHolderSummaryItem[];
   balanceSummary: BalanceSummary;
+  fiberDebtItems: FiberDebtItem[];
 };
 
 function createEmptyNotificationReasonSummary(): NotificationReasonSummary {
@@ -371,6 +379,68 @@ function buildBalanceSummary(drafts: LineDraft[]): BalanceSummary {
     netBalance: totalReceivedBenefit - totalPaidCost,
     coveredLineCount,
   };
+}
+
+function calculateFiberDebtClearDate(contractStartDate: string, fiberConstructionFeeMonths: number | null): Date | null {
+  const startDate = parseReviewDate(contractStartDate);
+  if (!startDate || fiberConstructionFeeMonths == null) {
+    return null;
+  }
+
+  const result = new Date(startDate);
+  result.setMonth(result.getMonth() + fiberConstructionFeeMonths);
+  return Number.isNaN(result.getTime()) ? null : result;
+}
+
+function calculateElapsedMonths(contractStartDate: string, today: Date): number | null {
+  const startDate = parseReviewDate(contractStartDate);
+  if (!startDate) {
+    return null;
+  }
+
+  const elapsedDays = Math.max(diffInDays(startDate, today), 0);
+  return Math.floor(elapsedDays / 30);
+}
+
+function calculateFiberRemainingDebt(draft: LineDraft, today: Date): number | null {
+  if (draft.fiberConstructionFee == null || draft.fiberMonthlyDiscount == null || draft.fiberConstructionFeeMonths == null) {
+    return null;
+  }
+
+  const elapsedMonths = calculateElapsedMonths(draft.contractStartDate, today);
+  if (elapsedMonths == null) {
+    return null;
+  }
+
+  const appliedMonths = Math.min(elapsedMonths, draft.fiberConstructionFeeMonths);
+  return Math.max(draft.fiberConstructionFee - (appliedMonths * draft.fiberMonthlyDiscount), 0);
+}
+
+function buildFiberDebtItems(drafts: LineDraft[], today: Date): FiberDebtItem[] {
+  return drafts
+    .filter((draft) => draft.lineType === '光回線' && (draft.status === '利用中' || draft.status === '解約予定'))
+    .map((draft) => {
+      const debtClearDate = calculateFiberDebtClearDate(draft.contractStartDate, draft.fiberConstructionFeeMonths);
+      return {
+        draft,
+        debtClearDate: debtClearDate ? debtClearDate.toISOString().slice(0, 10) : null,
+        daysUntilClear: debtClearDate ? diffInDays(today, debtClearDate) : null,
+        remainingDebt: calculateFiberRemainingDebt(draft, today),
+      } satisfies FiberDebtItem;
+    })
+    .sort((a, b) => {
+      if (a.daysUntilClear == null && b.daysUntilClear == null) {
+        return a.draft.lineName.localeCompare(b.draft.lineName, 'ja');
+      }
+      if (a.daysUntilClear == null) {
+        return 1;
+      }
+      if (b.daysUntilClear == null) {
+        return -1;
+      }
+      return a.daysUntilClear - b.daysUntilClear;
+    })
+    .slice(0, 5);
 }
 
 function buildSummary(drafts: LineDraft[], allHistoryEntries: LineHistoryEntry[], reminderWindow: NotificationReminderWindow): DashboardSummary {
@@ -576,6 +646,7 @@ function buildSummary(drafts: LineDraft[], allHistoryEntries: LineHistoryEntry[]
 
   const contractHolderSummary = buildContractHolderSummary(drafts);
   const balanceSummary = buildBalanceSummary(drafts);
+  const fiberDebtItems = buildFiberDebtItems(drafts, today);
 
   return {
     dangerCount,
@@ -596,6 +667,7 @@ function buildSummary(drafts: LineDraft[], allHistoryEntries: LineHistoryEntry[]
     benefitDeadlineAlerts,
     contractHolderSummary,
     balanceSummary,
+    fiberDebtItems,
   };
 }
 
@@ -818,6 +890,47 @@ export function DashboardPage(): JSX.Element {
                     <span>特典種別: {item.benefit.benefitType}</span>
                     <span>金額: {formatBenefitAmount(item.benefit.amount)}</span>
                     <span>受取期限日: {formatReviewDate(item.benefit.deadlineDate)}</span>
+                  </li>
+                ))}
+              </ul>
+              <div className="button-row">
+                <Link className="button" to="/lines">回線一覧で確認する</Link>
+              </div>
+            </>
+          )}
+        </article>
+
+        <article className="card card--accent">
+          <div className="card__header">
+            <h3>光回線の残債解消予定</h3>
+            <span className={summary.fiberDebtItems.length === 0 ? 'badge badge--ok' : 'badge'}>
+              {summary.fiberDebtItems.length === 0 ? '該当なし' : `${summary.fiberDebtItems.length}件`}
+            </span>
+          </div>
+          <p className="muted">`利用中` または `解約予定` の光回線について、残債解消予定日と概算残債を表示します（最大5件）。</p>
+          {summary.fiberDebtItems.length === 0 ? (
+            <p className="muted">直近で確認が必要な光回線はありません。</p>
+          ) : (
+            <>
+              <ul className="list list--drafts">
+                {summary.fiberDebtItems.map((item) => (
+                  <li key={item.draft.id}>
+                    <div className="list__row">
+                      <strong>{item.draft.lineName}</strong>
+                      <span className={item.draft.status === '利用中' ? 'badge badge--ok' : 'badge'}>{item.draft.status}</span>
+                    </div>
+                    <span>{item.draft.fiberIspName || item.draft.carrier}</span>
+                    <span>残債解消予定日: {item.debtClearDate ? formatReviewDate(item.debtClearDate) : '算出不可'}</span>
+                    <span>概算残債: {item.remainingDebt == null ? '算出不可' : formatYenAmount(item.remainingDebt)}</span>
+                    {item.daysUntilClear != null ? (
+                      <span className="badge">
+                        {item.daysUntilClear < 0
+                          ? '経過済み'
+                          : item.daysUntilClear === 0
+                            ? '今日'
+                            : `あと${item.daysUntilClear}日`}
+                      </span>
+                    ) : null}
                   </li>
                 ))}
               </ul>
