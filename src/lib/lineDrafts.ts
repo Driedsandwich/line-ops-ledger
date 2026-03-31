@@ -2,14 +2,16 @@ export const LINE_STATUS_OPTIONS = ['利用中', '解約予定', '解約済み',
 export const LINE_TYPE_OPTIONS = ['音声SIM', 'データSIM', 'ホームルーター', '光回線', '未分類'] as const;
 export const PLANNED_EXIT_TYPE_OPTIONS = ['MNP転出', '解約', '未定'] as const;
 export const BENEFIT_TYPE_OPTIONS = ['現金', 'ポイント', '商品券', 'その他'] as const;
+export const FIBER_TRANSFER_TYPE_OPTIONS = ['転用', '事業者変更', '新規工事', '不明'] as const;
 export const DEFAULT_LINE_TYPE = '未分類';
-export const CURRENT_LINE_DRAFT_SCHEMA_VERSION = 7;
+export const CURRENT_LINE_DRAFT_SCHEMA_VERSION = 8;
 export const LINE_DRAFT_BACKUP_FILENAME_PREFIX = 'line-ops-ledger-backup';
 
 export type LineStatus = (typeof LINE_STATUS_OPTIONS)[number];
 export type LineType = (typeof LINE_TYPE_OPTIONS)[number];
 export type PlannedExitType = (typeof PLANNED_EXIT_TYPE_OPTIONS)[number];
 export type BenefitType = (typeof BENEFIT_TYPE_OPTIONS)[number];
+export type FiberTransferType = (typeof FIBER_TRANSFER_TYPE_OPTIONS)[number];
 export type LineDraftStorageFormat = 'empty' | 'legacy-array' | 'versioned-envelope' | 'invalid-data';
 
 export type BenefitRecord = {
@@ -40,6 +42,11 @@ export type LineDraft = {
   mnpReservationNumber: string;
   mnpReservationExpiry: string;
   freeOptionDeadline: string;
+  fiberTransferType: FiberTransferType | '';
+  fiberIspName: string;
+  fiberConstructionFee: number | null;
+  fiberMonthlyDiscount: number | null;
+  fiberConstructionFeeMonths: number | null;
   benefits: BenefitRecord[];
   contractHolder: string;
   serviceUser: string;
@@ -109,6 +116,11 @@ type LineDraftInput = {
   mnpReservationNumber?: string;
   mnpReservationExpiry?: string;
   freeOptionDeadline?: string;
+  fiberTransferType?: FiberTransferType | '';
+  fiberIspName?: string;
+  fiberConstructionFee?: string | number | null;
+  fiberMonthlyDiscount?: string | number | null;
+  fiberConstructionFeeMonths?: string | number | null;
   benefits?: BenefitRecordInput[];
   contractHolder?: string;
   serviceUser?: string;
@@ -120,9 +132,15 @@ type LineDraftInput = {
   nextReviewDate: string;
 };
 
-type NormalizableLineDraftInput = Omit<Partial<LineDraft>, 'benefits'> & {
+type NormalizableLineDraftInput = Omit<
+  Partial<LineDraft>,
+  'benefits' | 'fiberConstructionFee' | 'fiberMonthlyDiscount' | 'fiberConstructionFeeMonths'
+> & {
   lineName: string;
   carrier: string;
+  fiberConstructionFee?: string | number | null;
+  fiberMonthlyDiscount?: string | number | null;
+  fiberConstructionFeeMonths?: string | number | null;
   benefits?: BenefitRecordInput[] | BenefitRecord[];
 };
 
@@ -142,6 +160,10 @@ function isPlannedExitType(value: string): value is PlannedExitType {
 
 function isBenefitType(value: string): value is BenefitType {
   return BENEFIT_TYPE_OPTIONS.includes(value as BenefitType);
+}
+
+function isFiberTransferType(value: string): value is FiberTransferType {
+  return FIBER_TRANSFER_TYPE_OPTIONS.includes(value as FiberTransferType);
 }
 
 function createId(): string {
@@ -177,6 +199,19 @@ export function normalizeMonthlyCost(value: string | number | null | undefined):
 
   const normalized = typeof value === 'number' ? value : Number(String(value).trim());
   if (!Number.isInteger(normalized) || normalized < 0) {
+    return null;
+  }
+
+  return normalized;
+}
+
+function normalizePositiveInteger(value: string | number | null | undefined): number | null {
+  if (value == null || value === '') {
+    return null;
+  }
+
+  const normalized = typeof value === 'number' ? value : Number(String(value).trim());
+  if (!Number.isInteger(normalized) || normalized <= 0) {
     return null;
   }
 
@@ -219,6 +254,13 @@ function normalizeLineDraft(input: NormalizableLineDraftInput): LineDraft | null
   const mnpReservationNumber = (input.mnpReservationNumber ?? '').trim();
   const mnpReservationExpiry = normalizeReviewDate(input.mnpReservationExpiry);
   const freeOptionDeadline = normalizeReviewDate(input.freeOptionDeadline);
+  const fiberTransferType = isFiberTransferType(String(input.fiberTransferType ?? ''))
+    ? (input.fiberTransferType as FiberTransferType)
+    : '';
+  const fiberIspName = (input.fiberIspName ?? '').trim();
+  const fiberConstructionFee = normalizeMonthlyCost(input.fiberConstructionFee ?? null);
+  const fiberMonthlyDiscount = normalizeMonthlyCost(input.fiberMonthlyDiscount ?? null);
+  const fiberConstructionFeeMonths = normalizePositiveInteger(input.fiberConstructionFeeMonths ?? null);
   const benefits = Array.isArray(input.benefits)
     ? input.benefits
       .map((item) => (item && typeof item === 'object' ? normalizeBenefitRecord(item) : null))
@@ -255,6 +297,11 @@ function normalizeLineDraft(input: NormalizableLineDraftInput): LineDraft | null
     mnpReservationNumber,
     mnpReservationExpiry,
     freeOptionDeadline,
+    fiberTransferType,
+    fiberIspName,
+    fiberConstructionFee,
+    fiberMonthlyDiscount,
+    fiberConstructionFeeMonths,
     benefits,
     contractHolder,
     serviceUser,
