@@ -47,6 +47,11 @@ function formatCurrency(value: number): string {
   return `${new Intl.NumberFormat('ja-JP').format(value)}円/月`;
 }
 
+function formatYenAmount(value: number): string {
+  const prefix = value > 0 ? '+' : '';
+  return `${prefix}${new Intl.NumberFormat('ja-JP').format(value)}円`;
+}
+
 function formatBenefitAmount(value: number | null): string {
   if (value == null) {
     return '金額未設定';
@@ -203,6 +208,13 @@ type ContractHolderSummaryItem = {
   avgContractMonths: number;
 };
 
+type BalanceSummary = {
+  totalPaidCost: number;
+  totalReceivedBenefit: number;
+  netBalance: number;
+  coveredLineCount: number;
+};
+
 type DashboardSummary = {
   dangerCount: number;
   todayCount: number;
@@ -221,6 +233,7 @@ type DashboardSummary = {
   deadlineAlerts: DeadlineAlertItem[];
   benefitDeadlineAlerts: BenefitDeadlineItem[];
   contractHolderSummary: ContractHolderSummaryItem[];
+  balanceSummary: BalanceSummary;
 };
 
 function createEmptyNotificationReasonSummary(): NotificationReasonSummary {
@@ -326,6 +339,38 @@ function buildContractHolderSummary(drafts: LineDraft[]): ContractHolderSummaryI
       }
       return a.holder.localeCompare(b.holder, 'ja');
     });
+}
+
+function buildBalanceSummary(drafts: LineDraft[]): BalanceSummary {
+  let totalPaidCost = 0;
+  let totalReceivedBenefit = 0;
+  let coveredLineCount = 0;
+
+  for (const draft of drafts) {
+    const contractStartDate = parseReviewDate(draft.contractStartDate);
+    if (draft.monthlyCost != null && contractStartDate) {
+      const elapsedDays = Math.max(diffInDays(contractStartDate, new Date()), 0);
+      const elapsedMonths = Math.floor(elapsedDays / 30);
+      totalPaidCost += draft.monthlyCost * elapsedMonths;
+    }
+
+    const receivedBenefit = draft.benefits
+      .filter((benefit) => benefit.receivedFlag && benefit.amount != null)
+      .reduce((sum, benefit) => sum + (benefit.amount ?? 0), 0);
+
+    if (receivedBenefit > 0) {
+      coveredLineCount += 1;
+    }
+
+    totalReceivedBenefit += receivedBenefit;
+  }
+
+  return {
+    totalPaidCost,
+    totalReceivedBenefit,
+    netBalance: totalReceivedBenefit - totalPaidCost,
+    coveredLineCount,
+  };
 }
 
 function buildSummary(drafts: LineDraft[], allHistoryEntries: LineHistoryEntry[], reminderWindow: NotificationReminderWindow): DashboardSummary {
@@ -530,6 +575,7 @@ function buildSummary(drafts: LineDraft[], allHistoryEntries: LineHistoryEntry[]
     .slice(0, 5);
 
   const contractHolderSummary = buildContractHolderSummary(drafts);
+  const balanceSummary = buildBalanceSummary(drafts);
 
   return {
     dangerCount,
@@ -549,6 +595,7 @@ function buildSummary(drafts: LineDraft[], allHistoryEntries: LineHistoryEntry[]
     deadlineAlerts,
     benefitDeadlineAlerts,
     contractHolderSummary,
+    balanceSummary,
   };
 }
 
@@ -933,6 +980,32 @@ export function DashboardPage(): JSX.Element {
           </div>
           <p className="metric">{formatCurrency(summary.monthlyTotal)}</p>
           <p className="muted">月額費用が入力された回線だけを合計します。未設定の回線は合計に含めません。</p>
+        </article>
+
+        <article className="card">
+          <div className="card__header">
+            <h3>収支サマリー</h3>
+            <span className="badge">概算</span>
+          </div>
+          <dl className="definition-list">
+            <div>
+              <dt>累計支払コスト</dt>
+              <dd>{formatYenAmount(summary.balanceSummary.totalPaidCost)}</dd>
+            </div>
+            <div>
+              <dt>受取済み特典</dt>
+              <dd>{formatYenAmount(summary.balanceSummary.totalReceivedBenefit)}</dd>
+            </div>
+            <div>
+              <dt>実質収支</dt>
+              <dd>{formatYenAmount(summary.balanceSummary.netBalance)}</dd>
+            </div>
+            <div>
+              <dt>受取済み特典あり回線</dt>
+              <dd>{summary.balanceSummary.coveredLineCount}件</dd>
+            </div>
+          </dl>
+          <p className="muted">月額費用は `契約開始日` からの経過月数で概算し、受取済み特典は `receivedFlag = true` かつ金額ありの特典だけを集計します。</p>
         </article>
 
         {summary.contractHolderSummary.length > 0 ? (
