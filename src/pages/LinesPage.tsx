@@ -100,6 +100,14 @@ type NotificationReasonLabel = '期限超過' | '今日期限' | '3日以内' | 
 
 type NotificationReasonParam = 'overdue' | 'today' | 'within-3-days' | 'within-7-days';
 
+type UsageSummary = {
+  hasCommunication: boolean;
+  hasCall: boolean;
+  hasSms: boolean;
+  lastActivityDate: string | null;
+  withinDays: number;
+};
+
 const notificationReasonParamMap: Record<NotificationReasonParam, NotificationReasonLabel> = {
   overdue: '期限超過',
   today: '今日期限',
@@ -112,6 +120,7 @@ const PAYMENT_METHOD_OPTIONS = ['クレジットカード', '口座振替', '請
 const LINES_COMPACT_VIEW_STORAGE_KEY = 'line-ops-ledger.lines.compact-view';
 const LINES_FORM_COLLAPSED_STORAGE_KEY = 'line-ops-ledger.lines.form-collapsed';
 const SAFE_EXIT_DAYS = 181;
+const USAGE_SUMMARY_DAYS = 180;
 
 function readBooleanPreference(storageKey: string, fallback: boolean): boolean {
   if (typeof window === 'undefined') {
@@ -462,6 +471,46 @@ function getLatestActivityDateFromHistoryEntries(entries: LineHistoryEntry[]): s
     }
   }
   return latest;
+}
+
+function buildUsageSummary(entries: LineHistoryEntry[], withinDays: number): UsageSummary {
+  const cutoff = startOfDay(new Date());
+  cutoff.setDate(cutoff.getDate() - withinDays);
+
+  let hasCommunication = false;
+  let hasCall = false;
+  let hasSms = false;
+  let lastActivityDate: string | null = null;
+
+  for (const entry of entries) {
+    for (const log of entry.activityLogs) {
+      const activityDate = parseReviewDate(log.activityDate);
+      if (!activityDate || activityDate < cutoff) {
+        continue;
+      }
+
+      if (log.activityType === '通信実施') {
+        hasCommunication = true;
+      }
+      if (log.activityType === '通話実施') {
+        hasCall = true;
+      }
+      if (log.activityType === 'SMS送信') {
+        hasSms = true;
+      }
+      if (!lastActivityDate || log.activityDate > lastActivityDate) {
+        lastActivityDate = log.activityDate;
+      }
+    }
+  }
+
+  return {
+    hasCommunication,
+    hasCall,
+    hasSms,
+    lastActivityDate,
+    withinDays,
+  };
 }
 
 function formatMonthlyCost(value: number | null): string {
@@ -1656,6 +1705,9 @@ export function LinesPage(): JSX.Element {
                   : null;
                 const relatedHistoryEntries = findRelatedHistoryEntries(draft, lineHistoryEntries);
                 const latestActivityDate = getLatestActivityDateFromHistoryEntries(relatedHistoryEntries);
+                const usageSummary = buildUsageSummary(relatedHistoryEntries, USAGE_SUMMARY_DAYS);
+                const shouldShowUsageSummary = isCurrentContract(draft.status);
+                const hasNoUsageActivity = !usageSummary.hasCommunication && !usageSummary.hasCall && !usageSummary.hasSms;
                 const pendingBenefitCount = draft.benefits.filter((benefit) => !benefit.receivedFlag).length;
 
                 return (
@@ -1689,6 +1741,14 @@ export function LinesPage(): JSX.Element {
                       {!isCompactView && draft.freeOptionDeadline ? <span className="badge">無料OP期限: {formatDate(draft.freeOptionDeadline)}</span> : null}
                       {!isCompactView && pendingBenefitCount > 0 ? <span className="badge">未受取特典: {pendingBenefitCount}件</span> : null}
                       {!isCompactView && pendingBenefitCount === 0 && draft.benefits.length > 0 ? <span className="badge badge--ok">特典管理: {draft.benefits.length}件</span> : null}
+                      {shouldShowUsageSummary ? (
+                        <>
+                          <span className={usageSummary.hasCommunication ? 'badge badge--ok' : 'badge'}>通</span>
+                          <span className={usageSummary.hasCall ? 'badge badge--ok' : 'badge'}>話</span>
+                          <span className={usageSummary.hasSms ? 'badge badge--ok' : 'badge'}>S</span>
+                        </>
+                      ) : null}
+                      {shouldShowUsageSummary && hasNoUsageActivity ? <span className="badge badge--warn">利用実績なし</span> : null}
                       {latestActivityDate != null ? <span className="badge">最終活動: {formatDate(latestActivityDate)}</span> : null}
                     </div>
                     <div className="button-row button-row--tight">
@@ -1806,6 +1866,19 @@ export function LinesPage(): JSX.Element {
                             <dt>最終活動日</dt>
                             <dd>{latestActivityDate != null ? formatDate(latestActivityDate) : '記録なし'}</dd>
                           </div>
+                          {shouldShowUsageSummary ? (
+                            <div>
+                              <dt>{`${usageSummary.withinDays}日以内の利用実績`}</dt>
+                              <dd>
+                                <div className="badge-row">
+                                  <span className={usageSummary.hasCommunication ? 'badge badge--ok' : 'badge'}>通</span>
+                                  <span className={usageSummary.hasCall ? 'badge badge--ok' : 'badge'}>話</span>
+                                  <span className={usageSummary.hasSms ? 'badge badge--ok' : 'badge'}>S</span>
+                                  {hasNoUsageActivity ? <span className="badge badge--warn">利用実績なし</span> : null}
+                                </div>
+                              </dd>
+                            </div>
+                          ) : null}
                         </div>
                         {relatedHistoryEntries.length > 0 ? (
                           <div className="badge-row" style={{ marginTop: '0.75rem' }}>
