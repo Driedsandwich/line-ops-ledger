@@ -4,7 +4,7 @@
 
 - Bootstrap Issue: #1（永続 open）
 - Context Hub Issue: #2（永続 open）
-- 現在地: 特典期限アラートまで `main` 反映済み
+- 現在地: 利用実績種別バッジまで `main` 反映済み
 - 運用前提: PR 必須 / approval 任意 / required check `check-and-build`
 
 ## 実装済み主要機能
@@ -27,6 +27,7 @@
 - `mnpReservationNumber` / `mnpReservationExpiry` / `freeOptionDeadline` を構造化して保存・表示
 - `LineDraft.benefits: BenefitRecord[]` を導入し、特典 / キャッシュバックを構造化して保存・表示
 - 特典の種別 / 金額 / 受取期限日 / 受取条件 / 受取済み / 受取日 / メモを追加・編集・削除可能
+- `利用中` / `解約予定` の回線に、180日以内の `通 / 話 / S` 利用実績バッジを表示
 - 行ボタンから「活動を記録」→ `/lines/history?quickActivity=<phone>` へ遷移
 - データ 0 件時の空状態ガイド（回線フォーム / 確認用サンプルデータ投入 / バックアップ復元 / 履歴ページ）
 
@@ -66,6 +67,6 @@
 
 ## 次の候補
 
-1. 利用実績種別バッジ（通 / 話 / S）の追加
-2. 光回線固有フィールド（fiber 系 scalar fields）の追加
-3. 名義別サマリーの追加
+1. 光回線固有フィールド（fiber 系 scalar fields）の追加
+2. 名義別サマリーの追加
+3. 収支サマリーの追加（BenefitRecord ベースの概算）
