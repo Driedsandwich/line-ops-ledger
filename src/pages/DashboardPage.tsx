@@ -213,6 +213,10 @@ type BalanceSummary = {
   totalReceivedBenefit: number;
   netBalance: number;
   coveredLineCount: number;
+  receivedBenefitLines: Array<{
+    draft: LineDraft;
+    receivedBenefit: number;
+  }>;
 };
 
 type FiberDebtItem = {
@@ -367,6 +371,7 @@ function buildBalanceSummary(drafts: LineDraft[]): BalanceSummary {
   let totalPaidCost = 0;
   let totalReceivedBenefit = 0;
   let coveredLineCount = 0;
+  const receivedBenefitLines: BalanceSummary['receivedBenefitLines'] = [];
 
   for (const draft of drafts) {
     const contractStartDate = parseReviewDate(draft.contractStartDate);
@@ -382,6 +387,10 @@ function buildBalanceSummary(drafts: LineDraft[]): BalanceSummary {
 
     if (receivedBenefit > 0) {
       coveredLineCount += 1;
+      receivedBenefitLines.push({
+        draft,
+        receivedBenefit,
+      });
     }
 
     totalReceivedBenefit += receivedBenefit;
@@ -392,6 +401,14 @@ function buildBalanceSummary(drafts: LineDraft[]): BalanceSummary {
     totalReceivedBenefit,
     netBalance: totalReceivedBenefit - totalPaidCost,
     coveredLineCount,
+    receivedBenefitLines: receivedBenefitLines
+      .sort((a, b) => {
+        if (b.receivedBenefit !== a.receivedBenefit) {
+          return b.receivedBenefit - a.receivedBenefit;
+        }
+        return a.draft.lineName.localeCompare(b.draft.lineName, 'ja');
+      })
+      .slice(0, 5),
   };
 }
 
@@ -1221,6 +1238,25 @@ export function DashboardPage(): JSX.Element {
             </div>
           </dl>
           <p className="muted">月額費用は `契約開始日` からの経過月数で概算し、受取済み特典は `receivedFlag = true` かつ金額ありの特典だけを集計します。</p>
+          {summary.balanceSummary.receivedBenefitLines.length > 0 ? (
+            <>
+              <ul className="list list--drafts">
+                {summary.balanceSummary.receivedBenefitLines.map((item) => (
+                  <li key={item.draft.id}>
+                    <div className="list__row">
+                      <strong>{item.draft.lineName}</strong>
+                      <span className={item.draft.status === '利用中' ? 'badge badge--ok' : 'badge'}>{item.draft.status}</span>
+                    </div>
+                    <span>{item.draft.carrier}</span>
+                    <span>受取済み特典: {formatYenAmount(item.receivedBenefit)}</span>
+                  </li>
+                ))}
+              </ul>
+              <div className="button-row">
+                <Link className="button" to="/lines">回線一覧で確認する</Link>
+              </div>
+            </>
+          ) : null}
         </article>
 
         {summary.contractHolderSummary.length > 0 ? (
