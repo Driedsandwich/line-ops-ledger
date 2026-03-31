@@ -4,6 +4,7 @@ import {
   BENEFIT_TYPE_OPTIONS,
   createLineDraft,
   DEFAULT_LINE_TYPE,
+  FIBER_TRANSFER_TYPE_OPTIONS,
   lineDraftStore,
   LINE_STATUS_OPTIONS,
   LINE_TYPE_OPTIONS,
@@ -14,6 +15,7 @@ import {
   normalizeReviewDate,
   type BenefitRecord,
   type BenefitType,
+  type FiberTransferType,
   type PlannedExitType,
   updateLineDraft,
   type LineDraft,
@@ -62,6 +64,11 @@ type FormState = {
   mnpReservationNumber: string;
   mnpReservationExpiry: string;
   freeOptionDeadline: string;
+  fiberTransferType: FiberTransferType | '';
+  fiberIspName: string;
+  fiberConstructionFee: string;
+  fiberMonthlyDiscount: string;
+  fiberConstructionFeeMonths: string;
   benefits: BenefitFormState[];
   contractHolder: string;
   serviceUser: string;
@@ -183,6 +190,11 @@ const initialFormState: FormState = {
   mnpReservationNumber: '',
   mnpReservationExpiry: '',
   freeOptionDeadline: '',
+  fiberTransferType: '',
+  fiberIspName: '',
+  fiberConstructionFee: '',
+  fiberMonthlyDiscount: '',
+  fiberConstructionFeeMonths: '',
   benefits: [],
   contractHolder: '',
   serviceUser: '',
@@ -358,6 +370,85 @@ function shouldShowMnpFields(
   return isCurrentContract(status) || Boolean(mnpReservationNumber || mnpReservationExpiry || freeOptionDeadline);
 }
 
+function shouldShowFiberFields(
+  lineType: LineType,
+  fiberTransferType: FiberTransferType | '',
+  fiberIspName: string,
+  fiberConstructionFee: string,
+  fiberMonthlyDiscount: string,
+  fiberConstructionFeeMonths: string,
+): boolean {
+  return (
+    lineType === '光回線'
+    || Boolean(fiberTransferType || fiberIspName || fiberConstructionFee || fiberMonthlyDiscount || fiberConstructionFeeMonths)
+  );
+}
+
+function calculateFiberDebtClearDate(contractStartDate: string, months: number | null): Date | null {
+  const startDate = parseDate(contractStartDate);
+  if (!startDate || months == null) {
+    return null;
+  }
+
+  const result = new Date(startDate);
+  result.setMonth(result.getMonth() + months);
+  return result;
+}
+
+function calculateElapsedMonths(contractStartDate: string): number | null {
+  const startDate = parseDate(contractStartDate);
+  if (!startDate) {
+    return null;
+  }
+
+  const today = startOfDay(new Date());
+  const start = startOfDay(startDate);
+  if (today < start) {
+    return 0;
+  }
+
+  let months = (today.getFullYear() - start.getFullYear()) * 12 + (today.getMonth() - start.getMonth());
+  if (today.getDate() < start.getDate()) {
+    months -= 1;
+  }
+
+  return Math.max(months, 0);
+}
+
+function calculateFiberRemainingDebt(
+  contractStartDate: string,
+  constructionFee: number | null,
+  monthlyDiscount: number | null,
+  constructionFeeMonths: number | null,
+): number | null {
+  if (constructionFee == null || monthlyDiscount == null || constructionFeeMonths == null) {
+    return null;
+  }
+
+  const elapsedMonths = calculateElapsedMonths(contractStartDate);
+  if (elapsedMonths == null) {
+    return null;
+  }
+
+  const paidMonths = Math.min(elapsedMonths, constructionFeeMonths);
+  return Math.max(constructionFee - paidMonths * monthlyDiscount, 0);
+}
+
+function formatFiberDebtClearSchedule(contractStartDate: string, months: number | null): string {
+  const clearDate = calculateFiberDebtClearDate(contractStartDate, months);
+  if (!clearDate) {
+    return '算出不可';
+  }
+
+  const formattedDate = new Intl.DateTimeFormat('ja-JP', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(clearDate);
+
+  return `${formattedDate}（概算）`;
+}
+
 function isNotificationTarget(diff: number, window: NotificationReminderWindow): boolean {
   switch (window) {
     case 'overdue':
@@ -529,6 +620,18 @@ function formatBenefitAmount(value: number | null): string {
   return `${new Intl.NumberFormat('ja-JP').format(value)}円相当`;
 }
 
+function formatFiberTransferType(value: FiberTransferType | ''): string {
+  return value || '未設定';
+}
+
+function formatCurrencyAmount(value: number | null): string {
+  if (value == null) {
+    return '未設定';
+  }
+
+  return `${new Intl.NumberFormat('ja-JP').format(value)}円`;
+}
+
 function maskPhoneNumber(phoneNumber: string): string {
   if (phoneNumber.length < 4) {
     return phoneNumber;
@@ -581,6 +684,11 @@ function toFormState(draft: LineDraft): FormState {
     mnpReservationNumber: draft.mnpReservationNumber,
     mnpReservationExpiry: draft.mnpReservationExpiry,
     freeOptionDeadline: draft.freeOptionDeadline,
+    fiberTransferType: draft.fiberTransferType,
+    fiberIspName: draft.fiberIspName,
+    fiberConstructionFee: draft.fiberConstructionFee == null ? '' : String(draft.fiberConstructionFee),
+    fiberMonthlyDiscount: draft.fiberMonthlyDiscount == null ? '' : String(draft.fiberMonthlyDiscount),
+    fiberConstructionFeeMonths: draft.fiberConstructionFeeMonths == null ? '' : String(draft.fiberConstructionFeeMonths),
     benefits: draft.benefits.map(toBenefitFormState),
     contractHolder: draft.contractHolder,
     serviceUser: draft.serviceUser,
@@ -770,6 +878,11 @@ export function LinesPage(): JSX.Element {
     mnpReservationNumber: string;
     mnpReservationExpiry: string;
     freeOptionDeadline: string;
+    fiberTransferType: FiberTransferType | '';
+    fiberIspName: string;
+    fiberConstructionFee: number | null;
+    fiberMonthlyDiscount: number | null;
+    fiberConstructionFeeMonths: number | null;
     benefits: BenefitRecord[];
     contractHolder: string;
     serviceUser: string;
@@ -793,6 +906,13 @@ export function LinesPage(): JSX.Element {
     const mnpReservationNumber = form.mnpReservationNumber.trim();
     const mnpReservationExpiry = form.mnpReservationExpiry;
     const freeOptionDeadline = form.freeOptionDeadline;
+    const fiberTransferType = form.fiberTransferType;
+    const fiberIspName = form.fiberIspName.trim();
+    const fiberConstructionFee = normalizeMonthlyCost(form.fiberConstructionFee);
+    const fiberMonthlyDiscount = normalizeMonthlyCost(form.fiberMonthlyDiscount);
+    const fiberConstructionFeeMonths = form.fiberConstructionFeeMonths.trim() === ''
+      ? null
+      : Number(form.fiberConstructionFeeMonths.trim());
     const benefits: BenefitRecord[] = [];
     const contractHolder = form.contractHolder.trim();
     const serviceUser = form.serviceUser.trim();
@@ -839,6 +959,24 @@ export function LinesPage(): JSX.Element {
 
     if (form.monthlyCost && normalizeMonthlyCost(form.monthlyCost) == null) {
       setErrorMessage('月額費用は 0 以上の整数だけ保存できます。');
+      return null;
+    }
+
+    if (form.fiberConstructionFee && fiberConstructionFee == null) {
+      setErrorMessage('工事費総額は 0 以上の整数だけ保存できます。');
+      return null;
+    }
+
+    if (form.fiberMonthlyDiscount && fiberMonthlyDiscount == null) {
+      setErrorMessage('月割割引額は 0 以上の整数だけ保存できます。');
+      return null;
+    }
+
+    if (
+      form.fiberConstructionFeeMonths
+      && (!Number.isInteger(fiberConstructionFeeMonths) || fiberConstructionFeeMonths == null || fiberConstructionFeeMonths <= 0)
+    ) {
+      setErrorMessage('工事費分割月数は 1 以上の整数だけ保存できます。');
       return null;
     }
 
@@ -907,6 +1045,11 @@ export function LinesPage(): JSX.Element {
       mnpReservationNumber,
       mnpReservationExpiry,
       freeOptionDeadline,
+      fiberTransferType,
+      fiberIspName,
+      fiberConstructionFee,
+      fiberMonthlyDiscount,
+      fiberConstructionFeeMonths,
       benefits,
       contractHolder,
       serviceUser,
@@ -1378,6 +1521,53 @@ export function LinesPage(): JSX.Element {
                 </>
               ) : null}
 
+              {shouldShowFiberFields(
+                form.lineType,
+                form.fiberTransferType,
+                form.fiberIspName,
+                form.fiberConstructionFee,
+                form.fiberMonthlyDiscount,
+                form.fiberConstructionFeeMonths,
+              ) ? (
+                <div className="detail-panel field--full">
+                  <div className="card__header">
+                    <h3>光回線詳細</h3>
+                    <span className="badge">{form.lineType === '光回線' ? '光回線' : '既存値あり'}</span>
+                  </div>
+                  <div className="form-grid">
+                    <label className="field">
+                      <span>移行種別</span>
+                      <select value={form.fiberTransferType} onChange={(event) => updateField('fiberTransferType', event.target.value as FiberTransferType | '')}>
+                        <option value="">未設定</option>
+                        {FIBER_TRANSFER_TYPE_OPTIONS.map((option) => (
+                          <option key={option} value={option}>{option}</option>
+                        ))}
+                      </select>
+                    </label>
+
+                    <label className="field">
+                      <span>光コラボ事業者名</span>
+                      <input value={form.fiberIspName} onChange={(event) => updateField('fiberIspName', event.target.value)} placeholder="例: So-net / ビッグローブ" />
+                    </label>
+
+                    <label className="field">
+                      <span>工事費総額</span>
+                      <input inputMode="numeric" value={form.fiberConstructionFee} onChange={(event) => updateField('fiberConstructionFee', event.target.value)} placeholder="例: 26400" />
+                    </label>
+
+                    <label className="field">
+                      <span>月割割引額</span>
+                      <input inputMode="numeric" value={form.fiberMonthlyDiscount} onChange={(event) => updateField('fiberMonthlyDiscount', event.target.value)} placeholder="例: 1100" />
+                    </label>
+
+                    <label className="field">
+                      <span>工事費分割月数</span>
+                      <input inputMode="numeric" value={form.fiberConstructionFeeMonths} onChange={(event) => updateField('fiberConstructionFeeMonths', event.target.value)} placeholder="例: 24 / 36" />
+                    </label>
+                  </div>
+                </div>
+              ) : null}
+
               <div className="detail-panel field--full">
                 <div className="card__header">
                   <h3>特典 / キャッシュバック</h3>
@@ -1709,6 +1899,25 @@ export function LinesPage(): JSX.Element {
                 const shouldShowUsageSummary = isCurrentContract(draft.status);
                 const hasNoUsageActivity = !usageSummary.hasCommunication && !usageSummary.hasCall && !usageSummary.hasSms;
                 const pendingBenefitCount = draft.benefits.filter((benefit) => !benefit.receivedFlag).length;
+                const shouldShowFiberDetails = shouldShowFiberFields(
+                  draft.lineType,
+                  draft.fiberTransferType,
+                  draft.fiberIspName,
+                  draft.fiberConstructionFee == null ? '' : String(draft.fiberConstructionFee),
+                  draft.fiberMonthlyDiscount == null ? '' : String(draft.fiberMonthlyDiscount),
+                  draft.fiberConstructionFeeMonths == null ? '' : String(draft.fiberConstructionFeeMonths),
+                );
+                const fiberDebtClearSchedule = shouldShowFiberDetails
+                  ? formatFiberDebtClearSchedule(draft.contractStartDate, draft.fiberConstructionFeeMonths)
+                  : null;
+                const fiberRemainingDebt = shouldShowFiberDetails
+                  ? calculateFiberRemainingDebt(
+                    draft.contractStartDate,
+                    draft.fiberConstructionFee,
+                    draft.fiberMonthlyDiscount,
+                    draft.fiberConstructionFeeMonths,
+                  )
+                  : null;
 
                 return (
                   <li key={draft.id} className={isSelected ? 'list__item--selected' : ''}>
@@ -1741,6 +1950,7 @@ export function LinesPage(): JSX.Element {
                       {!isCompactView && draft.freeOptionDeadline ? <span className="badge">無料OP期限: {formatDate(draft.freeOptionDeadline)}</span> : null}
                       {!isCompactView && pendingBenefitCount > 0 ? <span className="badge">未受取特典: {pendingBenefitCount}件</span> : null}
                       {!isCompactView && pendingBenefitCount === 0 && draft.benefits.length > 0 ? <span className="badge badge--ok">特典管理: {draft.benefits.length}件</span> : null}
+                      {!isCompactView && shouldShowFiberDetails ? <span className="badge">光詳細</span> : null}
                       {shouldShowUsageSummary ? (
                         <>
                           <span className={usageSummary.hasCommunication ? 'badge badge--ok' : 'badge'}>通</span>
@@ -1812,6 +2022,38 @@ export function LinesPage(): JSX.Element {
                             <dt>無料オプション期限</dt>
                             <dd>{formatDate(draft.freeOptionDeadline)}</dd>
                           </div>
+                          {shouldShowFiberDetails ? (
+                            <>
+                              <div>
+                                <dt>光回線の移行種別</dt>
+                                <dd>{formatFiberTransferType(draft.fiberTransferType)}</dd>
+                              </div>
+                              <div>
+                                <dt>光コラボ事業者名</dt>
+                                <dd>{draft.fiberIspName || '未設定'}</dd>
+                              </div>
+                              <div>
+                                <dt>工事費総額</dt>
+                                <dd>{formatCurrencyAmount(draft.fiberConstructionFee)}</dd>
+                              </div>
+                              <div>
+                                <dt>月割割引額</dt>
+                                <dd>{formatCurrencyAmount(draft.fiberMonthlyDiscount)}</dd>
+                              </div>
+                              <div>
+                                <dt>工事費分割月数</dt>
+                                <dd>{draft.fiberConstructionFeeMonths == null ? '未設定' : `${draft.fiberConstructionFeeMonths}ヶ月`}</dd>
+                              </div>
+                              <div>
+                                <dt>残債解消予定日</dt>
+                                <dd>{fiberDebtClearSchedule}</dd>
+                              </div>
+                              <div>
+                                <dt>概算残債</dt>
+                                <dd>{fiberRemainingDebt == null ? '算出不可' : formatCurrencyAmount(fiberRemainingDebt)}</dd>
+                              </div>
+                            </>
+                          ) : null}
                           <div>
                             <dt>契約経過日数</dt>
                             <dd>{elapsedDays == null ? '未設定' : `${elapsedDays}日`}</dd>
