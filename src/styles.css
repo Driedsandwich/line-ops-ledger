@@ -49,6 +49,9 @@ textarea {
   position: sticky;
   top: 0;
   height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 .sidebar__header h1,
@@ -92,6 +95,11 @@ textarea {
   display: grid;
   gap: 8px;
   margin-top: 24px;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: 4px;
+  scrollbar-gutter: stable;
 }
 
 .nav__item {
@@ -425,6 +433,7 @@ textarea {
     height: auto;
     border-right: 0;
     border-bottom: 1px solid rgba(148, 163, 184, 0.18);
+    overflow: visible;
   }
 
   .content {
