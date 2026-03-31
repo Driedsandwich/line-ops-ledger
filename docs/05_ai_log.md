@@ -152,3 +152,6 @@
 - Issue #187: ダッシュボードから `/lines` の該当回線を直接開けるようにする
   - `LinesPage` に `openDraft` URL パラメータを追加し、対象回線を自動展開・スクロールする
   - `収支サマリー` と `光回線の残債解消予定` から `/lines?openDraft=<id>` で該当回線を直接開けるようにする
+- Issue #189: 利用実績種別カードから契約中のみで `/lines` を開けるようにする
+  - `LinesPage` に `contractActiveOnly` URL パラメータ対応を追加し、クエリから初期フィルタを適用できるようにする
+  - `利用実績種別の巡回` の導線を `/lines?sort=latestActivityAsc&contractActiveOnly=true` に更新する

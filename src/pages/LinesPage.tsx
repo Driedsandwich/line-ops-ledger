@@ -174,6 +174,10 @@ function getNotificationTargetOnlyFromParam(value: string | null): boolean {
   return value === 'true';
 }
 
+function getContractActiveOnlyFromParam(value: string | null): boolean {
+  return value === 'true';
+}
+
 const initialFormState: FormState = {
   lineName: '',
   carrier: 'NTTドコモ',
@@ -751,6 +755,7 @@ export function LinesPage(): JSX.Element {
   const allActivityTypes = useMemo(() => getAllActivityTypes(loadCustomActivityTypes()), []);
   const notificationReasonFromQuery = getNotificationReasonLabelFromParam(searchParams.get('notificationReason'));
   const notificationTargetOnlyFromQuery = getNotificationTargetOnlyFromParam(searchParams.get('notificationTargetOnly'));
+  const contractActiveOnlyFromQuery = getContractActiveOnlyFromParam(searchParams.get('contractActiveOnly'));
   const today = useMemo(() => new Date(), []);
 
   function resetMessages(): void {
@@ -856,6 +861,16 @@ export function LinesPage(): JSX.Element {
       ...current,
       contractActiveOnly: enabled,
     }));
+
+    const nextParams = new URLSearchParams(searchParams);
+
+    if (enabled) {
+      nextParams.set('contractActiveOnly', 'true');
+    } else {
+      nextParams.delete('contractActiveOnly');
+    }
+
+    setSearchParams(nextParams, { replace: true });
   }
 
   function resetForm(): void {
@@ -1375,8 +1390,9 @@ export function LinesPage(): JSX.Element {
       ...current,
       notificationReason: notificationReasonFromQuery,
       notificationTargetOnly: notificationTargetOnlyFromQuery,
+      contractActiveOnly: contractActiveOnlyFromQuery,
     }));
-  }, [notificationReasonFromQuery, notificationTargetOnlyFromQuery]);
+  }, [contractActiveOnlyFromQuery, notificationReasonFromQuery, notificationTargetOnlyFromQuery]);
 
   useEffect(() => {
     setSelectedIds((current) => current.filter((id) => drafts.some((draft) => draft.id === id)));
