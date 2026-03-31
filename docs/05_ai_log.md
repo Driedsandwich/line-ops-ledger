@@ -134,3 +134,6 @@
 - Issue #174: ダッシュボードに名義別サマリーを追加する
   - `contractHolder` を横断集計し、名義が複数あるときだけ `holder / totalLines / activeLines / monthlyTotal / avgContractMonths` を表示する
   - 空文字の契約者名義は `（名義未設定）` としてグルーピングする
+- Issue #176: ダッシュボードに収支サマリーを追加する
+  - `monthlyCost` と `BenefitRecord` を使って `累計支払コスト / 受取済み特典 / 実質収支 / 受取済み特典あり回線数` を概算表示する
+  - 受取済み特典は `receivedFlag = true` かつ `amount != null` の特典だけを集計対象にする
