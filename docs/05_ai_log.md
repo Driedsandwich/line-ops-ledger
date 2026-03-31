@@ -131,3 +131,6 @@
 - Issue #172: 主台帳に光回線固有フィールドを追加する
   - `LineDraft` に移行種別 / ISP 名 / 工事費関連の scalar fields を追加し、schemaVersion を 8 に更新する
   - `LinesPage` で `lineType === 光回線` のときだけ追加入力欄を表示し、詳細で `残債解消予定日` と `概算残債` を表示する
+- Issue #174: ダッシュボードに名義別サマリーを追加する
+  - `contractHolder` を横断集計し、名義が複数あるときだけ `holder / totalLines / activeLines / monthlyTotal / avgContractMonths` を表示する
+  - 空文字の契約者名義は `（名義未設定）` としてグルーピングする

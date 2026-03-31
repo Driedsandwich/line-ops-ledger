@@ -195,6 +195,14 @@ type BenefitDeadlineItem = {
   daysUntilDeadline: number;
 };
 
+type ContractHolderSummaryItem = {
+  holder: string;
+  totalLines: number;
+  activeLines: number;
+  monthlyTotal: number;
+  avgContractMonths: number;
+};
+
 type DashboardSummary = {
   dangerCount: number;
   todayCount: number;
@@ -212,6 +220,7 @@ type DashboardSummary = {
   plannedActions: PlannedActionItem[];
   deadlineAlerts: DeadlineAlertItem[];
   benefitDeadlineAlerts: BenefitDeadlineItem[];
+  contractHolderSummary: ContractHolderSummaryItem[];
 };
 
 function createEmptyNotificationReasonSummary(): NotificationReasonSummary {
@@ -275,6 +284,48 @@ function formatBenefitDeadlineLabel(daysUntilDeadline: number): string {
     return '今日期限';
   }
   return `あと${daysUntilDeadline}日`;
+}
+
+function buildContractHolderSummary(drafts: LineDraft[]): ContractHolderSummaryItem[] {
+  const groupedDrafts = new Map<string, LineDraft[]>();
+
+  for (const draft of drafts) {
+    const holder = draft.contractHolder.trim() || '（名義未設定）';
+    const current = groupedDrafts.get(holder) ?? [];
+    current.push(draft);
+    groupedDrafts.set(holder, current);
+  }
+
+  if (groupedDrafts.size < 2) {
+    return [];
+  }
+
+  return Array.from(groupedDrafts.entries())
+    .map(([holder, holderDrafts]) => {
+      const activeDrafts = holderDrafts.filter((draft) => draft.status === '利用中');
+      const monthlyTotal = holderDrafts.reduce((sum, draft) => sum + (draft.monthlyCost ?? 0), 0);
+      const totalContractMonths = activeDrafts.reduce((sum, draft) => {
+        const contractStartDate = parseReviewDate(draft.contractStartDate);
+        if (!contractStartDate) {
+          return sum;
+        }
+        return sum + diffInDays(contractStartDate, new Date()) / 30;
+      }, 0);
+
+      return {
+        holder,
+        totalLines: holderDrafts.length,
+        activeLines: activeDrafts.length,
+        monthlyTotal,
+        avgContractMonths: activeDrafts.length === 0 ? 0 : Math.round(totalContractMonths / activeDrafts.length),
+      };
+    })
+    .sort((a, b) => {
+      if (b.totalLines !== a.totalLines) {
+        return b.totalLines - a.totalLines;
+      }
+      return a.holder.localeCompare(b.holder, 'ja');
+    });
 }
 
 function buildSummary(drafts: LineDraft[], allHistoryEntries: LineHistoryEntry[], reminderWindow: NotificationReminderWindow): DashboardSummary {
@@ -478,6 +529,8 @@ function buildSummary(drafts: LineDraft[], allHistoryEntries: LineHistoryEntry[]
     .sort((a, b) => a.daysUntilDeadline - b.daysUntilDeadline)
     .slice(0, 5);
 
+  const contractHolderSummary = buildContractHolderSummary(drafts);
+
   return {
     dangerCount,
     todayCount,
@@ -495,6 +548,7 @@ function buildSummary(drafts: LineDraft[], allHistoryEntries: LineHistoryEntry[]
     plannedActions,
     deadlineAlerts,
     benefitDeadlineAlerts,
+    contractHolderSummary,
   };
 }
 
@@ -880,6 +934,31 @@ export function DashboardPage(): JSX.Element {
           <p className="metric">{formatCurrency(summary.monthlyTotal)}</p>
           <p className="muted">月額費用が入力された回線だけを合計します。未設定の回線は合計に含めません。</p>
         </article>
+
+        {summary.contractHolderSummary.length > 0 ? (
+          <article className="card">
+            <div className="card__header">
+              <h3>名義別サマリー</h3>
+              <span className="badge">{summary.contractHolderSummary.length}名義</span>
+            </div>
+            <p className="muted">名義が2種類以上あるときだけ、契約者ごとの回線数・利用中件数・月額合計・平均契約月数を表示します。</p>
+            <ul className="list list--drafts">
+              {summary.contractHolderSummary.map((item) => (
+                <li key={item.holder}>
+                  <div className="list__row">
+                    <strong>{item.holder}</strong>
+                    <span className={item.activeLines > 0 ? 'badge badge--ok' : 'badge'}>
+                      利用中 {item.activeLines}件
+                    </span>
+                  </div>
+                  <span>総回線数: {item.totalLines}件</span>
+                  <span>月額合計: {formatCurrency(item.monthlyTotal)}</span>
+                  <span>平均契約月数: {item.avgContractMonths}ヶ月</span>
+                </li>
+              ))}
+            </ul>
+          </article>
+        ) : null}
 
         <article className="card">
           <div className="card__header">
