@@ -747,6 +747,7 @@ export function LinesPage(): JSX.Element {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const openDraftId = searchParams.get('openDraft');
+  const focusSection = searchParams.get('focusSection');
   const [isCompactView, setIsCompactView] = useState(() => readBooleanPreference(LINES_COMPACT_VIEW_STORAGE_KEY, false));
   const [isFormCollapsed, setIsFormCollapsed] = useState(() => readBooleanPreference(LINES_FORM_COLLAPSED_STORAGE_KEY, false));
   const isFirstRun = drafts.length === 0 && lineHistoryEntries.length === 0;
@@ -1410,13 +1411,24 @@ export function LinesPage(): JSX.Element {
     }
 
     setExpandedIds((current) => (current.includes(openDraftId) ? current : [...current, openDraftId]));
+  }, [drafts, openDraftId]);
 
-    if (editingId == null) {
-      requestAnimationFrame(() => {
-        document.getElementById(`draft-${openDraftId}`)?.scrollIntoView({ block: 'center', behavior: 'smooth' });
-      });
+  useEffect(() => {
+    if (!openDraftId || editingId != null || !expandedIds.includes(openDraftId)) {
+      return;
     }
-  }, [drafts, editingId, openDraftId]);
+
+    const timeoutId = window.setTimeout(() => {
+      const targetElement = focusSection
+        ? document.getElementById(`draft-${openDraftId}-${focusSection}`)
+        : null;
+      (targetElement ?? document.getElementById(`draft-${openDraftId}`))?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    }, 100);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [editingId, expandedIds, focusSection, openDraftId]);
 
   useEffect(() => {
     if (drafts.length > 0 && !editingId) {
@@ -2060,7 +2072,7 @@ export function LinesPage(): JSX.Element {
                           </div>
                           {shouldShowFiberDetails ? (
                             <>
-                              <div>
+                              <div id={`draft-${draft.id}-fiber`}>
                                 <dt>光回線の移行種別</dt>
                                 <dd>{formatFiberTransferType(draft.fiberTransferType)}</dd>
                               </div>
@@ -2167,7 +2179,7 @@ export function LinesPage(): JSX.Element {
                           </div>
                         ) : null}
                         {draft.benefits.length > 0 ? (
-                          <div className="detail-panel" style={{ marginTop: '0.75rem' }}>
+                          <div id={`draft-${draft.id}-benefits`} className="detail-panel" style={{ marginTop: '0.75rem' }}>
                             <div className="card__header">
                               <h3>特典 / キャッシュバック</h3>
                               <span className="badge">{draft.benefits.length}件</span>

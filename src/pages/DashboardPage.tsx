@@ -1051,7 +1051,7 @@ export function DashboardPage(): JSX.Element {
                       </span>
                     ) : null}
                     <div className="button-row button-row--tight">
-                      <Link className="button button--sm" to={`/lines?openDraft=${encodeURIComponent(item.draft.id)}`}>
+                      <Link className="button button--sm" to={`/lines?openDraft=${encodeURIComponent(item.draft.id)}&focusSection=fiber`}>
                         該当回線を開く
                       </Link>
                     </div>
@@ -1255,7 +1255,7 @@ export function DashboardPage(): JSX.Element {
                     <span>{item.draft.carrier}</span>
                     <span>受取済み特典: {formatYenAmount(item.receivedBenefit)}</span>
                     <div className="button-row button-row--tight">
-                      <Link className="button button--sm" to={`/lines?openDraft=${encodeURIComponent(item.draft.id)}`}>
+                      <Link className="button button--sm" to={`/lines?openDraft=${encodeURIComponent(item.draft.id)}&focusSection=benefits`}>
                         該当回線を開く
                       </Link>
                     </div>

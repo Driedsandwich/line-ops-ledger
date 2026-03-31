@@ -155,3 +155,6 @@
 - Issue #189: 利用実績種別カードから契約中のみで `/lines` を開けるようにする
   - `LinesPage` に `contractActiveOnly` URL パラメータ対応を追加し、クエリから初期フィルタを適用できるようにする
   - `利用実績種別の巡回` の導線を `/lines?sort=latestActivityAsc&contractActiveOnly=true` に更新する
+- Issue #191: ダッシュボードから `/lines` の特典管理位置と光回線詳細位置を直接開けるようにする
+  - `LinesPage` に `focusSection` URL パラメータを追加し、`benefits` / `fiber` セクションまでスクロールできるようにする
+  - `収支サマリー` と `光回線の残債解消予定` の導線を、それぞれ対応する詳細位置へ直接寄せる
