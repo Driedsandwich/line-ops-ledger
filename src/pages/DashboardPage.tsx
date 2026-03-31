@@ -222,6 +222,19 @@ type FiberDebtItem = {
   remainingDebt: number | null;
 };
 
+type UsageSummary = {
+  hasCommunication: boolean;
+  hasCall: boolean;
+  hasSms: boolean;
+  lastActivityDate: string | null;
+  withinDays: number;
+};
+
+type UsageAlertItem = {
+  draft: LineDraft;
+  usageSummary: UsageSummary;
+};
+
 type DashboardSummary = {
   dangerCount: number;
   todayCount: number;
@@ -242,6 +255,7 @@ type DashboardSummary = {
   contractHolderSummary: ContractHolderSummaryItem[];
   balanceSummary: BalanceSummary;
   fiberDebtItems: FiberDebtItem[];
+  usageAlertItems: UsageAlertItem[];
 };
 
 function createEmptyNotificationReasonSummary(): NotificationReasonSummary {
@@ -439,6 +453,92 @@ function buildFiberDebtItems(drafts: LineDraft[], today: Date): FiberDebtItem[] 
         return -1;
       }
       return a.daysUntilClear - b.daysUntilClear;
+    })
+    .slice(0, 5);
+}
+
+const USAGE_SUMMARY_DAYS = 180;
+
+function buildUsageSummary(entries: LineHistoryEntry[], withinDays: number): UsageSummary {
+  const cutoff = startOfDay(new Date());
+  cutoff.setDate(cutoff.getDate() - withinDays);
+
+  let hasCommunication = false;
+  let hasCall = false;
+  let hasSms = false;
+  let lastActivityDate: string | null = null;
+
+  for (const entry of entries) {
+    for (const log of entry.activityLogs) {
+      const activityDate = parseReviewDate(log.activityDate);
+      if (!activityDate || activityDate < cutoff) {
+        continue;
+      }
+
+      if (log.activityType === '通信実施') {
+        hasCommunication = true;
+      }
+      if (log.activityType === '通話実施') {
+        hasCall = true;
+      }
+      if (log.activityType === 'SMS送信') {
+        hasSms = true;
+      }
+      if (!lastActivityDate || log.activityDate > lastActivityDate) {
+        lastActivityDate = log.activityDate;
+      }
+    }
+  }
+
+  return {
+    hasCommunication,
+    hasCall,
+    hasSms,
+    lastActivityDate,
+    withinDays,
+  };
+}
+
+function countMissingUsageKinds(summary: UsageSummary): number {
+  let missing = 0;
+  if (!summary.hasCommunication) {
+    missing += 1;
+  }
+  if (!summary.hasCall) {
+    missing += 1;
+  }
+  if (!summary.hasSms) {
+    missing += 1;
+  }
+  return missing;
+}
+
+function buildUsageAlertItems(drafts: LineDraft[], allHistoryEntries: LineHistoryEntry[]): UsageAlertItem[] {
+  return drafts
+    .filter((draft) => draft.status === '利用中' || draft.status === '解約予定')
+    .map((draft) => {
+      const relatedEntries = findRelatedHistoryEntries(draft, allHistoryEntries);
+      return {
+        draft,
+        usageSummary: buildUsageSummary(relatedEntries, USAGE_SUMMARY_DAYS),
+      } satisfies UsageAlertItem;
+    })
+    .filter(({ usageSummary }) => countMissingUsageKinds(usageSummary) > 0)
+    .sort((a, b) => {
+      const missingDiff = countMissingUsageKinds(b.usageSummary) - countMissingUsageKinds(a.usageSummary);
+      if (missingDiff !== 0) {
+        return missingDiff;
+      }
+      if (!a.usageSummary.lastActivityDate && !b.usageSummary.lastActivityDate) {
+        return b.draft.createdAt.localeCompare(a.draft.createdAt);
+      }
+      if (!a.usageSummary.lastActivityDate) {
+        return -1;
+      }
+      if (!b.usageSummary.lastActivityDate) {
+        return 1;
+      }
+      return a.usageSummary.lastActivityDate.localeCompare(b.usageSummary.lastActivityDate);
     })
     .slice(0, 5);
 }
@@ -647,6 +747,7 @@ function buildSummary(drafts: LineDraft[], allHistoryEntries: LineHistoryEntry[]
   const contractHolderSummary = buildContractHolderSummary(drafts);
   const balanceSummary = buildBalanceSummary(drafts);
   const fiberDebtItems = buildFiberDebtItems(drafts, today);
+  const usageAlertItems = buildUsageAlertItems(drafts, allHistoryEntries);
 
   return {
     dangerCount,
@@ -668,6 +769,7 @@ function buildSummary(drafts: LineDraft[], allHistoryEntries: LineHistoryEntry[]
     contractHolderSummary,
     balanceSummary,
     fiberDebtItems,
+    usageAlertItems,
   };
 }
 
@@ -1145,6 +1247,51 @@ export function DashboardPage(): JSX.Element {
             </ul>
           </article>
         ) : null}
+
+        <article className="card">
+          <div className="card__header">
+            <h3>利用実績種別の巡回</h3>
+            <span className={summary.usageAlertItems.length === 0 ? 'badge badge--ok' : 'badge'}>
+              {summary.usageAlertItems.length === 0 ? '問題なし' : `${summary.usageAlertItems.length}件`}
+            </span>
+          </div>
+          <p className="muted">`利用中` または `解約予定` の回線について、直近 {USAGE_SUMMARY_DAYS} 日の `通 / 話 / S` 実績に不足がある回線を表示します（最大5件）。</p>
+          {summary.usageAlertItems.length === 0 ? (
+            <p className="muted">利用実績種別の不足がある回線はありません。</p>
+          ) : (
+            <>
+              <ul className="list list--drafts">
+                {summary.usageAlertItems.map((item) => {
+                  const missingUsageKinds = countMissingUsageKinds(item.usageSummary);
+                  const hasNoUsageActivity = missingUsageKinds === 3;
+                  return (
+                    <li key={item.draft.id}>
+                      <div className="list__row">
+                        <strong>{item.draft.lineName}</strong>
+                        <span className={item.draft.status === '利用中' ? 'badge badge--ok' : 'badge'}>{item.draft.status}</span>
+                      </div>
+                      <span>{item.draft.carrier}</span>
+                      <span>最終活動: {item.usageSummary.lastActivityDate ? formatReviewDate(item.usageSummary.lastActivityDate) : '記録なし'}</span>
+                      <div className="badge-row">
+                        <span className={item.usageSummary.hasCommunication ? 'badge badge--ok' : 'badge'}>通</span>
+                        <span className={item.usageSummary.hasCall ? 'badge badge--ok' : 'badge'}>話</span>
+                        <span className={item.usageSummary.hasSms ? 'badge badge--ok' : 'badge'}>S</span>
+                        {hasNoUsageActivity ? (
+                          <span className="badge badge--warn">利用実績なし</span>
+                        ) : (
+                          <span className="badge">不足 {missingUsageKinds}種別</span>
+                        )}
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+              <div className="button-row">
+                <Link className="button" to="/lines?sort=latestActivityAsc">回線一覧で確認する</Link>
+              </div>
+            </>
+          )}
+        </article>
 
         <article className="card">
           <div className="card__header">
