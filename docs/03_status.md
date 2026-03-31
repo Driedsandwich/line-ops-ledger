@@ -4,7 +4,7 @@
 
 - Bootstrap Issue: #1（永続 open）
 - Context Hub Issue: #2（永続 open）
-- 現在地: 光回線の残債解消予定カードまで `main` 反映済み
+- 現在地: サイドバー左タブの縦スクロール対応まで `main` 反映済み
 - 運用前提: PR 必須 / approval 任意 / required check `check-and-build`
 
 ## 実装済み主要機能
@@ -67,6 +67,7 @@
 ### インフラ
 - PWA（manifest / SW）/ SW は開発環境で無効 / ビルド時キャッシュバスト
 - `.env.local` の `VITE_DEV_LABEL` でサイドバーにブランチバッジ表示（`PR #NNN` 運用）
+- 左側サイドバーはヘッダーを残したまま nav だけ縦スクロール可能
 - GitHub Actions: `Repo sanity` に加えて `CI` workflow で `npm run check` / `npm run build` を実行
 - `main` 保護: PR 必須 / approval 任意 / required check `check-and-build`
 
