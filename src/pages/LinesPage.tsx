@@ -742,6 +742,7 @@ export function LinesPage(): JSX.Element {
   const [undoState, setUndoState] = useState<UndoState | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const openDraftId = searchParams.get('openDraft');
   const [isCompactView, setIsCompactView] = useState(() => readBooleanPreference(LINES_COMPACT_VIEW_STORAGE_KEY, false));
   const [isFormCollapsed, setIsFormCollapsed] = useState(() => readBooleanPreference(LINES_FORM_COLLAPSED_STORAGE_KEY, false));
   const isFirstRun = drafts.length === 0 && lineHistoryEntries.length === 0;
@@ -1383,6 +1384,25 @@ export function LinesPage(): JSX.Element {
   }, [drafts]);
 
   useEffect(() => {
+    if (!openDraftId) {
+      return;
+    }
+
+    const targetDraft = drafts.find((draft) => draft.id === openDraftId);
+    if (!targetDraft) {
+      return;
+    }
+
+    setExpandedIds((current) => (current.includes(openDraftId) ? current : [...current, openDraftId]));
+
+    if (editingId == null) {
+      requestAnimationFrame(() => {
+        document.getElementById(`draft-${openDraftId}`)?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      });
+    }
+  }, [drafts, editingId, openDraftId]);
+
+  useEffect(() => {
     if (drafts.length > 0 && !editingId) {
       setIsFormCollapsed((current) => current || readBooleanPreference(LINES_FORM_COLLAPSED_STORAGE_KEY, true));
     }
@@ -1920,7 +1940,7 @@ export function LinesPage(): JSX.Element {
                   : null;
 
                 return (
-                  <li key={draft.id} className={isSelected ? 'list__item--selected' : ''}>
+                  <li id={`draft-${draft.id}`} key={draft.id} className={isSelected ? 'list__item--selected' : ''}>
                     <div className="list__row">
                       <label className="checkbox-row">
                         <input type="checkbox" checked={isSelected} onChange={() => toggleSelected(draft.id)} />

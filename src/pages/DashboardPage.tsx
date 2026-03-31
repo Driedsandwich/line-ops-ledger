@@ -1050,6 +1050,11 @@ export function DashboardPage(): JSX.Element {
                             : `あと${item.daysUntilClear}日`}
                       </span>
                     ) : null}
+                    <div className="button-row button-row--tight">
+                      <Link className="button button--sm" to={`/lines?openDraft=${encodeURIComponent(item.draft.id)}`}>
+                        該当回線を開く
+                      </Link>
+                    </div>
                   </li>
                 ))}
               </ul>
@@ -1249,6 +1254,11 @@ export function DashboardPage(): JSX.Element {
                     </div>
                     <span>{item.draft.carrier}</span>
                     <span>受取済み特典: {formatYenAmount(item.receivedBenefit)}</span>
+                    <div className="button-row button-row--tight">
+                      <Link className="button button--sm" to={`/lines?openDraft=${encodeURIComponent(item.draft.id)}`}>
+                        該当回線を開く
+                      </Link>
+                    </div>
                   </li>
                 ))}
               </ul>
