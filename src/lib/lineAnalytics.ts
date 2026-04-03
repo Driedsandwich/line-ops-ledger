@@ -54,7 +54,10 @@ export function findRelatedHistoryEntriesForDraft(
   entries: LineHistoryEntry[],
 ): LineHistoryEntry[] {
   if (draft.phoneNumber) {
-    return entries.filter((entry) => normalizePhoneNumber(entry.phoneNumber) === draft.phoneNumber);
+    const exactMatches = entries.filter((entry) => normalizePhoneNumber(entry.phoneNumber) === draft.phoneNumber);
+    if (exactMatches.length > 0) {
+      return exactMatches;
+    }
   }
 
   if (!draft.last4) {
