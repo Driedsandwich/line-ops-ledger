@@ -164,3 +164,4 @@
   - `DashboardPage` と `LinesPage` に散っていた月数計算と履歴参照ロジックを `src/lib/lineAnalytics.ts` に共通化
   - `sampleData` を import 時に調整し、特典期限 / MNP期限 / 今後のアクション予定の alert 分岐が踏める fixture を追加
   - `npm run check` / `npm run build` を通過済み
+  - 履歴参照は `phoneNumber` 一致を優先しつつ、未一致時だけ `last4` に fallback する元の挙動を維持するよう修正した
