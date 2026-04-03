@@ -36,6 +36,7 @@ export type LineEvent = {
   phoneNumber: string;
   carrier: string;
   status: LineDraft['status'];
+  dueDateIso: string | null;
   dueDateLabel: string | null;
   to: string;
   ctaLabel: string;
@@ -47,6 +48,12 @@ export type LineEventGroup = {
   label: string;
   description: string;
   tone: 'danger' | 'warn' | 'info';
+  events: LineEvent[];
+};
+
+export type LineEventMonthGroup = {
+  monthKey: string;
+  monthLabel: string;
   events: LineEvent[];
 };
 
@@ -74,6 +81,26 @@ function formatDateLabel(value: Date): string {
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',
+  }).format(value);
+}
+
+function formatDateIso(value: Date): string {
+  const year = value.getFullYear();
+  const month = String(value.getMonth() + 1).padStart(2, '0');
+  const day = String(value.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function formatMonthKey(value: Date): string {
+  const year = value.getFullYear();
+  const month = String(value.getMonth() + 1).padStart(2, '0');
+  return `${year}-${month}`;
+}
+
+function formatMonthLabel(value: Date): string {
+  return new Intl.DateTimeFormat('ja-JP', {
+    year: 'numeric',
+    month: 'long',
   }).format(value);
 }
 
@@ -223,6 +250,7 @@ export function buildLineEventFeed(
             phoneNumber: draft.phoneNumber,
             carrier: draft.carrier,
             status: draft.status,
+            dueDateIso: formatDateIso(safeExitDate),
             dueDateLabel: formatDateLabel(safeExitDate),
             to: `/lines?openDraft=${encodeURIComponent(draft.id)}`,
             ctaLabel: '回線を開く',
@@ -250,6 +278,7 @@ export function buildLineEventFeed(
             phoneNumber: draft.phoneNumber,
             carrier: draft.carrier,
             status: draft.status,
+            dueDateIso: formatDateIso(nextReviewDate),
             dueDateLabel: formatDateLabel(nextReviewDate),
             to: `/lines?openDraft=${encodeURIComponent(draft.id)}`,
             ctaLabel: '回線を開く',
@@ -277,6 +306,7 @@ export function buildLineEventFeed(
             phoneNumber: draft.phoneNumber,
             carrier: draft.carrier,
             status: draft.status,
+            dueDateIso: formatDateIso(endDate),
             dueDateLabel: formatDateLabel(endDate),
             to: `/lines?openDraft=${encodeURIComponent(draft.id)}`,
             ctaLabel: '回線を開く',
@@ -304,6 +334,7 @@ export function buildLineEventFeed(
             phoneNumber: draft.phoneNumber,
             carrier: draft.carrier,
             status: draft.status,
+            dueDateIso: formatDateIso(plannedDate),
             dueDateLabel: formatDateLabel(plannedDate),
             to: `/lines?openDraft=${encodeURIComponent(draft.id)}`,
             ctaLabel: '回線を開く',
@@ -331,6 +362,7 @@ export function buildLineEventFeed(
             phoneNumber: draft.phoneNumber,
             carrier: draft.carrier,
             status: draft.status,
+            dueDateIso: formatDateIso(expiryDate),
             dueDateLabel: formatDateLabel(expiryDate),
             to: `/lines?openDraft=${encodeURIComponent(draft.id)}`,
             ctaLabel: '回線を開く',
@@ -358,6 +390,7 @@ export function buildLineEventFeed(
             phoneNumber: draft.phoneNumber,
             carrier: draft.carrier,
             status: draft.status,
+            dueDateIso: formatDateIso(freeOptionDate),
             dueDateLabel: formatDateLabel(freeOptionDate),
             to: `/lines?openDraft=${encodeURIComponent(draft.id)}`,
             ctaLabel: '回線を開く',
@@ -394,6 +427,7 @@ export function buildLineEventFeed(
         phoneNumber: draft.phoneNumber,
         carrier: draft.carrier,
         status: draft.status,
+        dueDateIso: formatDateIso(deadlineDate),
         dueDateLabel: formatDateLabel(deadlineDate),
         to: `/lines?openDraft=${encodeURIComponent(draft.id)}&focusSection=benefits`,
         ctaLabel: '特典を確認',
@@ -426,6 +460,7 @@ export function buildLineEventFeed(
             phoneNumber: draft.phoneNumber,
             carrier: draft.carrier,
             status: draft.status,
+            dueDateIso: formatDateIso(debtClearDate),
             dueDateLabel: formatDateLabel(debtClearDate),
             to: `/lines?openDraft=${encodeURIComponent(draft.id)}&focusSection=fiber`,
             ctaLabel: '光回線詳細を開く',
@@ -469,6 +504,7 @@ export function buildLineEventFeed(
           phoneNumber: draft.phoneNumber,
           carrier: draft.carrier,
           status: draft.status,
+          dueDateIso: usageSummary.lastActivityDate ?? null,
           dueDateLabel: usageSummary.lastActivityDate ? formatDateLabel(parseReviewDate(usageSummary.lastActivityDate) ?? today) : null,
           to: target.route,
           ctaLabel: '不足種別を確認',
@@ -491,6 +527,7 @@ export function buildLineEventFeed(
           phoneNumber: draft.phoneNumber,
           carrier: draft.carrier,
           status: draft.status,
+          dueDateIso: null,
           dueDateLabel: null,
           to: draft.phoneNumber
             ? buildHistoryLink(draft.phoneNumber, 'inactiveLine')
@@ -516,6 +553,7 @@ export function buildLineEventFeed(
               phoneNumber: draft.phoneNumber,
               carrier: draft.carrier,
               status: draft.status,
+              dueDateIso: formatDateIso(latestActivityDateObj),
               dueDateLabel: formatDateLabel(latestActivityDateObj),
               to: draft.phoneNumber
                 ? buildHistoryLink(draft.phoneNumber, 'inactiveLine')
@@ -600,4 +638,73 @@ export function groupLineEventsBySeverity(events: LineEvent[]): LineEventGroup[]
   }
 
   return groups;
+}
+
+function getEventDueDate(event: LineEvent): Date | null {
+  if (!event.dueDateIso) {
+    return null;
+  }
+
+  return parseReviewDate(event.dueDateIso);
+}
+
+export function groupLineEventsByMonth(
+  events: LineEvent[],
+  today: Date = new Date(),
+  options: { lookaheadDays?: number; overdueDays?: number } = {},
+): LineEventMonthGroup[] {
+  const lookaheadDays = options.lookaheadDays ?? 180;
+  const overdueDays = options.overdueDays ?? 30;
+
+  const lowerBound = startOfDay(today);
+  lowerBound.setDate(lowerBound.getDate() - overdueDays);
+
+  const upperBound = startOfDay(today);
+  upperBound.setDate(upperBound.getDate() + lookaheadDays);
+
+  const severityRank: Record<EventSeverity, number> = {
+    critical: 0,
+    warning: 1,
+    watch: 2,
+  };
+
+  const datedEvents = events
+    .map((event) => ({ event, dueDate: getEventDueDate(event) }))
+    .filter((item): item is { event: LineEvent; dueDate: Date } => item.dueDate != null)
+    .filter(({ dueDate }) => dueDate >= lowerBound && dueDate <= upperBound)
+    .sort((a, b) => {
+      const dueDateDiff = a.dueDate.getTime() - b.dueDate.getTime();
+      if (dueDateDiff !== 0) {
+        return dueDateDiff;
+      }
+
+      const severityDiff = severityRank[a.event.severity] - severityRank[b.event.severity];
+      if (severityDiff !== 0) {
+        return severityDiff;
+      }
+
+      if (a.event.draftName !== b.event.draftName) {
+        return a.event.draftName.localeCompare(b.event.draftName, 'ja');
+      }
+
+      return a.event.title.localeCompare(b.event.title, 'ja');
+    });
+
+  const grouped = new Map<string, LineEventMonthGroup>();
+  for (const item of datedEvents) {
+    const monthKey = formatMonthKey(item.dueDate);
+    const existing = grouped.get(monthKey);
+    if (existing) {
+      existing.events.push(item.event);
+      continue;
+    }
+
+    grouped.set(monthKey, {
+      monthKey,
+      monthLabel: formatMonthLabel(item.dueDate),
+      events: [item.event],
+    });
+  }
+
+  return Array.from(grouped.values());
 }

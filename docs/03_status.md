@@ -6,7 +6,7 @@
 - Context Hub Issue: #2（永続 open）
 - 現在地: 共通イベントフィードを main に反映し、ダッシュボードの command center 化を安定化した
 - 運用前提: PR 必須 / approval 任意 / required check `check-and-build`
-- 直近の作業: `Actionable Alerts` から `HistoryPage` へ文脈付きで飛べるようにし、`HistoryPage` でも開いている文脈を表示する PR を進行中
+- 直近の作業: `HistoryPage` に共通イベントフィードの月別 read-only 一覧を追加し、`Actionable Alerts` からの文脈付き遷移をそのまま受ける PR を進行中
 - 追加確認: Playwright MCP はローカル `cwd` で起動でき、`/lines/history` の実画面確認が可能
 
 ## 実装済み主要機能
@@ -18,6 +18,7 @@
 - `Actionable Alerts` を `Critical / Warning / Watch` のアコーディオンで整理
 - `Actionable Alerts` は共通イベントフィード由来で、`安全離脱 / 期限警告 / 実績不足` の3分類を維持したまま並べ替えている
 - `Actionable Alerts` から `履歴で記録` で `HistoryPage` へ飛び、`quickActivity` と `historyIntent` を受けた文脈カードを表示できる
+- `HistoryPage` に `今後のイベント` の月別 read-only 一覧を追加し、共通イベントフィードを calendar 前段として確認できるようにした
 - 契約終了が近い回線アラート（30日以内）
 - 今後のアクション予定（予定日が60日以内または超過の利用中 / 解約予定回線）
 - 番号・無料オプション期限アラート（MNP予約番号期限 / 無料オプション期限が3日以内または超過の利用中 / 解約予定回線）
@@ -85,6 +86,6 @@
 
 ## 次の候補
 
-1. `HistoryPage` のタイムライン視認性改善を固め、`quickActivity` / 下書き / 候補管理の回帰がないことを再確認する
-2. `共通イベントフィード` を起点に、`/` の要アクション一覧と `HistoryPage` の入力導線の整合をさらに詰める
+1. `共通イベントフィード` を起点に、`HistoryPage` の月別 read-only 一覧をもう少し見やすく整える
+2. `HistoryPage` のタイムライン視認性改善を固め、`quickActivity` / 下書き / 候補管理の回帰がないことを再確認する
 3. 統合カレンダーに先立ち、各日付を共通イベント列として扱うための整理案を詰める
