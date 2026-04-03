@@ -41,14 +41,14 @@
 - [ ] `/` に `収支サマリー` が表示され、`累計支払コスト / 受取済み特典 / 実質収支` が概算として確認できる
 - [ ] `確認用サンプルデータを読み込む` で、`特典期限` / `MNP期限` / `今後のアクション予定` / `利用実績不足` の分岐が 1 回で踏める
 - [ ] sample data を読み込んだ `/` に光回線向けカードが表示され、`残債解消予定日 / あとN日 / 概算残債` と `該当回線を開く` から `/lines?openDraft=<id>&focusSection=fiber` で開ける
-- [ ] `/` に `利用実績種別の巡回` が表示され、`通 / 話 / S` のどれが不足しているか判別でき、`回線一覧で確認する` から `/lines?sort=latestActivityAsc&contractActiveOnly=true` で開ける
+- [ ] `/` に `利用実績種別の巡回` が表示され、`通 / 話 / S` のどれが不足しているか判別でき、`通不足で開く` / `話不足で開く` / `S不足で開く` から `/lines?sort=latestActivityAsc&contractActiveOnly=true&usagePriority=<kind>` で開ける
 - [ ] `収支サマリー` に受取済み特典のある回線一覧が表示され、`該当回線を開く` から `/lines?openDraft=<id>&focusSection=benefits` で特典位置まで寄れる
 - [ ] 高さの低い viewport でも、左側サイドバーのタブ群が縦スクロールできる
   - [ ] 検索・絞り込み・並び替えが動く
   - [ ] `?sort=latestActivityAsc` などの URL パラメータが反映される
   - [ ] 行の「活動を記録」ボタンが `/lines/history` の履歴フォームをセットする
   - [ ] 統合バックアップエクスポートで JSON がダウンロードされる
-  - [ ] `利用実績種別の巡回` の「回線一覧で確認する」が `/lines?sort=latestActivityAsc&contractActiveOnly=true` で開く
+  - [ ] `利用実績種別の巡回` の不足種別ボタンが `/lines?sort=latestActivityAsc&contractActiveOnly=true&usagePriority=<kind>` で開く
   - [ ] ダッシュボードの `該当回線を開く` で `/lines?openDraft=<id>&focusSection=...` が開き、対象回線の必要な詳細位置まで寄れる
 - 履歴・タイムライン（`/lines/history`）
   - [ ] 履歴 0 件時に `履歴フォームに戻る` / `確認用サンプルデータを読み込む` / `回線一覧で1件追加する` / `バックアップを復元する` が表示される

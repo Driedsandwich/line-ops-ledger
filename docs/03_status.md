@@ -4,7 +4,7 @@
 
 - Bootstrap Issue: #1（永続 open）
 - Context Hub Issue: #2（永続 open）
-- 現在地: `DashboardPage` を command center 型へ再構成する PR を進行中
+- 現在地: ダッシュボードから `/lines` の特典管理位置・光回線詳細位置・利用実績不足種別の位置を直接開ける導線まで `main` 反映済み
 - 運用前提: PR 必須 / approval 任意 / required check `check-and-build`
 - 直近の作業: `DashboardPage` / `LinesPage` の共有ロジック統一を `main` に反映し、その上で `/` のファーストビューを `Summary KPI / Hopping Health / Actionable Alerts` の 3 層へ組み替えている
 - 追加確認: Playwright MCP は `System32` 依存を解消し、ローカル `cwd` で起動できる状態に戻した
@@ -25,7 +25,7 @@
 - `BenefitRecord` ベースの概算 `収支サマリー`
 - `収支サマリー` から、受取済み特典がある回線一覧と `/lines?openDraft=<id>&focusSection=benefits` で該当回線を直接開く導線を表示
 - 光回線向けの `残債解消予定日 / あとN日 / 概算残債` ダッシュボード補助カードと、`/lines?openDraft=<id>&focusSection=fiber` で該当回線を直接開く導線
-- `利用中` / `解約予定` 回線について、`通 / 話 / S` の不足種別を巡回できるダッシュボード補助カードと `contractActiveOnly=true` 付きの `/lines` 導線
+- `利用中` / `解約予定` 回線について、`通 / 話 / S` の不足種別を巡回できるダッシュボード補助カードと `contractActiveOnly=true` / `usagePriority=<kind>` 付きの `/lines` 導線
 - 通知方針サマリー / 通知理由別件数 / 通知対象回線一覧
 - サイドバーの `設定` は見出しに整理し、`ストレージ` / `バックアップ` / `通知設定` / `活動種別` の配下リンクが重複しない状態にした
 
@@ -80,6 +80,6 @@
 
 ## 次の候補
 
-1. `DashboardPage` の command center 再構成 PR を閉じ、`/` の drilldown 回帰と sample data 表示を再確認する
-2. `HistoryPage` のタイムライン視認性を整理し、`通信 / 通話 / SMS` のクイック操作を上部または右ペインへ寄せる
-3. 統合カレンダーに先立ち、日付イベントを共通イベント列として扱うための整理案を詰める
+1. `HistoryPage` のタイムライン視認性を整理し、`通信 / 通話 / SMS` のクイック操作を上部または右ペインへ寄せる
+2. 統合カレンダーに先立ち、日付イベントを共通イベント列として扱うための整理案を詰める
+3. `openDraft` / `focusSection` 導線を他のダッシュボード補助カードへ横展開する

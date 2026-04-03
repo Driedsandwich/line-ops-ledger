@@ -196,6 +196,8 @@ type UsageSummary = {
   withinDays: number;
 };
 
+type UsagePriorityKind = 'communication' | 'call' | 'sms';
+
 type UsageAlertItem = {
   draft: LineDraft;
   usageSummary: UsageSummary;
@@ -512,6 +514,27 @@ function countMissingUsageKinds(summary: UsageSummary): number {
     missing += 1;
   }
   return missing;
+}
+
+function formatUsagePriorityLabel(priority: UsagePriorityKind): string {
+  switch (priority) {
+    case 'communication':
+      return '通';
+    case 'call':
+      return '話';
+    case 'sms':
+      return 'S';
+  }
+}
+
+function buildUsagePriorityLinesLink(priority: UsagePriorityKind): string {
+  const params = new URLSearchParams({
+    sort: 'latestActivityAsc',
+    contractActiveOnly: 'true',
+    usagePriority: priority,
+  });
+
+  return `/lines?${params.toString()}`;
 }
 
 function buildUsageAlertItems(drafts: LineDraft[], allHistoryEntries: LineHistoryEntry[]): UsageAlertItem[] {

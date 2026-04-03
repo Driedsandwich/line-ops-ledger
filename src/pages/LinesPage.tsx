@@ -95,6 +95,7 @@ type FilterState = {
   notificationTargetOnly: boolean;
   notificationReason: 'all' | NotificationReasonLabel;
   contractActiveOnly: boolean;
+  usagePriority: UsagePriorityFilter;
 };
 
 type UndoState = {
@@ -104,6 +105,9 @@ type UndoState = {
 
 type SortKey = 'nextReviewDate' | 'monthlyCostHigh' | 'monthlyCostLow' | 'createdAtDesc' | 'createdAtAsc' | 'latestActivityAsc';
 const SORT_KEYS: SortKey[] = ['nextReviewDate', 'monthlyCostHigh', 'monthlyCostLow', 'createdAtDesc', 'createdAtAsc', 'latestActivityAsc'];
+
+type UsagePriorityKind = 'communication' | 'call' | 'sms';
+type UsagePriorityFilter = 'all' | UsagePriorityKind;
 
 type DeadlineStatus = {
   label: string;
@@ -136,6 +140,17 @@ const LINES_COMPACT_VIEW_STORAGE_KEY = 'line-ops-ledger.lines.compact-view';
 const LINES_FORM_COLLAPSED_STORAGE_KEY = 'line-ops-ledger.lines.form-collapsed';
 const SAFE_EXIT_DAYS = 181;
 const USAGE_SUMMARY_DAYS = 180;
+
+function formatUsagePriorityLabel(priority: UsagePriorityKind): string {
+  switch (priority) {
+    case 'communication':
+      return '通不足';
+    case 'call':
+      return '話不足';
+    case 'sms':
+      return 'S不足';
+  }
+}
 
 function readBooleanPreference(storageKey: string, fallback: boolean): boolean {
   if (typeof window === 'undefined') {
@@ -186,6 +201,18 @@ function getContractActiveOnlyFromParam(value: string | null): boolean {
   return value === 'true';
 }
 
+function getUsagePriorityFromParam(value: string | null): UsagePriorityFilter {
+  if (value === 'communication' || value === 'call' || value === 'sms') {
+    return value;
+  }
+
+  return 'all';
+}
+
+function getUsagePriorityParam(value: UsagePriorityFilter): string | null {
+  return value === 'all' ? null : value;
+}
+
 const initialFormState: FormState = {
   lineName: '',
   carrier: 'NTTドコモ',
@@ -225,6 +252,7 @@ const initialFilterState: FilterState = {
   notificationTargetOnly: false,
   notificationReason: 'all',
   contractActiveOnly: false,
+  usagePriority: 'all',
 };
 
 const initialSortKey: SortKey = 'nextReviewDate';
@@ -562,6 +590,22 @@ function buildUsageSummary(entries: LineHistoryEntry[], withinDays: number): Usa
   };
 }
 
+function getUsagePriorityRank(draft: LineDraft, priority: UsagePriorityFilter, entries: LineHistoryEntry[]): number {
+  if (priority === 'all') {
+    return 0;
+  }
+
+  const usageSummary = buildUsageSummary(findRelatedHistoryEntriesForDraft(draft, entries), USAGE_SUMMARY_DAYS);
+  switch (priority) {
+    case 'communication':
+      return usageSummary.hasCommunication ? 1 : 0;
+    case 'call':
+      return usageSummary.hasCall ? 1 : 0;
+    case 'sms':
+      return usageSummary.hasSms ? 1 : 0;
+  }
+}
+
 function formatMonthlyCost(value: number | null): string {
   if (value == null) {
     return '未設定';
@@ -699,6 +743,7 @@ export function LinesPage(): JSX.Element {
   const notificationReasonFromQuery = getNotificationReasonLabelFromParam(searchParams.get('notificationReason'));
   const notificationTargetOnlyFromQuery = getNotificationTargetOnlyFromParam(searchParams.get('notificationTargetOnly'));
   const contractActiveOnlyFromQuery = getContractActiveOnlyFromParam(searchParams.get('contractActiveOnly'));
+  const usagePriorityFromQuery = getUsagePriorityFromParam(searchParams.get('usagePriority'));
   const today = useMemo(() => new Date(), []);
 
   function resetMessages(): void {
@@ -811,6 +856,24 @@ export function LinesPage(): JSX.Element {
       nextParams.set('contractActiveOnly', 'true');
     } else {
       nextParams.delete('contractActiveOnly');
+    }
+
+    setSearchParams(nextParams, { replace: true });
+  }
+
+  function setUsagePriorityFilter(priority: UsagePriorityFilter): void {
+    setFilters((current) => ({
+      ...current,
+      usagePriority: priority,
+    }));
+
+    const nextParams = new URLSearchParams(searchParams);
+    const nextPriorityParam = getUsagePriorityParam(priority);
+
+    if (nextPriorityParam) {
+      nextParams.set('usagePriority', nextPriorityParam);
+    } else {
+      nextParams.delete('usagePriority');
     }
 
     setSearchParams(nextParams, { replace: true });
@@ -1223,6 +1286,12 @@ export function LinesPage(): JSX.Element {
 
   const visibleDrafts = useMemo(() => {
     return [...filteredDrafts].sort((a, b) => {
+      const aPriorityRank = getUsagePriorityRank(a, filters.usagePriority, lineHistoryEntries);
+      const bPriorityRank = getUsagePriorityRank(b, filters.usagePriority, lineHistoryEntries);
+      if (aPriorityRank !== bPriorityRank) {
+        return aPriorityRank - bPriorityRank;
+      }
+
       switch (sortKey) {
         case 'monthlyCostHigh':
           return (b.monthlyCost ?? -1) - (a.monthlyCost ?? -1);
@@ -1262,7 +1331,7 @@ export function LinesPage(): JSX.Element {
         }
       }
     });
-  }, [filteredDrafts, lineHistoryEntries, sortKey]);
+  }, [filteredDrafts, filters.usagePriority, lineHistoryEntries, sortKey]);
 
   const visibleIds = useMemo(() => visibleDrafts.map((draft) => draft.id), [visibleDrafts]);
   const selectedVisibleCount = useMemo(() => visibleIds.filter((id) => selectedIds.includes(id)).length, [visibleIds, selectedIds]);
@@ -1334,8 +1403,9 @@ export function LinesPage(): JSX.Element {
       notificationReason: notificationReasonFromQuery,
       notificationTargetOnly: notificationTargetOnlyFromQuery,
       contractActiveOnly: contractActiveOnlyFromQuery,
+      usagePriority: usagePriorityFromQuery,
     }));
-  }, [contractActiveOnlyFromQuery, notificationReasonFromQuery, notificationTargetOnlyFromQuery]);
+  }, [contractActiveOnlyFromQuery, notificationReasonFromQuery, notificationTargetOnlyFromQuery, usagePriorityFromQuery]);
 
   useEffect(() => {
     setSelectedIds((current) => current.filter((id) => drafts.some((draft) => draft.id === id)));
@@ -1793,6 +1863,23 @@ export function LinesPage(): JSX.Element {
               <button type="button" className={`button ${filters.notificationTargetOnly ? 'button--primary' : ''}`} onClick={() => setNotificationTargetOnlyFilter(!filters.notificationTargetOnly)}>
                 {filters.notificationTargetOnly ? '通知対象のみ: ON' : '通知対象のみ'}
               </button>
+              {(['communication', 'call', 'sms'] as UsagePriorityKind[]).map((priority) => (
+                <button
+                  key={priority}
+                  type="button"
+                  className={`button ${filters.usagePriority === priority ? 'button--primary' : ''}`}
+                  onClick={() => setUsagePriorityFilter(priority)}
+                >
+                  {filters.usagePriority === priority ? `${formatUsagePriorityLabel(priority)}優先: ON` : `${formatUsagePriorityLabel(priority)}優先`}
+                </button>
+              ))}
+              <button
+                type="button"
+                className={`button ${filters.usagePriority === 'all' ? 'button--primary' : ''}`}
+                onClick={() => setUsagePriorityFilter('all')}
+              >
+                優先解除
+              </button>
               <button type="button" className="button" onClick={() => {
                 setFilters(initialFilterState);
                 setSearchParams(new URLSearchParams(), { replace: true });
@@ -1888,6 +1975,11 @@ export function LinesPage(): JSX.Element {
                 const usageSummary = buildUsageSummary(relatedHistoryEntries, USAGE_SUMMARY_DAYS);
                 const shouldShowUsageSummary = isCurrentContract(draft.status);
                 const hasNoUsageActivity = !usageSummary.hasCommunication && !usageSummary.hasCall && !usageSummary.hasSms;
+                const usagePriorityMatch = filters.usagePriority !== 'all' && (
+                  (filters.usagePriority === 'communication' && !usageSummary.hasCommunication)
+                  || (filters.usagePriority === 'call' && !usageSummary.hasCall)
+                  || (filters.usagePriority === 'sms' && !usageSummary.hasSms)
+                );
                 const pendingBenefitCount = draft.benefits.filter((benefit) => !benefit.receivedFlag).length;
                 const shouldShowFiberDetails = shouldShowFiberFields(
                   draft.lineType,
@@ -1908,9 +2000,17 @@ export function LinesPage(): JSX.Element {
                     draft.fiberConstructionFeeMonths,
                   )
                   : null;
+                const usagePriorityLabel = filters.usagePriority === 'all' ? null : formatUsagePriorityLabel(filters.usagePriority);
 
                 return (
-                  <li id={`draft-${draft.id}`} key={draft.id} className={isSelected ? 'list__item--selected' : ''}>
+                  <li
+                    id={`draft-${draft.id}`}
+                    key={draft.id}
+                    className={[
+                      isSelected ? 'list__item--selected' : '',
+                      usagePriorityMatch ? 'list__item--priority' : '',
+                    ].filter(Boolean).join(' ')}
+                  >
                     <div className="list__row">
                       <label className="checkbox-row">
                         <input type="checkbox" checked={isSelected} onChange={() => toggleSelected(draft.id)} />
@@ -1948,6 +2048,7 @@ export function LinesPage(): JSX.Element {
                           <span className={usageSummary.hasSms ? 'badge badge--ok' : 'badge'}>S</span>
                         </>
                       ) : null}
+                      {usagePriorityMatch && usagePriorityLabel ? <span className="badge badge--info">{usagePriorityLabel}優先</span> : null}
                       {shouldShowUsageSummary && hasNoUsageActivity ? <span className="badge badge--warn">利用実績なし</span> : null}
                       {latestActivityDate != null ? <span className="badge">最終活動: {formatDate(latestActivityDate)}</span> : null}
                     </div>

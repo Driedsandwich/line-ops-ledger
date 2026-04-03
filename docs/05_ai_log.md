@@ -158,6 +158,9 @@
 - Issue #191: ダッシュボードから `/lines` の特典管理位置と光回線詳細位置を直接開けるようにする
   - `LinesPage` に `focusSection` URL パラメータを追加し、`benefits` / `fiber` セクションまでスクロールできるようにする
   - `収支サマリー` と `光回線の残債解消予定` の導線を、それぞれ対応する詳細位置へ直接寄せる
+- Issue #193: 利用実績種別の不足を優先表示できるようにする
+  - `DashboardPage` の利用実績カードに `通不足で開く` / `話不足で開く` / `S不足で開く` を追加し、不足種別ごとに `/lines` へ遷移できるようにする
+  - `LinesPage` に `usagePriority` URL パラメータを追加し、対象種別の不足回線を優先表示して強調する
 
 ## 2026-04-03
 - Issue #195: 共有ロジックを統一し、サンプルデータを alert 対応にする
@@ -172,3 +175,6 @@
   - Playwright で `http://127.0.0.1:4173/` を確認し、狭い viewport での左サイドバー縦スクロール、`focusSection=fiber` の回帰、sample data 読み込み後の command center 表示を確認した
 - Playwright MCP の作業ディレクトリを `System32` から `.codex-home/tmp/playwright-mcp` に切り替え、実画面確認を再開できる状態に戻した
 - サイドバーの `設定` を見出し化し、`/settings/storage` の重複 key 警告を解消した
+- Issue #193: 利用実績種別の不足を優先表示できるようにする
+  - `DashboardPage` の利用実績カードに `通不足で開く` / `話不足で開く` / `S不足で開く` を追加し、不足種別ごとに `/lines` へ遷移できるようにする
+  - `LinesPage` に `usagePriority` URL パラメータを追加し、対象種別の不足回線を優先表示して強調する
