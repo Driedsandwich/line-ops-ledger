@@ -165,3 +165,10 @@
   - `sampleData` を import 時に調整し、特典期限 / MNP期限 / 今後のアクション予定の alert 分岐が踏める fixture を追加
   - `npm run check` / `npm run build` を通過済み
   - 履歴参照は `phoneNumber` 一致を優先しつつ、未一致時だけ `last4` に fallback する元の挙動を維持するよう修正した
+- Issue #197: ダッシュボードを command center 型へ再構成する
+  - `/` のファーストビューを `Summary KPI / Hopping Health / Actionable Alerts` の 3 層へ組み替えた
+  - 既存 `DashboardSummary` を再利用し、`安全離脱 / 期限警告 / 実績不足` の 3 リングを SVG で追加した
+  - `Critical / Warning / Watch` の accordion に、既存の期限系・特典系・光回線系・利用実績系・通知系 drilldown を再配置した
+  - Playwright で `http://127.0.0.1:4173/` を確認し、狭い viewport での左サイドバー縦スクロール、`focusSection=fiber` の回帰、sample data 読み込み後の command center 表示を確認した
+- Playwright MCP の作業ディレクトリを `System32` から `.codex-home/tmp/playwright-mcp` に切り替え、実画面確認を再開できる状態に戻した
+- サイドバーの `設定` を見出し化し、`/settings/storage` の重複 key 警告を解消した

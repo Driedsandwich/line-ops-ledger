@@ -4,15 +4,18 @@
 
 - Bootstrap Issue: #1（永続 open）
 - Context Hub Issue: #2（永続 open）
-- 現在地: ダッシュボードから `/lines` の特典管理位置と光回線詳細位置を直接開ける導線まで `main` 反映済み
+- 現在地: `DashboardPage` を command center 型へ再構成する PR を進行中
 - 運用前提: PR 必須 / approval 任意 / required check `check-and-build`
-- 直近の作業: `DashboardPage` / `LinesPage` の月数計算と履歴参照ロジックを共通化し、fixture を alert / drilldown 対応に寄せる準備を進行中
+- 直近の作業: `DashboardPage` / `LinesPage` の共有ロジック統一を `main` に反映し、その上で `/` のファーストビューを `Summary KPI / Hopping Health / Actionable Alerts` の 3 層へ組み替えている
+- 追加確認: Playwright MCP は `System32` 依存を解消し、ローカル `cwd` で起動できる状態に戻した
 
 ## 実装済み主要機能
 
 ### ダッシュボード (`/`)
 - データ 0 件時の初回ガイド（回線追加 / 確認用サンプルデータ投入 / 履歴確認 / バックアップ復元）
-- 危険案件サマリー / 近日期限集計（排他）/ 状態別件数 / 月額費用サマリー
+- `Summary KPI` で `Danger Alerts / Notifications / Monthly Cost / Net Balance` を横並び表示
+- `Hopping Health` で `安全離脱 / 期限警告 / 実績不足` の 3 リングを表示
+- `Actionable Alerts` を `Critical / Warning / Watch` のアコーディオンで整理
 - 契約終了が近い回線アラート（30日以内）
 - 今後のアクション予定（予定日が60日以内または超過の利用中 / 解約予定回線）
 - 番号・無料オプション期限アラート（MNP予約番号期限 / 無料オプション期限が3日以内または超過の利用中 / 解約予定回線）
@@ -24,6 +27,7 @@
 - 光回線向けの `残債解消予定日 / あとN日 / 概算残債` ダッシュボード補助カードと、`/lines?openDraft=<id>&focusSection=fiber` で該当回線を直接開く導線
 - `利用中` / `解約予定` 回線について、`通 / 話 / S` の不足種別を巡回できるダッシュボード補助カードと `contractActiveOnly=true` 付きの `/lines` 導線
 - 通知方針サマリー / 通知理由別件数 / 通知対象回線一覧
+- サイドバーの `設定` は見出しに整理し、`ストレージ` / `バックアップ` / `通知設定` / `活動種別` の配下リンクが重複しない状態にした
 
 ### 主台帳 (`/lines`)
 - CRUD・Undo / 絞り込み・並び替え・一括操作
@@ -76,6 +80,6 @@
 
 ## 次の候補
 
-1. 共有ロジック整理と fixture 強化の PR を閉じ、`DashboardPage` と `LinesPage` の同一入力で同じ結果になることを再確認する
-2. 利用実績種別カードから不足種別に応じた `/lines` フィルタへ辿りやすくする導線強化
-3. `focusSection` の新アンカーが具体化したときだけ最小追加する
+1. `DashboardPage` の command center 再構成 PR を閉じ、`/` の drilldown 回帰と sample data 表示を再確認する
+2. `HistoryPage` のタイムライン視認性を整理し、`通信 / 通話 / SMS` のクイック操作を上部または右ペインへ寄せる
+3. 統合カレンダーに先立ち、日付イベントを共通イベント列として扱うための整理案を詰める
