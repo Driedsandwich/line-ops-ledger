@@ -4,9 +4,9 @@
 
 - Bootstrap Issue: #1（永続 open）
 - Context Hub Issue: #2（永続 open）
-- 現在地: 履歴ページの視認性を command center 風に整理し、上部に要点サマリーとクイック操作帯を追加する PR を進行中
+- 現在地: 共通イベントフィードを導入し、ダッシュボードの command center 化を安定させる PR を進行中
 - 運用前提: PR 必須 / approval 任意 / required check `check-and-build`
-- 直近の作業: `HistoryPage` の上部に `履歴の要点` / `クイック操作` を追加し、タイムライン本体はそのまま維持する方向で整理している
+- 直近の作業: `src/lib/lineEvents.ts` を追加し、`/` の `Actionable Alerts` をイベントフィード由来のアコーディオンに整理している
 - 追加確認: Playwright MCP はローカル `cwd` で起動でき、`/lines/history` の実画面確認が可能
 
 ## 実装済み主要機能
@@ -16,6 +16,7 @@
 - `Summary KPI` で `Danger Alerts / Notifications / Monthly Cost / Net Balance` を横並び表示
 - `Hopping Health` で `安全離脱 / 期限警告 / 実績不足` の 3 リングを表示
 - `Actionable Alerts` を `Critical / Warning / Watch` のアコーディオンで整理
+- `Actionable Alerts` は共通イベントフィード由来で、`安全離脱 / 期限警告 / 実績不足` の3分類を維持したまま並べ替えている
 - 契約終了が近い回線アラート（30日以内）
 - 今後のアクション予定（予定日が60日以内または超過の利用中 / 解約予定回線）
 - 番号・無料オプション期限アラート（MNP予約番号期限 / 無料オプション期限が3日以内または超過の利用中 / 解約予定回線）
@@ -26,6 +27,7 @@
 - `収支サマリー` から、受取済み特典がある回線一覧と `/lines?openDraft=<id>&focusSection=benefits` で該当回線を直接開く導線を表示
 - 光回線向けの `残債解消予定日 / あとN日 / 概算残債` ダッシュボード補助カードと、`/lines?openDraft=<id>&focusSection=fiber` で該当回線を直接開く導線
 - `利用中` / `解約予定` 回線について、`通 / 話 / S` の不足種別を巡回できるダッシュボード補助カードと `contractActiveOnly=true` / `usagePriority=<kind>` 付きの `/lines` 導線
+- 共通イベントフィードを read-only 集約として `src/lib/lineEvents.ts` に分離し、`plannedExitDate` / `mnpReservationExpiry` / `freeOptionDeadline` / `benefits.deadlineDate` / `nextReviewDate` / `contractEndDate` / 光回線残債 / 長期未活動 を横断して扱えるようにした
 - 通知方針サマリー / 通知理由別件数 / 通知対象回線一覧
 - サイドバーの `設定` は見出しに整理し、`ストレージ` / `バックアップ` / `通知設定` / `活動種別` の配下リンクが重複しない状態にした
 
@@ -82,5 +84,5 @@
 ## 次の候補
 
 1. `HistoryPage` のタイムライン視認性改善を固め、`quickActivity` / 下書き / 候補管理の回帰がないことを再確認する
-2. 統合カレンダーに先立ち、各日付を共通イベント列として扱うための整理案を詰める
-3. `Actionable Alerts` から `HistoryPage` への drilldown をさらに絞り込む必要があるかを見直す
+2. `共通イベントフィード` を起点に、`/` の要アクション一覧と `HistoryPage` の入力導線の整合をさらに詰める
+3. 統合カレンダーに先立ち、各日付を共通イベント列として扱うための整理案を詰める

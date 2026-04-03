@@ -19,7 +19,7 @@
   - [ ] `確認用サンプルデータを読み込む` で、`Summary KPI / Hopping Health / Actionable Alerts` の 3 層に件数と回線が即時反映される
   - [ ] `Summary KPI` に `Danger Alerts / Notifications / Monthly Cost / Net Balance` が表示される
   - [ ] `Hopping Health` に `安全離脱 / 期限警告 / 実績不足` の 3 リングが表示される
-  - [ ] `Actionable Alerts` が `Critical / Warning / Watch` のアコーディオンで表示される
+  - [ ] `Actionable Alerts` が `Critical / Warning / Watch` のアコーディオンで表示され、共通イベントフィード由来の行として並ぶ
   - [ ] `今後のアクション予定` に、予定日が60日以内または超過の利用中 / 解約予定回線が表示される
   - [ ] `番号・無料オプション期限` に、MNP予約番号期限と無料オプション期限が3日以内または超過の利用中 / 解約予定回線が表示される
   - [ ] `特典期限アラート` に、未受取かつ受取期限日が30日以内または超過の特典が表示される
@@ -39,6 +39,7 @@
   - [ ] 旧 `schemaVersion: 7` の主台帳データを読み込んでも、光回線固有フィールドがデフォルト値で補完されて表示が壊れない
   - [ ] 契約者名義が複数あるデータでは `/` に `名義別サマリー` が表示され、名義が1種類だけのデータでは表示されない
 - [ ] `/` に `収支サマリー` が表示され、`累計支払コスト / 受取済み特典 / 実質収支` が概算として確認できる
+- [ ] `共通イベントフィード` の行に、`safeExit / plannedAction / deadline / benefitDeadline / fiberDebt / usageShortage / inactiveLine` の複数系統が同時に含まれても崩れない
 - [ ] `確認用サンプルデータを読み込む` で、`特典期限` / `MNP期限` / `今後のアクション予定` / `利用実績不足` の分岐が 1 回で踏める
 - [ ] sample data を読み込んだ `/` に光回線向けカードが表示され、`残債解消予定日 / あとN日 / 概算残債` と `該当回線を開く` から `/lines?openDraft=<id>&focusSection=fiber` で開ける
 - [ ] `/` に `利用実績種別の巡回` が表示され、`通 / 話 / S` のどれが不足しているか判別でき、`通不足で開く` / `話不足で開く` / `S不足で開く` から `/lines?sort=latestActivityAsc&contractActiveOnly=true&usagePriority=<kind>` で開ける

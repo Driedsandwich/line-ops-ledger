@@ -184,3 +184,8 @@
   - `/lines/history` の上部に `履歴の要点` と `クイック操作` 帯を追加し、フォーム / タイムライン / 入出力をすばやく切り替えられるようにした
   - タイムライン本体は維持しつつ、履歴件数・表示中件数・可視ログ件数を先頭で確認できるようにした
   - `check` / `build` と Playwright で `/lines/history` の表示を確認中
+- Issue #195 継続: 共通イベントフィード準備と command center の安定化
+  - `src/lib/lineEvents.ts` を追加し、`plannedExitDate` / `mnpReservationExpiry` / `freeOptionDeadline` / `benefit.deadlineDate` / `nextReviewDate` / `contractEndDate` / 光回線残債 / 長期未活動 / 利用実績不足 を read-only に集約するイベントフィードを導入した
+  - `DashboardPage` の `Actionable Alerts` をイベントフィード由来の `Critical / Warning / Watch` アコーディオンへ寄せ、既存 drilldown を維持した
+  - `DashboardPage` と `LinesPage` に散っていた safe-exit / fiber-debt の計算を `src/lib/lineAnalytics.ts` に寄せ、重複ロジックを削減した
+  - `check` / `build` を通過し、続いて docs を現状へ同期した

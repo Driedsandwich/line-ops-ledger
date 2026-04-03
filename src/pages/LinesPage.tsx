@@ -28,10 +28,12 @@ import {
   type LineHistoryEntry,
 } from '../lib/lineHistory';
 import {
-  calculateElapsedMonths,
+  calculateFiberDebtClearDate,
+  calculateFiberRemainingDebt,
   diffInDays,
   findRelatedHistoryEntriesForDraft,
   getLatestActivityDateFromEntries,
+  calculateSafeExitDate,
   parseReviewDate,
   startOfDay,
 } from '../lib/lineAnalytics';
@@ -138,7 +140,6 @@ const CARRIER_OPTIONS = ['NTTドコモ', 'ahamo', 'au', 'UQ mobile', 'ソフト�
 const PAYMENT_METHOD_OPTIONS = ['クレジットカード', '口座振替', '請求書', '家族合算', 'その他'] as const;
 const LINES_COMPACT_VIEW_STORAGE_KEY = 'line-ops-ledger.lines.compact-view';
 const LINES_FORM_COLLAPSED_STORAGE_KEY = 'line-ops-ledger.lines.form-collapsed';
-const SAFE_EXIT_DAYS = 181;
 const USAGE_SUMMARY_DAYS = 180;
 
 function formatUsagePriorityLabel(priority: UsagePriorityKind): string {
@@ -318,17 +319,6 @@ function calculateElapsedDays(value: string): number | null {
   return Math.max(diffInDays(date, new Date()), 0);
 }
 
-function calculateSafeExitDate(value: string): Date | null {
-  const date = parseDate(value);
-  if (!date) {
-    return null;
-  }
-
-  const result = new Date(date);
-  result.setDate(result.getDate() + SAFE_EXIT_DAYS);
-  return result;
-}
-
 function formatSafeExitRecommendation(contractStartDate: string): string {
   const safeExitDate = calculateSafeExitDate(contractStartDate);
   if (!safeExitDate) {
@@ -401,36 +391,6 @@ function shouldShowFiberFields(
     lineType === '光回線'
     || Boolean(fiberTransferType || fiberIspName || fiberConstructionFee || fiberMonthlyDiscount || fiberConstructionFeeMonths)
   );
-}
-
-function calculateFiberDebtClearDate(contractStartDate: string, months: number | null): Date | null {
-  const startDate = parseDate(contractStartDate);
-  if (!startDate || months == null) {
-    return null;
-  }
-
-  const result = new Date(startDate);
-  result.setMonth(result.getMonth() + months);
-  return result;
-}
-
-function calculateFiberRemainingDebt(
-  contractStartDate: string,
-  constructionFee: number | null,
-  monthlyDiscount: number | null,
-  constructionFeeMonths: number | null,
-): number | null {
-  if (constructionFee == null || monthlyDiscount == null || constructionFeeMonths == null) {
-    return null;
-  }
-
-  const elapsedMonths = calculateElapsedMonths(contractStartDate);
-  if (elapsedMonths == null) {
-    return null;
-  }
-
-  const paidMonths = Math.min(elapsedMonths, constructionFeeMonths);
-  return Math.max(constructionFee - paidMonths * monthlyDiscount, 0);
 }
 
 function formatFiberDebtClearSchedule(contractStartDate: string, months: number | null): string {
