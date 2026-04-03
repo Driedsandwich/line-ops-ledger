@@ -1,11 +1,12 @@
 # Status
 
-## 現在地（2026-03-31）
+## 現在地（2026-04-03）
 
 - Bootstrap Issue: #1（永続 open）
 - Context Hub Issue: #2（永続 open）
 - 現在地: ダッシュボードから `/lines` の特典管理位置と光回線詳細位置を直接開ける導線まで `main` 反映済み
 - 運用前提: PR 必須 / approval 任意 / required check `check-and-build`
+- 直近の作業: `DashboardPage` / `LinesPage` の月数計算と履歴参照ロジックを共通化し、fixture を alert / drilldown 対応に寄せる準備を進行中
 
 ## 実装済み主要機能
 
@@ -75,6 +76,6 @@
 
 ## 次の候補
 
-1. 利用実績種別カードから不足種別に応じた `/lines` フィルタへ辿りやすくする導線強化
-2. `openDraft` / `focusSection` 導線を他のダッシュボード補助カードへ横展開する
-3. 特典管理・光回線詳細の直リンクを `/lines` 側のアンカー UI として見分けやすくする
+1. 共有ロジック整理と fixture 強化の PR を閉じ、`DashboardPage` と `LinesPage` の同一入力で同じ結果になることを再確認する
+2. 利用実績種別カードから不足種別に応じた `/lines` フィルタへ辿りやすくする導線強化
+3. `focusSection` の新アンカーが具体化したときだけ最小追加する
