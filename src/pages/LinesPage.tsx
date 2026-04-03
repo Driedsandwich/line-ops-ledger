@@ -595,7 +595,7 @@ function getUsagePriorityRank(draft: LineDraft, priority: UsagePriorityFilter, e
     return 0;
   }
 
-  const usageSummary = buildUsageSummary(findRelatedHistoryEntries(draft, entries), USAGE_SUMMARY_DAYS);
+  const usageSummary = buildUsageSummary(findRelatedHistoryEntriesForDraft(draft, entries), USAGE_SUMMARY_DAYS);
   switch (priority) {
     case 'communication':
       return usageSummary.hasCommunication ? 1 : 0;
