@@ -1,7 +1,7 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { lineDraftStore, normalizePhoneNumber, type LineDraft } from '../lib/lineDrafts';
-import { buildLineEventFeed, type LineEvent } from '../lib/lineEvents';
+import { buildLineEventFeed, groupLineEventsByMonth, type LineEvent, type LineEventMonthGroup } from '../lib/lineEvents';
 import {
   createLineHistoryEntry,
   lineHistoryStore,
@@ -607,6 +607,16 @@ function formatDate(value: string): string {
   return new Intl.DateTimeFormat('ja-JP', { year: 'numeric', month: '2-digit', day: '2-digit' }).format(date);
 }
 
+function formatDaysUntilLabel(daysUntil: number): string {
+  if (daysUntil < 0) {
+    return `${Math.abs(daysUntil)}日超過`;
+  }
+  if (daysUntil === 0) {
+    return '今日';
+  }
+  return `あと${daysUntil}日`;
+}
+
 function calculateContractDurationDays(contractStartDate: string, contractEndDate: string): number | null {
   const start = parseDate(contractStartDate);
   const end = parseDate(contractEndDate);
@@ -796,6 +806,10 @@ export function HistoryPage(): JSX.Element {
 
     return lineEvents.filter((event) => event.draftId === quickActivityDraft.id).slice(0, 3);
   }, [lineEvents, quickActivityDraft]);
+  const upcomingEventGroups = useMemo<LineEventMonthGroup[]>(
+    () => groupLineEventsByMonth(lineEvents, today, { lookaheadDays: 180, overdueDays: 30 }),
+    [lineEvents, today],
+  );
   const activityDateQuickPicks = useMemo(
     () => getActivityDateQuickPicks(todayDateString, lineHistoryForm.contractStartDate, matchingHistorySuggestion?.latestActivityDate ?? ''),
     [lineHistoryForm.contractStartDate, matchingHistorySuggestion?.latestActivityDate, todayDateString],
@@ -1495,6 +1509,67 @@ export function HistoryPage(): JSX.Element {
             </div>
           ) : null}
           <p className="muted" style={{ marginBottom: 0 }}>表示期間や対象の切り替えはタイムライン側で行います。</p>
+        </article>
+      </section>
+
+      <section className="card-grid card-grid--single">
+        <article className="card">
+          <div className="card__header">
+            <h3>今後のイベント</h3>
+            <span className="badge badge--info">
+              {upcomingEventGroups.reduce((total, group) => total + group.events.length, 0)}件
+            </span>
+          </div>
+          <p className="muted">
+            共通イベントフィードを月単位で並べた read-only 一覧です。統合カレンダーの前段として、期限と drilldown の粒度を確認できます。
+          </p>
+          {upcomingEventGroups.length === 0 ? (
+            <p className="muted">直近 180 日で確認できるイベントはありません。</p>
+          ) : (
+            <div className="stack" style={{ gap: '12px' }}>
+              {upcomingEventGroups.map((group) => (
+                <section key={group.monthKey} className="detail-panel history-event-group">
+                  <div className="card__header">
+                    <h4 style={{ margin: 0 }}>{group.monthLabel}</h4>
+                    <span className="badge">{group.events.length}件</span>
+                  </div>
+                  <ul className="dashboard-event-list">
+                    {group.events.map((event) => {
+                      const severityTone = event.severity === 'critical' ? 'danger' : event.severity === 'warning' ? 'warn' : 'info';
+                      const dueDate = event.dueDateIso ? new Date(`${event.dueDateIso}T00:00:00`) : null;
+                      const daysUntil = dueDate ? diffInDays(startOfDay(today), startOfDay(dueDate)) : null;
+
+                      return (
+                        <li key={event.id} className={`dashboard-event-row dashboard-event-row--${event.severity}`}>
+                          <div className="dashboard-event-row__main">
+                            <div className="dashboard-event-row__title-row">
+                              <strong>{event.title}</strong>
+                              <span className={`badge badge--${severityTone}`}>
+                                {daysUntil == null ? '日付未設定' : formatDaysUntilLabel(daysUntil)}
+                              </span>
+                            </div>
+                            <span className="dashboard-event-row__summary">{event.summary}</span>
+                            <p className="dashboard-event-row__detail">{event.detail}</p>
+                            <div className="badge-row">
+                              {event.dueDateLabel ? <span className="badge badge--info">{event.dueDateLabel}</span> : null}
+                              {event.meta.map((metaItem) => (
+                                <span key={`${event.id}-${metaItem}`} className="badge">{metaItem}</span>
+                              ))}
+                            </div>
+                          </div>
+                          <div className="button-row button-row--tight">
+                            <Link className="button button--sm" to={event.to}>
+                              {event.ctaLabel}
+                            </Link>
+                          </div>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </section>
+              ))}
+            </div>
+          )}
         </article>
       </section>
 

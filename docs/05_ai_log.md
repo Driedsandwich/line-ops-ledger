@@ -197,3 +197,7 @@
   - `DashboardPage` の `Actionable Alerts` に `履歴で記録` の導線を追加し、`quickActivity` と `historyIntent` を付けて履歴ページへ飛べるようにした
   - `HistoryPage` に `開いている文脈` カードを追加し、Dashboard から来た意図と関連イベントを上部で確認できるようにした
   - 共通イベントフィードを read-only のまま履歴画面へ横展開し、記録画面としての意味を少し強めた
+- Issue #207: 共通イベントフィードを月別の read-only 一覧として履歴画面に出す
+  - `lineEvents.ts` に実日付と月別グルーピング helper を追加し、calendar 前段として扱える read-only な一覧を組み立てた
+  - `HistoryPage` に `今後のイベント` を追加し、共通イベントフィードを月単位で俯瞰できるようにした
+  - `check` / `build` を通し、`http://127.0.0.1:4173/` と `/lines/history` の応答を確認した
