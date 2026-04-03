@@ -33,6 +33,7 @@ export type LineEvent = {
   meta: string[];
   draftId: string;
   draftName: string;
+  phoneNumber: string;
   carrier: string;
   status: LineDraft['status'];
   dueDateLabel: string | null;
@@ -147,6 +148,15 @@ function buildUsagePriorityLink(kind: UsagePriorityKind): string {
   return `/lines?${params.toString()}`;
 }
 
+export function buildHistoryLink(phoneNumber: string, kind: LineEvent['kind']): string {
+  const params = new URLSearchParams({
+    quickActivity: phoneNumber,
+    historyIntent: kind,
+  });
+
+  return `/lines/history?${params.toString()}`;
+}
+
 function createEventTitle(kind: LineEvent['kind'], label: string): string {
   switch (kind) {
     case 'safeExit':
@@ -210,6 +220,7 @@ export function buildLineEventFeed(
             meta: [draft.carrier, draft.status],
             draftId: draft.id,
             draftName: draft.lineName,
+            phoneNumber: draft.phoneNumber,
             carrier: draft.carrier,
             status: draft.status,
             dueDateLabel: formatDateLabel(safeExitDate),
@@ -236,6 +247,7 @@ export function buildLineEventFeed(
             meta: [draft.carrier, draft.status],
             draftId: draft.id,
             draftName: draft.lineName,
+            phoneNumber: draft.phoneNumber,
             carrier: draft.carrier,
             status: draft.status,
             dueDateLabel: formatDateLabel(nextReviewDate),
@@ -262,6 +274,7 @@ export function buildLineEventFeed(
             meta: [draft.carrier, draft.status],
             draftId: draft.id,
             draftName: draft.lineName,
+            phoneNumber: draft.phoneNumber,
             carrier: draft.carrier,
             status: draft.status,
             dueDateLabel: formatDateLabel(endDate),
@@ -288,6 +301,7 @@ export function buildLineEventFeed(
             meta: [draft.plannedNextCarrier || '次キャリア未設定', draft.status],
             draftId: draft.id,
             draftName: draft.lineName,
+            phoneNumber: draft.phoneNumber,
             carrier: draft.carrier,
             status: draft.status,
             dueDateLabel: formatDateLabel(plannedDate),
@@ -314,6 +328,7 @@ export function buildLineEventFeed(
             meta: [draft.carrier, draft.status],
             draftId: draft.id,
             draftName: draft.lineName,
+            phoneNumber: draft.phoneNumber,
             carrier: draft.carrier,
             status: draft.status,
             dueDateLabel: formatDateLabel(expiryDate),
@@ -340,6 +355,7 @@ export function buildLineEventFeed(
             meta: [draft.carrier, draft.status],
             draftId: draft.id,
             draftName: draft.lineName,
+            phoneNumber: draft.phoneNumber,
             carrier: draft.carrier,
             status: draft.status,
             dueDateLabel: formatDateLabel(freeOptionDate),
@@ -375,6 +391,7 @@ export function buildLineEventFeed(
         meta: [formatDateLabel(deadlineDate), formatRelativeDayLabel(daysUntil)],
         draftId: draft.id,
         draftName: draft.lineName,
+        phoneNumber: draft.phoneNumber,
         carrier: draft.carrier,
         status: draft.status,
         dueDateLabel: formatDateLabel(deadlineDate),
@@ -406,6 +423,7 @@ export function buildLineEventFeed(
             meta: [draft.fiberIspName || draft.carrier, draft.status],
             draftId: draft.id,
             draftName: draft.lineName,
+            phoneNumber: draft.phoneNumber,
             carrier: draft.carrier,
             status: draft.status,
             dueDateLabel: formatDateLabel(debtClearDate),
@@ -448,6 +466,7 @@ export function buildLineEventFeed(
           meta: [draft.carrier, usageSummary.lastActivityDate ? `最終活動 ${formatDateLabel(parseReviewDate(usageSummary.lastActivityDate) ?? today)}` : '記録なし'],
           draftId: draft.id,
           draftName: draft.lineName,
+          phoneNumber: draft.phoneNumber,
           carrier: draft.carrier,
           status: draft.status,
           dueDateLabel: usageSummary.lastActivityDate ? formatDateLabel(parseReviewDate(usageSummary.lastActivityDate) ?? today) : null,
@@ -469,11 +488,12 @@ export function buildLineEventFeed(
           meta: [draft.carrier, draft.status],
           draftId: draft.id,
           draftName: draft.lineName,
+          phoneNumber: draft.phoneNumber,
           carrier: draft.carrier,
           status: draft.status,
           dueDateLabel: null,
           to: draft.phoneNumber
-            ? `/lines/history?quickActivity=${encodeURIComponent(draft.phoneNumber)}`
+            ? buildHistoryLink(draft.phoneNumber, 'inactiveLine')
             : '/lines?sort=latestActivityAsc',
           ctaLabel: draft.phoneNumber ? '活動を記録' : '履歴を確認',
           sortKey: 9999,
@@ -493,11 +513,12 @@ export function buildLineEventFeed(
               meta: [draft.carrier, draft.status],
               draftId: draft.id,
               draftName: draft.lineName,
+              phoneNumber: draft.phoneNumber,
               carrier: draft.carrier,
               status: draft.status,
               dueDateLabel: formatDateLabel(latestActivityDateObj),
               to: draft.phoneNumber
-                ? `/lines/history?quickActivity=${encodeURIComponent(draft.phoneNumber)}`
+                ? buildHistoryLink(draft.phoneNumber, 'inactiveLine')
                 : '/lines?sort=latestActivityAsc',
               ctaLabel: draft.phoneNumber ? '活動を記録' : '履歴を確認',
               sortKey: daysSinceActivity,

@@ -6,7 +6,7 @@
 - Context Hub Issue: #2（永続 open）
 - 現在地: 共通イベントフィードを main に反映し、ダッシュボードの command center 化を安定化した
 - 運用前提: PR 必須 / approval 任意 / required check `check-and-build`
-- 直近の作業: `src/lib/lineEvents.ts` を追加し、`/` の `Actionable Alerts` をイベントフィード由来のアコーディオンに整理した
+- 直近の作業: `Actionable Alerts` から `HistoryPage` へ文脈付きで飛べるようにし、`HistoryPage` でも開いている文脈を表示する PR を進行中
 - 追加確認: Playwright MCP はローカル `cwd` で起動でき、`/lines/history` の実画面確認が可能
 
 ## 実装済み主要機能
@@ -17,6 +17,7 @@
 - `Hopping Health` で `安全離脱 / 期限警告 / 実績不足` の 3 リングを表示
 - `Actionable Alerts` を `Critical / Warning / Watch` のアコーディオンで整理
 - `Actionable Alerts` は共通イベントフィード由来で、`安全離脱 / 期限警告 / 実績不足` の3分類を維持したまま並べ替えている
+- `Actionable Alerts` から `履歴で記録` で `HistoryPage` へ飛び、`quickActivity` と `historyIntent` を受けた文脈カードを表示できる
 - 契約終了が近い回線アラート（30日以内）
 - 今後のアクション予定（予定日が60日以内または超過の利用中 / 解約予定回線）
 - 番号・無料オプション期限アラート（MNP予約番号期限 / 無料オプション期限が3日以内または超過の利用中 / 解約予定回線）
@@ -50,6 +51,7 @@
 - `?quickActivity=<phone>` で履歴フォームを自動セット
 - 電話番号に一致する主台帳候補 / 直近履歴候補のワンタップ反映
 - 上部の `履歴の要点` / `クイック操作` 帯で、フォーム / タイムライン / 入出力をすばやく切り替えられる
+- Dashboard からの `historyIntent` / `quickActivity` を受け取ると、開いている文脈を上部で確認できる
 - 活動種別のクイック選択ボタン（頻出種別 + 定義済み種別）
 - 活動種別に応じた活動メモ候補（種別別の頻出文言 + fallback 候補）
 - 活動メモのクイック候補（固定候補 + この種別でよく使う文言 + 追加した候補 + 定型候補 + 最近使った文言 + 非表示候補）
