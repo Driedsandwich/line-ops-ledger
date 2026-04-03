@@ -161,6 +161,10 @@ textarea {
   grid-template-columns: minmax(320px, 1.1fr) minmax(280px, 0.9fr);
 }
 
+.card-grid--history-hero {
+  grid-template-columns: minmax(280px, 1.2fr) minmax(260px, 0.8fr);
+}
+
 .card {
   background: rgba(15, 23, 42, 0.88);
   border: 1px solid rgba(148, 163, 184, 0.16);
@@ -193,6 +197,34 @@ textarea {
   font-size: 2.5rem;
   font-weight: 700;
   margin: 0 0 8px;
+}
+
+.history-kpi-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.history-kpi {
+  padding: 14px;
+  border-radius: 16px;
+  background: rgba(2, 6, 23, 0.38);
+  border: 1px solid rgba(148, 163, 184, 0.12);
+  display: grid;
+  gap: 6px;
+}
+
+.history-kpi__label {
+  font-size: 0.78rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #94a3b8;
+}
+
+.history-kpi__value {
+  font-size: 1.05rem;
+  color: #e2e8f0;
+  line-height: 1.35;
 }
 
 .badge {
