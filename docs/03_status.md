@@ -4,9 +4,9 @@
 
 - Bootstrap Issue: #1（永続 open）
 - Context Hub Issue: #2（永続 open）
-- 現在地: 共通イベントフィードを導入し、ダッシュボードの command center 化を安定させる PR を進行中
+- 現在地: 共通イベントフィードを main に反映し、ダッシュボードの command center 化を安定化した
 - 運用前提: PR 必須 / approval 任意 / required check `check-and-build`
-- 直近の作業: `src/lib/lineEvents.ts` を追加し、`/` の `Actionable Alerts` をイベントフィード由来のアコーディオンに整理している
+- 直近の作業: `src/lib/lineEvents.ts` を追加し、`/` の `Actionable Alerts` をイベントフィード由来のアコーディオンに整理した
 - 追加確認: Playwright MCP はローカル `cwd` で起動でき、`/lines/history` の実画面確認が可能
 
 ## 実装済み主要機能

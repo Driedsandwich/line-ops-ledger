@@ -189,3 +189,7 @@
   - `DashboardPage` の `Actionable Alerts` をイベントフィード由来の `Critical / Warning / Watch` アコーディオンへ寄せ、既存 drilldown を維持した
   - `DashboardPage` と `LinesPage` に散っていた safe-exit / fiber-debt の計算を `src/lib/lineAnalytics.ts` に寄せ、重複ロジックを削減した
   - `check` / `build` を通過し、続いて docs を現状へ同期した
+- Issue #201 / PR #202: 共通イベントフィードを main に反映
+  - PR #202 を squash merge し、`main` に共通イベントフィードと command center 安定化を反映した
+  - `agent-browser` を npm 経由で導入し、Chrome をインストールしたうえで `/` と `/lines/history` の実画面を確認した
+  - `/` は `Summary KPI / Hopping Health / Actionable Alerts` の 3 層、`/lines/history` は `履歴の要点 / クイック操作 / タイムライン` を維持していることを確認した
