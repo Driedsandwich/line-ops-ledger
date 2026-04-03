@@ -28,6 +28,14 @@ import {
   type LineHistoryEntry,
 } from '../lib/lineHistory';
 import {
+  calculateElapsedMonths,
+  diffInDays,
+  findRelatedHistoryEntriesForDraft,
+  getLatestActivityDateFromEntries,
+  parseReviewDate,
+  startOfDay,
+} from '../lib/lineAnalytics';
+import {
   loadNotificationSettings,
   type NotificationReminderWindow,
 } from '../lib/notificationSettings';
@@ -266,27 +274,6 @@ function isEditableElement(target: EventTarget | null): boolean {
   return ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName) || target.isContentEditable;
 }
 
-function startOfDay(input: Date): Date {
-  const date = new Date(input);
-  date.setHours(0, 0, 0, 0);
-  return date;
-}
-
-function diffInDays(from: Date, to: Date): number {
-  const ms = startOfDay(to).getTime() - startOfDay(from).getTime();
-  return Math.round(ms / 86400000);
-}
-
-function parseReviewDate(value: string): Date | null {
-  const normalized = normalizeReviewDate(value);
-  if (!normalized) {
-    return null;
-  }
-
-  const parsed = new Date(`${normalized}T00:00:00`);
-  return Number.isNaN(parsed.getTime()) ? null : parsed;
-}
-
 function parseDate(value: string): Date | null {
   if (!value) {
     return null;
@@ -399,26 +386,6 @@ function calculateFiberDebtClearDate(contractStartDate: string, months: number |
   return result;
 }
 
-function calculateElapsedMonths(contractStartDate: string): number | null {
-  const startDate = parseDate(contractStartDate);
-  if (!startDate) {
-    return null;
-  }
-
-  const today = startOfDay(new Date());
-  const start = startOfDay(startDate);
-  if (today < start) {
-    return 0;
-  }
-
-  let months = (today.getFullYear() - start.getFullYear()) * 12 + (today.getMonth() - start.getMonth());
-  if (today.getDate() < start.getDate()) {
-    months -= 1;
-  }
-
-  return Math.max(months, 0);
-}
-
 function calculateFiberRemainingDebt(
   contractStartDate: string,
   constructionFee: number | null,
@@ -518,17 +485,15 @@ function formatCreatedAt(value: string): string {
 }
 
 function formatReviewDate(value: string): string {
-  const normalized = normalizeReviewDate(value);
+  const normalized = parseReviewDate(value);
   if (!normalized) {
     return '未設定';
   }
-
-  const date = new Date(`${normalized}T00:00:00`);
   return new Intl.DateTimeFormat('ja-JP', {
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',
-  }).format(date);
+  }).format(normalized);
 }
 
 function formatDate(value: string): string {
@@ -555,17 +520,6 @@ function getLatestActivityDate(activityLogs: LineHistoryActivityLog[]): string |
     log.activityDate > latest ? log.activityDate : latest,
     dated[0].activityDate,
   );
-}
-
-function getLatestActivityDateFromHistoryEntries(entries: LineHistoryEntry[]): string | null {
-  let latest: string | null = null;
-  for (const entry of entries) {
-    const date = getLatestActivityDate(entry.activityLogs);
-    if (date != null && (latest == null || date > latest)) {
-      latest = date;
-    }
-  }
-  return latest;
 }
 
 function buildUsageSummary(entries: LineHistoryEntry[], withinDays: number): UsageSummary {
@@ -657,18 +611,6 @@ function getMaskedDraftPhoneNumber(draft: LineDraft): string {
     return `***-****-${draft.last4}`;
   }
   return '未設定';
-}
-
-function findRelatedHistoryEntries(draft: LineDraft, entries: LineHistoryEntry[]): LineHistoryEntry[] {
-  if (draft.phoneNumber) {
-    return entries.filter((entry) => normalizePhoneNumber(entry.phoneNumber) === draft.phoneNumber);
-  }
-
-  if (!draft.last4) {
-    return [];
-  }
-
-  return entries.filter((entry) => getPhoneLast4(entry.phoneNumber) === draft.last4);
 }
 
 function toFormState(draft: LineDraft): FormState {
@@ -1291,8 +1233,8 @@ export function LinesPage(): JSX.Element {
         case 'createdAtAsc':
           return a.createdAt.localeCompare(b.createdAt);
         case 'latestActivityAsc': {
-          const aDate = getLatestActivityDateFromHistoryEntries(findRelatedHistoryEntries(a, lineHistoryEntries));
-          const bDate = getLatestActivityDateFromHistoryEntries(findRelatedHistoryEntries(b, lineHistoryEntries));
+          const aDate = getLatestActivityDateFromEntries(findRelatedHistoryEntriesForDraft(a, lineHistoryEntries));
+          const bDate = getLatestActivityDateFromEntries(findRelatedHistoryEntriesForDraft(b, lineHistoryEntries));
           if (!aDate && !bDate) {
             return b.createdAt.localeCompare(a.createdAt);
           }
@@ -1941,8 +1883,8 @@ export function LinesPage(): JSX.Element {
                 const safeExitRecommendation = isCurrentContract(draft.status)
                   ? formatSafeExitRecommendation(draft.contractStartDate)
                   : null;
-                const relatedHistoryEntries = findRelatedHistoryEntries(draft, lineHistoryEntries);
-                const latestActivityDate = getLatestActivityDateFromHistoryEntries(relatedHistoryEntries);
+                const relatedHistoryEntries = findRelatedHistoryEntriesForDraft(draft, lineHistoryEntries);
+                const latestActivityDate = getLatestActivityDateFromEntries(relatedHistoryEntries);
                 const usageSummary = buildUsageSummary(relatedHistoryEntries, USAGE_SUMMARY_DAYS);
                 const shouldShowUsageSummary = isCurrentContract(draft.status);
                 const hasNoUsageActivity = !usageSummary.hasCommunication && !usageSummary.hasCall && !usageSummary.hasSms;

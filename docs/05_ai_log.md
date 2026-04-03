@@ -158,3 +158,9 @@
 - Issue #191: ダッシュボードから `/lines` の特典管理位置と光回線詳細位置を直接開けるようにする
   - `LinesPage` に `focusSection` URL パラメータを追加し、`benefits` / `fiber` セクションまでスクロールできるようにする
   - `収支サマリー` と `光回線の残債解消予定` の導線を、それぞれ対応する詳細位置へ直接寄せる
+
+## 2026-04-03
+- Issue #195: 共有ロジックを統一し、サンプルデータを alert 対応にする
+  - `DashboardPage` と `LinesPage` に散っていた月数計算と履歴参照ロジックを `src/lib/lineAnalytics.ts` に共通化
+  - `sampleData` を import 時に調整し、特典期限 / MNP期限 / 今後のアクション予定の alert 分岐が踏める fixture を追加
+  - `npm run check` / `npm run build` を通過済み

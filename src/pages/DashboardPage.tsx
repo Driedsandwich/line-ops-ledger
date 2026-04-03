@@ -1,34 +1,21 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { lineDraftStore, normalizeReviewDate, type BenefitRecord, type LineDraft } from '../lib/lineDrafts';
+import { lineDraftStore, type BenefitRecord, type LineDraft } from '../lib/lineDrafts';
 import { lineHistoryStore, type LineHistoryEntry } from '../lib/lineHistory';
+import {
+  calculateElapsedMonths,
+  diffInDays,
+  findRelatedHistoryEntriesForDraft,
+  getLatestActivityDateFromEntries,
+  parseReviewDate,
+  startOfDay,
+} from '../lib/lineAnalytics';
 import {
   loadNotificationSettings,
   type NotificationRelaunchPolicy,
   type NotificationReminderWindow,
 } from '../lib/notificationSettings';
 import { importBundledSampleData } from '../lib/sampleData';
-
-function startOfDay(input: Date): Date {
-  const date = new Date(input);
-  date.setHours(0, 0, 0, 0);
-  return date;
-}
-
-function diffInDays(from: Date, to: Date): number {
-  const ms = startOfDay(to).getTime() - startOfDay(from).getTime();
-  return Math.round(ms / 86400000);
-}
-
-function parseReviewDate(value: string): Date | null {
-  const normalized = normalizeReviewDate(value);
-  if (!normalized) {
-    return null;
-  }
-
-  const parsed = new Date(`${normalized}T00:00:00`);
-  return Number.isNaN(parsed.getTime()) ? null : parsed;
-}
 
 function formatReviewDate(value: string): string {
   const date = parseReviewDate(value);
@@ -87,31 +74,6 @@ function formatRelaunchPolicy(value: NotificationRelaunchPolicy): string {
 }
 
 const INACTIVE_THRESHOLD_DAYS = 90;
-
-function getLatestActivityDate(entries: LineHistoryEntry[]): string | null {
-  let latest: string | null = null;
-  for (const entry of entries) {
-    for (const log of entry.activityLogs) {
-      if (log.activityDate && (!latest || log.activityDate > latest)) {
-        latest = log.activityDate;
-      }
-    }
-  }
-  return latest;
-}
-
-function findRelatedHistoryEntries(draft: LineDraft, allEntries: LineHistoryEntry[]): LineHistoryEntry[] {
-  if (draft.phoneNumber) {
-    const exact = allEntries.filter((e) => e.phoneNumber === draft.phoneNumber);
-    if (exact.length > 0) {
-      return exact;
-    }
-  }
-  if (draft.last4) {
-    return allEntries.filter((e) => e.phoneNumber.slice(-4) === draft.last4);
-  }
-  return [];
-}
 
 function isNotificationTarget(diff: number, window: NotificationReminderWindow): boolean {
   switch (window) {
@@ -344,11 +306,11 @@ function buildContractHolderSummary(drafts: LineDraft[]): ContractHolderSummaryI
       const activeDrafts = holderDrafts.filter((draft) => draft.status === '利用中');
       const monthlyTotal = holderDrafts.reduce((sum, draft) => sum + (draft.monthlyCost ?? 0), 0);
       const totalContractMonths = activeDrafts.reduce((sum, draft) => {
-        const contractStartDate = parseReviewDate(draft.contractStartDate);
-        if (!contractStartDate) {
+        const contractMonths = calculateElapsedMonths(draft.contractStartDate, new Date());
+        if (contractMonths == null) {
           return sum;
         }
-        return sum + diffInDays(contractStartDate, new Date()) / 30;
+        return sum + contractMonths;
       }, 0);
 
       return {
@@ -374,10 +336,8 @@ function buildBalanceSummary(drafts: LineDraft[]): BalanceSummary {
   const receivedBenefitLines: BalanceSummary['receivedBenefitLines'] = [];
 
   for (const draft of drafts) {
-    const contractStartDate = parseReviewDate(draft.contractStartDate);
-    if (draft.monthlyCost != null && contractStartDate) {
-      const elapsedDays = Math.max(diffInDays(contractStartDate, new Date()), 0);
-      const elapsedMonths = Math.floor(elapsedDays / 30);
+    const elapsedMonths = calculateElapsedMonths(draft.contractStartDate, new Date());
+    if (draft.monthlyCost != null && elapsedMonths != null) {
       totalPaidCost += draft.monthlyCost * elapsedMonths;
     }
 
@@ -421,16 +381,6 @@ function calculateFiberDebtClearDate(contractStartDate: string, fiberConstructio
   const result = new Date(startDate);
   result.setMonth(result.getMonth() + fiberConstructionFeeMonths);
   return Number.isNaN(result.getTime()) ? null : result;
-}
-
-function calculateElapsedMonths(contractStartDate: string, today: Date): number | null {
-  const startDate = parseReviewDate(contractStartDate);
-  if (!startDate) {
-    return null;
-  }
-
-  const elapsedDays = Math.max(diffInDays(startDate, today), 0);
-  return Math.floor(elapsedDays / 30);
 }
 
 function calculateFiberRemainingDebt(draft: LineDraft, today: Date): number | null {
@@ -534,7 +484,7 @@ function buildUsageAlertItems(drafts: LineDraft[], allHistoryEntries: LineHistor
   return drafts
     .filter((draft) => draft.status === '利用中' || draft.status === '解約予定')
     .map((draft) => {
-      const relatedEntries = findRelatedHistoryEntries(draft, allHistoryEntries);
+      const relatedEntries = findRelatedHistoryEntriesForDraft(draft, allHistoryEntries);
       return {
         draft,
         usageSummary: buildUsageSummary(relatedEntries, USAGE_SUMMARY_DAYS),
@@ -573,7 +523,7 @@ function buildSummary(drafts: LineDraft[], allHistoryEntries: LineHistoryEntry[]
   const notificationReasonSummary = createEmptyNotificationReasonSummary();
 
   const nearest = drafts
-    .filter((draft) => Boolean(normalizeReviewDate(draft.nextReviewDate)))
+    .filter((draft) => Boolean(parseReviewDate(draft.nextReviewDate)))
     .sort((a, b) => a.nextReviewDate.localeCompare(b.nextReviewDate))
     .slice(0, 5);
 
@@ -638,8 +588,8 @@ function buildSummary(drafts: LineDraft[], allHistoryEntries: LineHistoryEntry[]
   const inactiveLines = drafts
     .filter((draft) => draft.status === '利用中' || draft.status === '解約予定')
     .map((draft) => {
-      const related = findRelatedHistoryEntries(draft, allHistoryEntries);
-      const latestActivityDate = getLatestActivityDate(related);
+      const related = findRelatedHistoryEntriesForDraft(draft, allHistoryEntries);
+      const latestActivityDate = getLatestActivityDateFromEntries(related);
       return { draft, latestActivityDate };
     })
     .filter(({ latestActivityDate }) => {
