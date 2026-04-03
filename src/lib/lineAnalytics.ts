@@ -44,6 +44,48 @@ export function calculateElapsedMonths(contractStartDate: string, today: Date = 
   return Math.max(months, 0);
 }
 
+export function calculateSafeExitDate(contractStartDate: string, safeExitDays = 181): Date | null {
+  const startDate = parseReviewDate(contractStartDate);
+  if (!startDate) {
+    return null;
+  }
+
+  const result = new Date(startDate);
+  result.setDate(result.getDate() + safeExitDays);
+  return Number.isNaN(result.getTime()) ? null : result;
+}
+
+export function calculateFiberDebtClearDate(contractStartDate: string, fiberConstructionFeeMonths: number | null): Date | null {
+  const startDate = parseReviewDate(contractStartDate);
+  if (!startDate || fiberConstructionFeeMonths == null) {
+    return null;
+  }
+
+  const result = new Date(startDate);
+  result.setMonth(result.getMonth() + fiberConstructionFeeMonths);
+  return Number.isNaN(result.getTime()) ? null : result;
+}
+
+export function calculateFiberRemainingDebt(
+  contractStartDate: string,
+  constructionFee: number | null,
+  monthlyDiscount: number | null,
+  fiberConstructionFeeMonths: number | null,
+  today: Date = new Date(),
+): number | null {
+  if (constructionFee == null || monthlyDiscount == null || fiberConstructionFeeMonths == null) {
+    return null;
+  }
+
+  const elapsedMonths = calculateElapsedMonths(contractStartDate, today);
+  if (elapsedMonths == null) {
+    return null;
+  }
+
+  const appliedMonths = Math.min(elapsedMonths, fiberConstructionFeeMonths);
+  return Math.max(constructionFee - (appliedMonths * monthlyDiscount), 0);
+}
+
 function getPhoneLast4(phoneNumber: string): string {
   const digits = phoneNumber.replace(/\D/g, '');
   return digits.length >= 4 ? digits.slice(-4) : '';

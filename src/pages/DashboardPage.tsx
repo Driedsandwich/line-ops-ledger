@@ -3,13 +3,17 @@ import { Link } from 'react-router-dom';
 import { lineDraftStore, type BenefitRecord, type LineDraft } from '../lib/lineDrafts';
 import { lineHistoryStore, type LineHistoryEntry } from '../lib/lineHistory';
 import {
+  calculateFiberDebtClearDate,
+  calculateFiberRemainingDebt,
   calculateElapsedMonths,
+  calculateSafeExitDate,
   diffInDays,
   findRelatedHistoryEntriesForDraft,
   getLatestActivityDateFromEntries,
   parseReviewDate,
   startOfDay,
 } from '../lib/lineAnalytics';
+import { buildLineEventFeed, groupLineEventsBySeverity, type LineEvent, type LineEventGroup } from '../lib/lineEvents';
 import {
   loadNotificationSettings,
   type NotificationRelaunchPolicy,
@@ -255,6 +259,7 @@ type ActionGroupViewModel = {
   tone: 'danger' | 'warn' | 'info';
   count: number;
   defaultOpen: boolean;
+  events: LineEvent[];
 };
 
 const SAFE_EXIT_DAYS = 181;
@@ -408,31 +413,6 @@ function buildBalanceSummary(drafts: LineDraft[]): BalanceSummary {
   };
 }
 
-function calculateFiberDebtClearDate(contractStartDate: string, fiberConstructionFeeMonths: number | null): Date | null {
-  const startDate = parseReviewDate(contractStartDate);
-  if (!startDate || fiberConstructionFeeMonths == null) {
-    return null;
-  }
-
-  const result = new Date(startDate);
-  result.setMonth(result.getMonth() + fiberConstructionFeeMonths);
-  return Number.isNaN(result.getTime()) ? null : result;
-}
-
-function calculateFiberRemainingDebt(draft: LineDraft, today: Date): number | null {
-  if (draft.fiberConstructionFee == null || draft.fiberMonthlyDiscount == null || draft.fiberConstructionFeeMonths == null) {
-    return null;
-  }
-
-  const elapsedMonths = calculateElapsedMonths(draft.contractStartDate, today);
-  if (elapsedMonths == null) {
-    return null;
-  }
-
-  const appliedMonths = Math.min(elapsedMonths, draft.fiberConstructionFeeMonths);
-  return Math.max(draft.fiberConstructionFee - (appliedMonths * draft.fiberMonthlyDiscount), 0);
-}
-
 function buildFiberDebtItems(drafts: LineDraft[], today: Date): FiberDebtItem[] {
   return drafts
     .filter((draft) => draft.lineType === '光回線' && (draft.status === '利用中' || draft.status === '解約予定'))
@@ -442,7 +422,13 @@ function buildFiberDebtItems(drafts: LineDraft[], today: Date): FiberDebtItem[] 
         draft,
         debtClearDate: debtClearDate ? debtClearDate.toISOString().slice(0, 10) : null,
         daysUntilClear: debtClearDate ? diffInDays(today, debtClearDate) : null,
-        remainingDebt: calculateFiberRemainingDebt(draft, today),
+        remainingDebt: calculateFiberRemainingDebt(
+          draft.contractStartDate,
+          draft.fiberConstructionFee,
+          draft.fiberMonthlyDiscount,
+          draft.fiberConstructionFeeMonths,
+          today,
+        ),
       } satisfies FiberDebtItem;
     })
     .sort((a, b) => {
@@ -801,17 +787,6 @@ function isCurrentContractStatus(status: LineDraft['status']): boolean {
   return status === '利用中' || status === '解約予定';
 }
 
-function calculateSafeExitDate(contractStartDate: string): Date | null {
-  const startDate = parseReviewDate(contractStartDate);
-  if (!startDate) {
-    return null;
-  }
-
-  const result = new Date(startDate);
-  result.setDate(result.getDate() + SAFE_EXIT_DAYS);
-  return Number.isNaN(result.getTime()) ? null : result;
-}
-
 function clampRatio(value: number): number {
   if (value <= 0) {
     return 0;
@@ -929,21 +904,11 @@ function buildHealthRings(summary: DashboardSummary, drafts: LineDraft[]): Healt
   ];
 }
 
-function buildActionGroups(summary: DashboardSummary): ActionGroupViewModel[] {
-  const criticalCount =
-    summary.notificationReasonSummary.overdue
-    + summary.deadlineAlerts.filter((item) => item.daysUntilDeadline <= 0).length
-    + summary.benefitDeadlineAlerts.filter((item) => item.daysUntilDeadline <= 0).length;
-  const warningCount =
-    summary.contractEndAlerts.length
-    + summary.plannedActions.length
-    + summary.fiberDebtItems.filter((item) => item.daysUntilClear != null && item.daysUntilClear <= FIBER_DEBT_ALERT_DAYS).length;
-  const watchCount =
-    summary.usageAlertItems.length
-    + summary.inactiveLines.length
-    + summary.contractHolderSummary.length
-    + summary.notificationTargets.length
-    + summary.nearest.length;
+function buildActionGroups(eventGroups: LineEventGroup[]): ActionGroupViewModel[] {
+  const criticalGroup = eventGroups.find((group) => group.severity === 'critical');
+  const warningGroup = eventGroups.find((group) => group.severity === 'warning');
+  const watchGroup = eventGroups.find((group) => group.severity === 'watch');
+  const criticalCount = criticalGroup?.events.length ?? 0;
 
   return [
     {
@@ -953,24 +918,98 @@ function buildActionGroups(summary: DashboardSummary): ActionGroupViewModel[] {
       tone: 'danger',
       count: criticalCount,
       defaultOpen: true,
+      events: criticalGroup?.events ?? [],
     },
     {
       id: 'warning',
       label: 'Warning',
       description: '30〜60日以内の予定と近づく解消タイミングを整理します。',
       tone: 'warn',
-      count: warningCount,
+      count: warningGroup?.events.length ?? 0,
       defaultOpen: criticalCount === 0,
+      events: warningGroup?.events ?? [],
     },
     {
       id: 'watch',
       label: 'Watch',
-      description: '利用実績、通知対象、名義別の巡回対象をまとめます。',
+      description: '利用実績、通知対象、巡回対象をまとめます。',
       tone: 'info',
-      count: watchCount,
+      count: watchGroup?.events.length ?? 0,
       defaultOpen: false,
+      events: watchGroup?.events ?? [],
     },
   ];
+}
+
+function renderEventMetaTags(event: LineEvent): JSX.Element | null {
+  const metaTags = [event.carrier, event.status, ...event.meta].filter(Boolean);
+  if (metaTags.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className="badge-row">
+      {metaTags.slice(0, 4).map((tag) => (
+        <span key={`${event.id}-${tag}`} className="badge">
+          {tag}
+        </span>
+      ))}
+      {event.dueDateLabel ? <span className="badge badge--info">{event.dueDateLabel}</span> : null}
+    </div>
+  );
+}
+
+function renderActionEventRow(event: LineEvent): JSX.Element {
+  return (
+    <li key={event.id} className={`dashboard-event-row dashboard-event-row--${event.severity}`}>
+      <div className="dashboard-event-row__main">
+        <div className="dashboard-event-row__title-row">
+          <strong>{event.title}</strong>
+          <span className={`badge badge--${event.severity === 'critical' ? 'danger' : event.severity === 'warning' ? 'warn' : 'info'}`}>
+            {event.severity === 'critical' ? 'Critical' : event.severity === 'warning' ? 'Warning' : 'Watch'}
+          </span>
+        </div>
+        <span className="dashboard-event-row__summary">{event.summary}</span>
+        <p className="muted dashboard-event-row__detail">{event.detail}</p>
+        {renderEventMetaTags(event)}
+      </div>
+      <div className="button-row button-row--tight">
+        <Link className="button button--sm" to={event.to}>
+          {event.ctaLabel}
+        </Link>
+      </div>
+    </li>
+  );
+}
+
+function renderActionGroupCard(group: ActionGroupViewModel): JSX.Element {
+  return (
+    <details
+      key={group.id}
+      className={`dashboard-accordion dashboard-accordion--${group.tone}`}
+      open={group.defaultOpen}
+    >
+      <summary className="dashboard-accordion__summary">
+        <div>
+          <strong>{group.label}</strong>
+          <p className="muted">{group.description}</p>
+        </div>
+        <span className={`badge badge--${group.tone === 'danger' ? 'danger' : group.tone === 'warn' ? 'warn' : 'info'}`}>
+          {group.count}件
+        </span>
+      </summary>
+
+      <div className="dashboard-accordion__content">
+        {group.events.length === 0 ? (
+          <p className="muted">対象はありません。</p>
+        ) : (
+          <ul className="dashboard-event-list">
+            {group.events.slice(0, 5).map((event) => renderActionEventRow(event))}
+          </ul>
+        )}
+      </div>
+    </details>
+  );
 }
 
 function renderRingGauge(ring: HealthRingViewModel): JSX.Element {
@@ -1482,7 +1521,8 @@ export function DashboardPage(): JSX.Element {
   const isFirstRun = drafts.length === 0 && historyEntries.length === 0;
   const kpiCards = buildKpiCards(summary, notificationSettings.enabled);
   const healthRings = buildHealthRings(summary, drafts);
-  const actionGroups = buildActionGroups(summary);
+  const lineEvents = buildLineEventFeed(drafts, historyEntries);
+  const actionGroups = buildActionGroups(groupLineEventsBySeverity(lineEvents));
 
   function handleImportSampleData(): void {
     try {
@@ -1582,33 +1622,11 @@ export function DashboardPage(): JSX.Element {
         <div className="card__header">
           <div>
             <p className="eyebrow">Actionable Alerts</p>
-            <h3>優先度ごとに確認対象をまとめたアコーディオン</h3>
+            <h3>共通イベントフィードを優先度ごとにまとめたアコーディオン</h3>
           </div>
         </div>
 
-        {actionGroups.map((group) => (
-          <details
-            key={group.id}
-            className={`dashboard-accordion dashboard-accordion--${group.tone}`}
-            open={group.defaultOpen}
-          >
-            <summary className="dashboard-accordion__summary">
-              <div>
-                <strong>{group.label}</strong>
-                <p className="muted">{group.description}</p>
-              </div>
-              <span className={`badge badge--${group.tone === 'danger' ? 'danger' : group.tone === 'warn' ? 'warn' : 'info'}`}>
-                {group.count}件
-              </span>
-            </summary>
-
-            <div className="dashboard-accordion__content">
-              {group.id === 'critical' ? renderCriticalPanels(summary) : null}
-              {group.id === 'warning' ? renderWarningPanels(summary) : null}
-              {group.id === 'watch' ? renderWatchPanels(summary, drafts, notificationSettings) : null}
-            </div>
-          </details>
-        ))}
+        {actionGroups.map((group) => renderActionGroupCard(group))}
       </section>
     </section>
   </div>
