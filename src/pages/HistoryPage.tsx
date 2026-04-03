@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { lineDraftStore, normalizePhoneNumber, type LineDraft } from '../lib/lineDrafts';
 import {
@@ -735,7 +735,7 @@ export function HistoryPage(): JSX.Element {
     const isCollapsed = collapsedActivityMemoSections.includes(sectionKey);
 
     return (
-      <>
+      <Fragment key={sectionKey}>
         <div className="button-row button-row--tight" style={{ marginTop: sectionKey === 'pinned' ? 0 : '0.75rem', marginBottom: '0.5rem' }}>
           <p className="muted" style={{ margin: 0 }}>{title}（{quickPicks.length}件）</p>
           <button type="button" className="button" onClick={() => toggleActivityMemoSection(sectionKey)}>
@@ -815,7 +815,7 @@ export function HistoryPage(): JSX.Element {
           ))}
           </div>
         )}
-      </>
+      </Fragment>
     );
   }
 
@@ -828,7 +828,7 @@ export function HistoryPage(): JSX.Element {
     const isCollapsed = collapsedActivityMemoSections.includes(sectionKey);
 
     return (
-      <>
+      <Fragment key={sectionKey}>
         <div className="button-row button-row--tight" style={{ marginTop: '0.75rem', marginBottom: '0.5rem' }}>
           <p className="muted" style={{ margin: 0 }}>非表示候補（{quickPicks.length}件）</p>
           <button type="button" className="button" onClick={() => toggleActivityMemoSection(sectionKey)}>
@@ -852,7 +852,7 @@ export function HistoryPage(): JSX.Element {
           ))}
           </div>
         )}
-      </>
+      </Fragment>
     );
   }
 
@@ -1307,6 +1307,10 @@ export function HistoryPage(): JSX.Element {
     [visibleLineHistoryGroups],
   );
 
+  const visibleTimelineStatusLabel = timelinePhoneFilter
+    ? `関連履歴に絞り込み中: ${timelinePhoneFilter.length}番号`
+    : '全履歴を表示';
+
   const historySubmitLabel = editingHistoryId ? '履歴を更新する' : '履歴を保存する';
 
   // ---------------------------------------------------------------------------
@@ -1322,6 +1326,55 @@ export function HistoryPage(): JSX.Element {
           <p className="muted">電話番号単位で契約の経緯や活動ログを記録します。回線一覧と紐付けて参照できます。</p>
         </div>
       </header>
+
+      <section className="card-grid card-grid--history-hero">
+        <article className="card card--accent">
+          <div className="card__header">
+            <h3>履歴の要点</h3>
+            <span className="badge">{visibleLineHistoryGroups.length}番号</span>
+          </div>
+          <div className="history-kpi-grid">
+            <div className="history-kpi">
+              <span className="history-kpi__label">履歴件数</span>
+              <strong className="history-kpi__value">{lineHistoryEntries.length}</strong>
+            </div>
+            <div className="history-kpi">
+              <span className="history-kpi__label">表示中</span>
+              <strong className="history-kpi__value">{visibleTimelineStatusLabel}</strong>
+            </div>
+            <div className="history-kpi">
+              <span className="history-kpi__label">可視ログ</span>
+              <strong className="history-kpi__value">{totalVisibleTimelineEntries}件</strong>
+            </div>
+          </div>
+          <div className="badge-row" style={{ marginTop: '0.75rem' }}>
+            <span className="badge badge--ok">{getTimelineRangeLabel(timelineWindow)}</span>
+            <span className="badge badge--info">{TIMELINE_VIEW_OPTIONS.find((option) => option.key === timelineViewMode)?.label}</span>
+            <span className="badge">{lineHistoryGroups.length - visibleLineHistoryGroups.length}番号をフィルタ</span>
+          </div>
+        </article>
+
+        <article className="card">
+          <div className="card__header">
+            <h3>クイック操作</h3>
+            <span className="badge">履歴 / タイムライン</span>
+          </div>
+          <p className="muted">フォーム、一覧、入出力をすばやく切り替えます。</p>
+          <div className="button-row button-row--tight">
+            <a className="button button--primary" href="#history-form">フォームへ</a>
+            <a className="button" href="#history-timeline">タイムラインへ</a>
+            <button type="button" className="button" onClick={handleExportLineHistory}>履歴 JSON をエクスポート</button>
+            <button type="button" className="button" onClick={() => historyImportInputRef.current?.click()}>履歴 JSON をインポート</button>
+            {isFirstRun ? (
+              <button type="button" className="button" onClick={handleImportSampleData}>確認用サンプルデータを読み込む</button>
+            ) : null}
+            {timelinePhoneFilter ? (
+              <button type="button" className="button" onClick={() => setTimelinePhoneFilter(null)}>絞り込み解除</button>
+            ) : null}
+          </div>
+          <p className="muted" style={{ marginBottom: 0 }}>表示期間や対象の切り替えはタイムライン側で行います。</p>
+        </article>
+      </section>
 
       <section className="card-grid card-grid--single">
         <article className="card" id="history-form">
@@ -1542,7 +1595,7 @@ export function HistoryPage(): JSX.Element {
       </section>
 
       <section className="card-grid card-grid--single">
-        <article className="card">
+        <article className="card" id="history-timeline">
           <div className="card__header">
             <h3>電話番号単位の履歴タイムライン</h3>
             <span className="badge">{visibleLineHistoryGroups.length}番号 / {totalVisibleTimelineEntries}件</span>
