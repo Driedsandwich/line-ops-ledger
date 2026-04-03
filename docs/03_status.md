@@ -1,12 +1,13 @@
 # Status
 
-## 現在地（2026-04-03）
+## 現在地（2026-04-04）
 
 - Bootstrap Issue: #1（永続 open）
 - Context Hub Issue: #2（永続 open）
-- 現在地: ダッシュボードから `/lines` の特典管理位置と光回線詳細位置を直接開ける導線まで `main` 反映済み
+- 現在地: 共通イベントフィードを main に反映し、`/` の command center 化と `/lines/history` の上部要点帯を整えた
 - 運用前提: PR 必須 / approval 任意 / required check `check-and-build`
-- 直近の作業: `DashboardPage` / `LinesPage` の月数計算と履歴参照ロジックを共通化し、fixture を alert / drilldown 対応に寄せる準備を進行中
+- 直近の作業: `src/lib/lineEvents.ts` を追加し、`/` の `Actionable Alerts` をイベントフィード由来のアコーディオンに整理し、`/lines/history` に `履歴の要点 / クイック確認` を追加した
+- 追加確認: Playwright MCP と agent-browser の両方で `http://127.0.0.1:4173/` / `/lines/history` の実画面確認が可能
 
 ## 実装済み主要機能
 
@@ -76,6 +77,6 @@
 
 ## 次の候補
 
-1. 共有ロジック整理と fixture 強化の PR を閉じ、`DashboardPage` と `LinesPage` の同一入力で同じ結果になることを再確認する
-2. 利用実績種別カードから不足種別に応じた `/lines` フィルタへ辿りやすくする導線強化
-3. `focusSection` の新アンカーが具体化したときだけ最小追加する
+1. `HistoryPage` の要点帯を維持しつつ、`quickActivity` / 下書き / 候補管理の回帰がないことを再確認する
+2. `共通イベントフィード` を起点に、`/` の要アクション一覧と `HistoryPage` の入力導線の整合をさらに詰める
+3. 統合カレンダーに先立ち、各日付を共通イベント列として扱うための整理案を詰める

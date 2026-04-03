@@ -1306,8 +1306,24 @@ export function HistoryPage(): JSX.Element {
     () => visibleLineHistoryGroups.reduce((sum, group) => sum + group.visibleEntries.length, 0),
     [visibleLineHistoryGroups],
   );
+  const totalHistoryEntries = lineHistoryEntries.length;
+  const totalActivityLogs = useMemo(
+    () => lineHistoryEntries.reduce((sum, entry) => sum + entry.activityLogs.length, 0),
+    [lineHistoryEntries],
+  );
+  const visibleLinkedDraftGroupCount = useMemo(
+    () => visibleLineHistoryGroups.filter((group) => group.relatedDrafts.length > 0).length,
+    [visibleLineHistoryGroups],
+  );
 
   const historySubmitLabel = editingHistoryId ? '履歴を更新する' : '履歴を保存する';
+  const historyOverviewStatus = editingHistoryId
+    ? '履歴編集中'
+    : quickActivityParam
+      ? 'quickActivity 受信'
+      : showRestoredDraftActions
+        ? '下書き復元あり'
+        : '通常入力';
 
   // ---------------------------------------------------------------------------
   // Render
@@ -1324,6 +1340,44 @@ export function HistoryPage(): JSX.Element {
       </header>
 
       <section className="card-grid card-grid--single">
+        <article className="card card--accent history-overview">
+          <div className="card__header">
+            <div>
+              <p className="eyebrow">履歴の要点</p>
+              <h3>クイック確認</h3>
+            </div>
+            <span className="badge badge--info">{historyOverviewStatus}</span>
+          </div>
+          <div className="stats-row history-overview__stats">
+            <div className="stat-box">
+              <span className="muted">電話番号グループ</span>
+              <strong>{lineHistoryGroups.length}</strong>
+              <span className="muted">履歴がある番号</span>
+            </div>
+            <div className="stat-box">
+              <span className="muted">履歴件数</span>
+              <strong>{totalHistoryEntries}</strong>
+              <span className="muted">契約エピソードの総数</span>
+            </div>
+            <div className="stat-box">
+              <span className="muted">活動ログ</span>
+              <strong>{totalActivityLogs}</strong>
+              <span className="muted">全ログ件数</span>
+            </div>
+            <div className="stat-box">
+              <span className="muted">表示中の関連回線</span>
+              <strong>{visibleLinkedDraftGroupCount}</strong>
+              <span className="muted">タイムラインに関連する主台帳候補</span>
+            </div>
+          </div>
+          <div className="button-row button-row--tight history-overview__actions">
+            <a className="button button--primary" href="#history-form">フォームへ</a>
+            <a className="button" href="#history-timeline">タイムラインへ</a>
+            <Link className="button" to="/lines">回線一覧へ</Link>
+            <Link className="button" to="/settings/backup">バックアップへ</Link>
+          </div>
+        </article>
+
         <article className="card" id="history-form">
           <div className="card__header">
             <h3>契約履歴の登録</h3>
@@ -1542,7 +1596,7 @@ export function HistoryPage(): JSX.Element {
       </section>
 
       <section className="card-grid card-grid--single">
-        <article className="card">
+        <article className="card" id="history-timeline">
           <div className="card__header">
             <h3>電話番号単位の履歴タイムライン</h3>
             <span className="badge">{visibleLineHistoryGroups.length}番号 / {totalVisibleTimelineEntries}件</span>

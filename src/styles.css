@@ -283,6 +283,19 @@ textarea {
   gap: 10px;
 }
 
+.history-overview {
+  display: grid;
+  gap: 16px;
+}
+
+.history-overview__stats {
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+}
+
+.history-overview__actions {
+  margin-top: 0;
+}
+
 .stat-box {
   padding: 14px;
   border-radius: 16px;
@@ -293,6 +306,10 @@ textarea {
 
 .stat-box strong {
   font-size: 1.1rem;
+}
+
+.stat-box span.muted {
+  font-size: 0.85rem;
 }
 
 .definition-list {
