@@ -13,7 +13,7 @@ import {
   parseReviewDate,
   startOfDay,
 } from '../lib/lineAnalytics';
-import { buildLineEventFeed, groupLineEventsBySeverity, type LineEvent, type LineEventGroup } from '../lib/lineEvents';
+import { buildHistoryLink, buildLineEventFeed, groupLineEventsBySeverity, type LineEvent, type LineEventGroup } from '../lib/lineEvents';
 import {
   loadNotificationSettings,
   type NotificationRelaunchPolicy,
@@ -960,6 +960,8 @@ function renderEventMetaTags(event: LineEvent): JSX.Element | null {
 }
 
 function renderActionEventRow(event: LineEvent): JSX.Element {
+  const showHistoryLink = Boolean(event.phoneNumber) && !event.to.startsWith('/lines/history');
+
   return (
     <li key={event.id} className={`dashboard-event-row dashboard-event-row--${event.severity}`}>
       <div className="dashboard-event-row__main">
@@ -977,6 +979,11 @@ function renderActionEventRow(event: LineEvent): JSX.Element {
         <Link className="button button--sm" to={event.to}>
           {event.ctaLabel}
         </Link>
+        {showHistoryLink ? (
+          <Link className="button button--sm" to={buildHistoryLink(event.phoneNumber, event.kind)}>
+            履歴で記録
+          </Link>
+        ) : null}
       </div>
     </li>
   );

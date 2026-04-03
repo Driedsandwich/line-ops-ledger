@@ -1,6 +1,7 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { lineDraftStore, normalizePhoneNumber, type LineDraft } from '../lib/lineDrafts';
+import { buildLineEventFeed, type LineEvent } from '../lib/lineEvents';
 import {
   createLineHistoryEntry,
   lineHistoryStore,
@@ -89,6 +90,14 @@ type ActivityMemoQuickPickSection = {
   pinAction: 'pin' | 'unpin';
 };
 
+type HistoryIntentKind = LineEvent['kind'];
+
+type HistoryIntentView = {
+  label: string;
+  description: string;
+  tone: 'ok' | 'warn' | 'danger' | 'info';
+};
+
 // ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
@@ -124,6 +133,59 @@ const ACTIVITY_MEMO_FALLBACK_BY_TYPE: Record<string, string[]> = {
   料金確認: ['請求確認。月額変動なし。', '月次確認。', '年次確認。月額変動なし。'],
   プラン変更: ['プラン変更を実施。', 'オプション変更内容を確認。'],
   その他: ['MNP予約番号取得。転出準備。', '解約手続き完了。'],
+};
+
+const HISTORY_INTENT_VIEW_MAP: Record<HistoryIntentKind, HistoryIntentView> = {
+  safeExit: {
+    label: '解約可能推奨日',
+    description: '181日ルールに沿って、解約可能なタイミングを確認します。',
+    tone: 'warn',
+  },
+  contractEnd: {
+    label: '契約終了',
+    description: '契約終了日が近い回線の後続作業を記録します。',
+    tone: 'warn',
+  },
+  plannedAction: {
+    label: '今後のアクション',
+    description: '解約予定や MNP 転出予定の進捗を記録します。',
+    tone: 'warn',
+  },
+  mnpDeadline: {
+    label: 'MNP期限',
+    description: '予約番号の期限切れを避けるため、進捗を記録します。',
+    tone: 'danger',
+  },
+  freeOptionDeadline: {
+    label: '無料オプション期限',
+    description: '無料オプションの解約タイミングを記録します。',
+    tone: 'danger',
+  },
+  benefitDeadline: {
+    label: '特典期限',
+    description: 'キャッシュバックや特典の受取進捗を記録します。',
+    tone: 'warn',
+  },
+  fiberDebt: {
+    label: '光回線残債',
+    description: '工事費残債の解消予定や確認履歴を記録します。',
+    tone: 'warn',
+  },
+  notificationTarget: {
+    label: '次回確認日',
+    description: '次回確認日を更新するための記録を残します。',
+    tone: 'info',
+  },
+  usageShortage: {
+    label: '利用実績不足',
+    description: '通 / 話 / SMS の不足を記録します。',
+    tone: 'warn',
+  },
+  inactiveLine: {
+    label: '長期未活動',
+    description: '活動記録が空の回線を確認し、動きを残します。',
+    tone: 'info',
+  },
 };
 
 // ---------------------------------------------------------------------------
@@ -715,7 +777,25 @@ export function HistoryPage(): JSX.Element {
     return latestHistoryEntry ? buildHistoryFormEntrySuggestion(latestHistoryEntry) : null;
   }, [editingHistoryId, lineHistoryEntries, normalizedPhoneNumber]);
   const todayDateString = useMemo(() => today.toISOString().slice(0, 10), [today]);
+  const quickActivityParam = searchParams.get('quickActivity');
   const isFirstRun = drafts.length === 0 && lineHistoryEntries.length === 0;
+  const lineEvents = useMemo(() => buildLineEventFeed(drafts, lineHistoryEntries, today), [drafts, lineHistoryEntries, today]);
+  const historyIntentParam = searchParams.get('historyIntent');
+  const historyIntent = historyIntentParam && historyIntentParam in HISTORY_INTENT_VIEW_MAP
+    ? (historyIntentParam as HistoryIntentKind)
+    : null;
+  const historyIntentView = historyIntent ? HISTORY_INTENT_VIEW_MAP[historyIntent] : null;
+  const quickActivityDraft = useMemo(
+    () => (quickActivityParam ? drafts.find((draft) => draft.phoneNumber === quickActivityParam) ?? null : null),
+    [drafts, quickActivityParam],
+  );
+  const contextualHistoryEvents = useMemo(() => {
+    if (!quickActivityDraft) {
+      return [];
+    }
+
+    return lineEvents.filter((event) => event.draftId === quickActivityDraft.id).slice(0, 3);
+  }, [lineEvents, quickActivityDraft]);
   const activityDateQuickPicks = useMemo(
     () => getActivityDateQuickPicks(todayDateString, lineHistoryForm.contractStartDate, matchingHistorySuggestion?.latestActivityDate ?? ''),
     [lineHistoryForm.contractStartDate, matchingHistorySuggestion?.latestActivityDate, todayDateString],
@@ -873,7 +953,6 @@ export function HistoryPage(): JSX.Element {
   }
 
   // quickActivity パラメータで電話番号が渡された場合フォームにセット
-  const quickActivityParam = searchParams.get('quickActivity');
   useEffect(() => {
     if (!quickActivityParam) return;
     const target = drafts.find((d) => d.phoneNumber === quickActivityParam);
@@ -1372,6 +1451,49 @@ export function HistoryPage(): JSX.Element {
               <button type="button" className="button" onClick={() => setTimelinePhoneFilter(null)}>絞り込み解除</button>
             ) : null}
           </div>
+          {historyIntentView || quickActivityDraft ? (
+            <div className="detail-panel" style={{ marginTop: '0.75rem' }}>
+              <div className="card__header">
+                <h3>開いている文脈</h3>
+                {historyIntentView ? (
+                  <span className={`badge badge--${historyIntentView.tone}`}>{historyIntentView.label}</span>
+                ) : (
+                  <span className="badge">履歴記録</span>
+                )}
+              </div>
+              <p className="muted" style={{ marginTop: 0 }}>
+                Dashboard からの遷移文脈をこのページに引き継いでいます。ここで活動ログを残すと、要対応イベントの消化記録になります。
+              </p>
+              {quickActivityDraft ? (
+                <div className="badge-row" style={{ marginBottom: '0.75rem' }}>
+                  <span className="badge badge--ok">{quickActivityDraft.lineName}</span>
+                  <span className="badge">{quickActivityDraft.carrier}</span>
+                  <span className="badge">{quickActivityDraft.status}</span>
+                </div>
+              ) : null}
+              {historyIntentView ? <p className="muted" style={{ marginTop: 0 }}>{historyIntentView.description}</p> : null}
+              {contextualHistoryEvents.length > 0 ? (
+                <ul className="list list--drafts">
+                  {contextualHistoryEvents.map((event) => (
+                    <li key={event.id}>
+                      <div className="list__row">
+                        <strong>{event.title}</strong>
+                        <span className={`badge badge--${event.severity === 'critical' ? 'danger' : event.severity === 'warning' ? 'warn' : 'info'}`}>
+                          {event.severity === 'critical' ? 'Critical' : event.severity === 'warning' ? 'Warning' : 'Watch'}
+                        </span>
+                      </div>
+                      <span>{event.detail}</span>
+                      <div className="button-row button-row--tight">
+                        <Link className="button button--sm" to={event.to}>
+                          {event.ctaLabel}
+                        </Link>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+            </div>
+          ) : null}
           <p className="muted" style={{ marginBottom: 0 }}>表示期間や対象の切り替えはタイムライン側で行います。</p>
         </article>
       </section>

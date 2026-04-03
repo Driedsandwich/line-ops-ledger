@@ -193,3 +193,7 @@
   - PR #202 を squash merge し、`main` に共通イベントフィードと command center 安定化を反映した
   - `agent-browser` を npm 経由で導入し、Chrome をインストールしたうえで `/` と `/lines/history` の実画面を確認した
   - `/` は `Summary KPI / Hopping Health / Actionable Alerts` の 3 層、`/lines/history` は `履歴の要点 / クイック操作 / タイムライン` を維持していることを確認した
+- Issue #205: Dashboard のイベントから HistoryPage へ文脈付きで遷移できるようにする
+  - `DashboardPage` の `Actionable Alerts` に `履歴で記録` の導線を追加し、`quickActivity` と `historyIntent` を付けて履歴ページへ飛べるようにした
+  - `HistoryPage` に `開いている文脈` カードを追加し、Dashboard から来た意図と関連イベントを上部で確認できるようにした
+  - 共通イベントフィードを read-only のまま履歴画面へ横展開し、記録画面としての意味を少し強めた
