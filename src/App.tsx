@@ -6,7 +6,6 @@ const navItems: NavItem[] = [
   { to: '/', label: 'ダッシュボード', end: true },
   { to: '/lines', label: '回線一覧', end: true },
   { to: '/lines/history', label: '履歴・タイムライン', indent: true },
-  { to: '/settings/storage', label: '設定' },
   { to: '/settings/storage', label: 'ストレージ', indent: true },
   { to: '/settings/backup', label: 'バックアップ', indent: true },
   { to: '/settings/notifications', label: '通知設定', indent: true },
@@ -28,6 +27,7 @@ export function AppLayout(): JSX.Element {
           {import.meta.env.DEV && devLabel ? <p className="dev-progress-badge">{devLabel}</p> : null}
         </div>
         <nav className="nav">
+          <div className="nav__section">設定</div>
           {navItems.map((item) => (
             <NavLink
               key={item.to}

@@ -10,17 +10,21 @@
 6. `/`、`/lines`、`/lines/history`、`/settings/storage`、`/settings/backup`、`/settings/notifications`、`/settings/activity-types` の表示を確認する
 7. PR では GitHub Actions の `CI` workflow が成功していることを確認する
 8. `main` へは PR 必須 / approval 任意 / required check `check-and-build` の前提で進める
+9. サイドバーの `設定` は見出しで、`ストレージ` / `バックアップ` / `通知設定` / `活動種別` が配下リンクとして表示されることを確認する
 
 ## 動作確認チェックリスト
 
 - ダッシュボード（`/`）
   - [ ] localStorage 空の状態で、初回ガイドと `回線一覧で1件追加する` / `確認用サンプルデータを読み込む` / `バックアップを復元する` が表示される
-  - [ ] `確認用サンプルデータを読み込む` で、ダッシュボードのカード群に件数と回線が即時反映される
-  - [ ] 危険案件サマリー・契約終了アラート・長期未活動カードが表示される
+  - [ ] `確認用サンプルデータを読み込む` で、`Summary KPI / Hopping Health / Actionable Alerts` の 3 層に件数と回線が即時反映される
+  - [ ] `Summary KPI` に `Danger Alerts / Notifications / Monthly Cost / Net Balance` が表示される
+  - [ ] `Hopping Health` に `安全離脱 / 期限警告 / 実績不足` の 3 リングが表示される
+  - [ ] `Actionable Alerts` が `Critical / Warning / Watch` のアコーディオンで表示される
   - [ ] `今後のアクション予定` に、予定日が60日以内または超過の利用中 / 解約予定回線が表示される
   - [ ] `番号・無料オプション期限` に、MNP予約番号期限と無料オプション期限が3日以内または超過の利用中 / 解約予定回線が表示される
   - [ ] `特典期限アラート` に、未受取かつ受取期限日が30日以内または超過の特典が表示される
   - [ ] 長期未活動カードに「活動を記録」リンクがあり、`/lines/history?quickActivity=<phone>` へ遷移する（データがある場合）
+  - [ ] `Actionable Alerts` 内の `該当回線を開く` / `回線一覧で確認する` から既存の `openDraft` / `focusSection` / `contractActiveOnly` drilldown が維持される
 - 主台帳（`/lines`）
   - [ ] データ 0 件時に `回線フォームに戻る` / `確認用サンプルデータを読み込む` / `バックアップを復元する` / `履歴ページを見る` が表示される
   - [ ] 回線の追加・編集・削除・Undo が動く
@@ -73,6 +77,7 @@
   - [ ] `解約済み` / `MNP転出済み` の回線詳細には `解約可能推奨日` が表示されない
 - 設定（`/settings/*`）
   - [ ] `/settings` で `/settings/storage` へリダイレクトされる
+  - [ ] サイドバーの `設定` 見出しの下に `ストレージ` / `バックアップ` / `通知設定` / `活動種別` が重複なく表示される
   - [ ] `/settings/storage` で永続化状態と保存データ情報が表示される
   - [ ] `/settings/backup` で統合バックアップの入出力ができる
   - [ ] `/settings/notifications` で通知方針の変更が保存される

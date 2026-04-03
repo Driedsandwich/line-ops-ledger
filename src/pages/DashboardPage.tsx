@@ -224,6 +224,40 @@ type DashboardSummary = {
   usageAlertItems: UsageAlertItem[];
 };
 
+type KpiCardViewModel = {
+  id: string;
+  label: string;
+  value: string;
+  detail: string;
+  tone: 'ok' | 'warn' | 'danger' | 'info';
+  to: string;
+  ctaLabel: string;
+};
+
+type HealthRingViewModel = {
+  id: string;
+  label: string;
+  ratio: number;
+  tone: 'ok' | 'warn' | 'danger' | 'info';
+  metric: string;
+  status: string;
+  detail: string;
+  to: string;
+  ctaLabel: string;
+};
+
+type ActionGroupViewModel = {
+  id: 'critical' | 'warning' | 'watch';
+  label: string;
+  description: string;
+  tone: 'danger' | 'warn' | 'info';
+  count: number;
+  defaultOpen: boolean;
+};
+
+const SAFE_EXIT_DAYS = 181;
+const FIBER_DEBT_ALERT_DAYS = 60;
+
 function createEmptyNotificationReasonSummary(): NotificationReasonSummary {
   return {
     overdue: 0,
@@ -740,6 +774,681 @@ function buildSummary(drafts: LineDraft[], allHistoryEntries: LineHistoryEntry[]
   };
 }
 
+function isCurrentContractStatus(status: LineDraft['status']): boolean {
+  return status === '利用中' || status === '解約予定';
+}
+
+function calculateSafeExitDate(contractStartDate: string): Date | null {
+  const startDate = parseReviewDate(contractStartDate);
+  if (!startDate) {
+    return null;
+  }
+
+  const result = new Date(startDate);
+  result.setDate(result.getDate() + SAFE_EXIT_DAYS);
+  return Number.isNaN(result.getTime()) ? null : result;
+}
+
+function clampRatio(value: number): number {
+  if (value <= 0) {
+    return 0;
+  }
+  if (value >= 1) {
+    return 1;
+  }
+  return value;
+}
+
+function buildKpiCards(summary: DashboardSummary, notificationSettingsEnabled: boolean): KpiCardViewModel[] {
+  return [
+    {
+      id: 'danger',
+      label: 'Danger Alerts',
+      value: `${summary.dangerCount}件`,
+      detail: '次回確認日が今日以前の回線',
+      tone: summary.dangerCount === 0 ? 'ok' : 'danger',
+      to: buildLinesLink({ reasonLabel: '期限超過' }),
+      ctaLabel: '期限超過を確認',
+    },
+    {
+      id: 'notifications',
+      label: 'Notifications',
+      value: notificationSettingsEnabled ? `${summary.notificationEligibleCount}件` : '無効',
+      detail: notificationSettingsEnabled ? '通知設定上の対象件数' : '通知設定で有効化',
+      tone: notificationSettingsEnabled
+        ? (summary.notificationEligibleCount === 0 ? 'ok' : 'info')
+        : 'warn',
+      to: '/settings/notifications',
+      ctaLabel: '通知設定を開く',
+    },
+    {
+      id: 'monthly',
+      label: 'Monthly Cost',
+      value: formatCurrency(summary.monthlyTotal),
+      detail: '月額費用の入力済み回線のみ集計',
+      tone: 'info',
+      to: '/lines',
+      ctaLabel: '回線一覧で確認',
+    },
+    {
+      id: 'balance',
+      label: 'Net Balance',
+      value: formatYenAmount(summary.balanceSummary.netBalance),
+      detail: '受取済み特典を反映した概算収支',
+      tone: summary.balanceSummary.netBalance > 0 ? 'ok' : summary.balanceSummary.netBalance < 0 ? 'warn' : 'info',
+      to: '/lines',
+      ctaLabel: '特典と費用を確認',
+    },
+  ];
+}
+
+function buildHealthRings(summary: DashboardSummary, drafts: LineDraft[]): HealthRingViewModel[] {
+  const today = new Date();
+  const currentDrafts = drafts.filter((draft) => isCurrentContractStatus(draft.status));
+  const safeExitEligibleCount = currentDrafts.filter((draft) => {
+    const safeExitDate = calculateSafeExitDate(draft.contractStartDate);
+    return safeExitDate ? diffInDays(today, safeExitDate) <= 0 : false;
+  }).length;
+  const safeExitRatio = currentDrafts.length === 0 ? 0 : safeExitEligibleCount / currentDrafts.length;
+
+  const deadlineDraftIds = new Set<string>([
+    ...summary.contractEndAlerts.map((item) => item.draft.id),
+    ...summary.plannedActions.map((item) => item.draft.id),
+    ...summary.deadlineAlerts.map((item) => item.draft.id),
+    ...summary.benefitDeadlineAlerts.map((item) => item.draft.id),
+  ]);
+  const deadlineRatio = currentDrafts.length === 0 ? 0 : deadlineDraftIds.size / currentDrafts.length;
+  const hasCriticalDeadline =
+    summary.notificationReasonSummary.overdue > 0
+    || summary.deadlineAlerts.some((item) => item.daysUntilDeadline <= 0)
+    || summary.benefitDeadlineAlerts.some((item) => item.daysUntilDeadline <= 0);
+
+  const usageDraftIds = new Set<string>([
+    ...summary.usageAlertItems.map((item) => item.draft.id),
+    ...summary.inactiveLines.map((item) => item.draft.id),
+  ]);
+  const usageRatio = currentDrafts.length === 0 ? 0 : usageDraftIds.size / currentDrafts.length;
+
+  return [
+    {
+      id: 'safe-exit',
+      label: '安全離脱',
+      ratio: clampRatio(safeExitRatio),
+      tone: currentDrafts.length === 0 ? 'info' : safeExitEligibleCount === 0 ? 'warn' : safeExitRatio >= 0.5 ? 'ok' : 'info',
+      metric: `${safeExitEligibleCount}/${currentDrafts.length || 0}件`,
+      status: currentDrafts.length === 0 ? '対象なし' : safeExitEligibleCount === 0 ? 'まだ離脱推奨前' : '離脱候補あり',
+      detail: `利用中 / 解約予定のうち ${SAFE_EXIT_DAYS} 日経過済み`,
+      to: '/lines?contractActiveOnly=true',
+      ctaLabel: '契約中の回線を見る',
+    },
+    {
+      id: 'deadline-alerts',
+      label: '期限警告',
+      ratio: clampRatio(deadlineRatio),
+      tone: hasCriticalDeadline ? 'danger' : deadlineDraftIds.size > 0 ? 'warn' : 'ok',
+      metric: `${deadlineDraftIds.size}/${currentDrafts.length || 0}件`,
+      status: hasCriticalDeadline ? '期限超過あり' : deadlineDraftIds.size > 0 ? '要確認' : '警告なし',
+      detail: '契約終了・予定・番号/無料オプション・特典期限の警戒度',
+      to: hasCriticalDeadline ? buildLinesLink({ reasonLabel: '期限超過' }) : '/lines',
+      ctaLabel: '期限系を確認',
+    },
+    {
+      id: 'usage-gaps',
+      label: '実績不足',
+      ratio: clampRatio(usageRatio),
+      tone: usageDraftIds.size === 0 ? 'ok' : summary.inactiveLines.length > 0 ? 'danger' : 'warn',
+      metric: `${usageDraftIds.size}/${currentDrafts.length || 0}件`,
+      status: usageDraftIds.size === 0 ? '巡回良好' : summary.inactiveLines.length > 0 ? '未活動あり' : '種別不足あり',
+      detail: `直近 ${USAGE_SUMMARY_DAYS} 日の 通 / 話 / S の不足`,
+      to: '/lines?sort=latestActivityAsc&contractActiveOnly=true',
+      ctaLabel: '利用実績を確認',
+    },
+  ];
+}
+
+function buildActionGroups(summary: DashboardSummary): ActionGroupViewModel[] {
+  const criticalCount =
+    summary.notificationReasonSummary.overdue
+    + summary.deadlineAlerts.filter((item) => item.daysUntilDeadline <= 0).length
+    + summary.benefitDeadlineAlerts.filter((item) => item.daysUntilDeadline <= 0).length;
+  const warningCount =
+    summary.contractEndAlerts.length
+    + summary.plannedActions.length
+    + summary.fiberDebtItems.filter((item) => item.daysUntilClear != null && item.daysUntilClear <= FIBER_DEBT_ALERT_DAYS).length;
+  const watchCount =
+    summary.usageAlertItems.length
+    + summary.inactiveLines.length
+    + summary.contractHolderSummary.length
+    + summary.notificationTargets.length
+    + summary.nearest.length;
+
+  return [
+    {
+      id: 'critical',
+      label: 'Critical',
+      description: '期限超過と直近失効を優先的に処理する一覧です。',
+      tone: 'danger',
+      count: criticalCount,
+      defaultOpen: true,
+    },
+    {
+      id: 'warning',
+      label: 'Warning',
+      description: '30〜60日以内の予定と近づく解消タイミングを整理します。',
+      tone: 'warn',
+      count: warningCount,
+      defaultOpen: criticalCount === 0,
+    },
+    {
+      id: 'watch',
+      label: 'Watch',
+      description: '利用実績、通知対象、名義別の巡回対象をまとめます。',
+      tone: 'info',
+      count: watchCount,
+      defaultOpen: false,
+    },
+  ];
+}
+
+function renderRingGauge(ring: HealthRingViewModel): JSX.Element {
+  const radius = 54;
+  const circumference = 2 * Math.PI * radius;
+  const dashOffset = circumference * (1 - ring.ratio);
+
+  return (
+    <article key={ring.id} className={`card dashboard-ring-card dashboard-ring-card--${ring.tone}`}>
+      <div className="dashboard-ring-card__visual">
+        <svg viewBox="0 0 140 140" className="dashboard-ring-card__svg" aria-hidden="true">
+          <circle className="dashboard-ring-card__track" cx="70" cy="70" r={radius} />
+          <circle
+            className="dashboard-ring-card__progress"
+            cx="70"
+            cy="70"
+            r={radius}
+            strokeDasharray={circumference}
+            strokeDashoffset={dashOffset}
+          />
+        </svg>
+        <div className="dashboard-ring-card__center">
+          <span className="dashboard-ring-card__metric">{ring.metric}</span>
+          <strong>{ring.label}</strong>
+        </div>
+      </div>
+      <div className="dashboard-ring-card__body">
+        <span className={`badge badge--${ring.tone === 'danger' ? 'danger' : ring.tone === 'warn' ? 'warn' : ring.tone === 'ok' ? 'ok' : 'info'}`}>
+          {ring.status}
+        </span>
+        <p className="muted">{ring.detail}</p>
+        <div className="button-row button-row--tight">
+          <Link className="button button--sm" to={ring.to}>
+            {ring.ctaLabel}
+          </Link>
+        </div>
+      </div>
+    </article>
+  );
+}
+
+function renderCriticalPanels(summary: DashboardSummary): JSX.Element {
+  return (
+    <div className="card-grid">
+      <article className="card">
+        <div className="card__header">
+          <h3>期限超過の次回確認</h3>
+          <span className={summary.notificationReasonSummary.overdue === 0 ? 'badge badge--ok' : 'badge badge--danger'}>
+            {summary.notificationReasonSummary.overdue === 0 ? '0件' : `${summary.notificationReasonSummary.overdue}件`}
+          </span>
+        </div>
+        <div className="stats-row">
+          <Link className="stat-box" to={buildLinesLink({ reasonLabel: '期限超過' })}>
+            <span>期限超過</span>
+            <strong>{summary.notificationReasonSummary.overdue}件</strong>
+          </Link>
+          <Link className="stat-box" to={buildLinesLink({ reasonLabel: '今日期限' })}>
+            <span>今日期限</span>
+            <strong>{summary.notificationReasonSummary.today}件</strong>
+          </Link>
+          <Link className="stat-box" to={buildLinesLink({ reasonLabel: '3日以内' })}>
+            <span>3日以内</span>
+            <strong>{summary.notificationReasonSummary.within3Days}件</strong>
+          </Link>
+        </div>
+        <p className="muted">通知設定の reminder window を維持しつつ、overdue を最優先で見られるようにしています。</p>
+      </article>
+
+      <article className="card">
+        <div className="card__header">
+          <h3>番号・無料オプション期限</h3>
+          <span className={summary.deadlineAlerts.length === 0 ? 'badge badge--ok' : 'badge'}>
+            {summary.deadlineAlerts.length === 0 ? '該当なし' : `${summary.deadlineAlerts.length}件`}
+          </span>
+        </div>
+        {summary.deadlineAlerts.length === 0 ? (
+          <p className="muted">直近の番号・無料オプション期限アラートはありません。</p>
+        ) : (
+          <>
+            <ul className="list list--drafts">
+              {summary.deadlineAlerts.map((item) => (
+                <li key={`${item.draft.id}-${item.type}`}>
+                  <div className="list__row">
+                    <strong>{item.draft.lineName}</strong>
+                    <span className={item.draft.status === '利用中' ? 'badge badge--ok' : 'badge'}>{item.draft.status}</span>
+                  </div>
+                  <span>{item.draft.carrier}</span>
+                  <span>{formatDeadlineAlertType(item.type)}: {formatReviewDate(item.deadline)}</span>
+                  {item.type === 'mnpReservationExpiry' ? <span>予約番号: {item.draft.mnpReservationNumber}</span> : null}
+                  <span className="badge">{formatDeadlineAlertLabel(item)}</span>
+                </li>
+              ))}
+            </ul>
+            <div className="button-row">
+              <Link className="button" to="/lines">回線一覧で確認する</Link>
+            </div>
+          </>
+        )}
+      </article>
+
+      <article className="card">
+        <div className="card__header">
+          <h3>特典期限アラート</h3>
+          <span className={summary.benefitDeadlineAlerts.length === 0 ? 'badge badge--ok' : 'badge'}>
+            {summary.benefitDeadlineAlerts.length === 0 ? '該当なし' : `${summary.benefitDeadlineAlerts.length}件`}
+          </span>
+        </div>
+        {summary.benefitDeadlineAlerts.length === 0 ? (
+          <p className="muted">直近の特典期限アラートはありません。</p>
+        ) : (
+          <>
+            <ul className="list list--drafts">
+              {summary.benefitDeadlineAlerts.map((item) => (
+                <li key={`${item.draft.id}-${item.benefit.id}`}>
+                  <div className="list__row">
+                    <strong>{item.draft.lineName}</strong>
+                    <span className="badge">{formatBenefitDeadlineLabel(item.daysUntilDeadline)}</span>
+                  </div>
+                  <span>{item.draft.carrier}</span>
+                  <span>特典種別: {item.benefit.benefitType}</span>
+                  <span>金額: {formatBenefitAmount(item.benefit.amount)}</span>
+                  <span>受取期限日: {formatReviewDate(item.benefit.deadlineDate)}</span>
+                  <div className="button-row button-row--tight">
+                    <Link className="button button--sm" to={`/lines?openDraft=${encodeURIComponent(item.draft.id)}&focusSection=benefits`}>
+                      該当回線を開く
+                    </Link>
+                  </div>
+                </li>
+              ))}
+            </ul>
+            <div className="button-row">
+              <Link className="button" to="/lines">回線一覧で確認する</Link>
+            </div>
+          </>
+        )}
+      </article>
+    </div>
+  );
+}
+
+function renderWarningPanels(summary: DashboardSummary): JSX.Element {
+  return (
+    <div className="card-grid">
+      <article className="card">
+        <div className="card__header">
+          <h3>契約終了が近い回線</h3>
+          <span className={summary.contractEndAlerts.length === 0 ? 'badge badge--ok' : 'badge'}>
+            {summary.contractEndAlerts.length === 0 ? '該当なし' : `${summary.contractEndAlerts.length}件`}
+          </span>
+        </div>
+        <p className="muted">契約終了日が{CONTRACT_END_ALERT_DAYS}日以内（または超過）の利用中・解約予定回線を表示します。</p>
+        {summary.contractEndAlerts.length === 0 ? (
+          <p className="muted">契約終了が近い回線はありません。</p>
+        ) : (
+          <>
+            <ul className="list list--drafts">
+              {summary.contractEndAlerts.map((item) => (
+                <li key={item.draft.id}>
+                  <div className="list__row">
+                    <strong>{item.draft.lineName}</strong>
+                    <span className={item.draft.status === '利用中' ? 'badge badge--ok' : 'badge'}>{item.draft.status}</span>
+                  </div>
+                  <span>{item.draft.carrier}</span>
+                  <span>契約終了日: {item.draft.contractEndDate}</span>
+                  <span className="badge">
+                    {item.daysUntilEnd < 0
+                      ? `${Math.abs(item.daysUntilEnd)}日超過`
+                      : item.daysUntilEnd === 0
+                        ? '今日終了'
+                        : `あと${item.daysUntilEnd}日`}
+                  </span>
+                </li>
+              ))}
+            </ul>
+            <div className="button-row">
+              <Link className="button" to="/lines">回線一覧で確認する</Link>
+            </div>
+          </>
+        )}
+      </article>
+
+      <article className="card">
+        <div className="card__header">
+          <h3>今後のアクション予定</h3>
+          <span className={summary.plannedActions.length === 0 ? 'badge badge--ok' : 'badge'}>
+            {summary.plannedActions.length === 0 ? '該当なし' : `${summary.plannedActions.length}件`}
+          </span>
+        </div>
+        <p className="muted">予定日が{PLANNED_ACTION_ALERT_DAYS}日以内、または超過している利用中・解約予定回線を表示します。</p>
+        {summary.plannedActions.length === 0 ? (
+          <p className="muted">直近のアクション予定はありません。</p>
+        ) : (
+          <>
+            <ul className="list list--drafts">
+              {summary.plannedActions.map((item) => (
+                <li key={item.draft.id}>
+                  <div className="list__row">
+                    <strong>{item.draft.lineName}</strong>
+                    <span className={item.draft.status === '利用中' ? 'badge badge--ok' : 'badge'}>{item.draft.status}</span>
+                  </div>
+                  <span>{item.draft.carrier}</span>
+                  <span>予定種別: {item.draft.plannedExitType || '未設定'}</span>
+                  <span>予定日: {formatReviewDate(item.draft.plannedExitDate)}</span>
+                  <span>次キャリア: {item.draft.plannedNextCarrier || '未設定'}</span>
+                  <span className="badge">
+                    {item.daysUntilAction < 0
+                      ? '予定日超過'
+                      : item.daysUntilAction === 0
+                        ? '今日'
+                        : `あと${item.daysUntilAction}日`}
+                  </span>
+                </li>
+              ))}
+            </ul>
+            <div className="button-row">
+              <Link className="button" to="/lines">回線一覧で確認する</Link>
+            </div>
+          </>
+        )}
+      </article>
+
+      <article className="card">
+        <div className="card__header">
+          <h3>光回線の残債解消予定</h3>
+          <span className={summary.fiberDebtItems.length === 0 ? 'badge badge--ok' : 'badge'}>
+            {summary.fiberDebtItems.length === 0 ? '該当なし' : `${summary.fiberDebtItems.length}件`}
+          </span>
+        </div>
+        <p className="muted">`利用中` または `解約予定` の光回線について、残債解消予定日と概算残債を表示します。</p>
+        {summary.fiberDebtItems.length === 0 ? (
+          <p className="muted">直近で確認が必要な光回線はありません。</p>
+        ) : (
+          <>
+            <ul className="list list--drafts">
+              {summary.fiberDebtItems.map((item) => (
+                <li key={item.draft.id}>
+                  <div className="list__row">
+                    <strong>{item.draft.lineName}</strong>
+                    <span className={item.draft.status === '利用中' ? 'badge badge--ok' : 'badge'}>{item.draft.status}</span>
+                  </div>
+                  <span>{item.draft.fiberIspName || item.draft.carrier}</span>
+                  <span>残債解消予定日: {item.debtClearDate ? formatReviewDate(item.debtClearDate) : '算出不可'}</span>
+                  <span>概算残債: {item.remainingDebt == null ? '算出不可' : formatYenAmount(item.remainingDebt)}</span>
+                  {item.daysUntilClear != null ? (
+                    <span className="badge">
+                      {item.daysUntilClear < 0
+                        ? '経過済み'
+                        : item.daysUntilClear === 0
+                          ? '今日'
+                          : `あと${item.daysUntilClear}日`}
+                    </span>
+                  ) : null}
+                  <div className="button-row button-row--tight">
+                    <Link className="button button--sm" to={`/lines?openDraft=${encodeURIComponent(item.draft.id)}&focusSection=fiber`}>
+                      該当回線を開く
+                    </Link>
+                  </div>
+                </li>
+              ))}
+            </ul>
+            <div className="button-row">
+              <Link className="button" to="/lines">回線一覧で確認する</Link>
+            </div>
+          </>
+        )}
+      </article>
+    </div>
+  );
+}
+
+function renderWatchPanels(
+  summary: DashboardSummary,
+  drafts: LineDraft[],
+  notificationSettings: ReturnType<typeof loadNotificationSettings>,
+): JSX.Element {
+  return (
+    <div className="card-grid">
+      <article className="card">
+        <div className="card__header">
+          <h3>利用実績種別の巡回</h3>
+          <span className={summary.usageAlertItems.length === 0 ? 'badge badge--ok' : 'badge'}>
+            {summary.usageAlertItems.length === 0 ? '問題なし' : `${summary.usageAlertItems.length}件`}
+          </span>
+        </div>
+        <p className="muted">`利用中` または `解約予定` の回線について、直近 {USAGE_SUMMARY_DAYS} 日の `通 / 話 / S` 実績に不足がある回線を表示します。</p>
+        {summary.usageAlertItems.length === 0 ? (
+          <p className="muted">利用実績種別の不足がある回線はありません。</p>
+        ) : (
+          <>
+            <ul className="list list--drafts">
+              {summary.usageAlertItems.map((item) => {
+                const missingUsageKinds = countMissingUsageKinds(item.usageSummary);
+                const hasNoUsageActivity = missingUsageKinds === 3;
+                return (
+                  <li key={item.draft.id}>
+                    <div className="list__row">
+                      <strong>{item.draft.lineName}</strong>
+                      <span className={item.draft.status === '利用中' ? 'badge badge--ok' : 'badge'}>{item.draft.status}</span>
+                    </div>
+                    <span>{item.draft.carrier}</span>
+                    <span>最終活動: {item.usageSummary.lastActivityDate ? formatReviewDate(item.usageSummary.lastActivityDate) : '記録なし'}</span>
+                    <div className="badge-row">
+                      <span className={item.usageSummary.hasCommunication ? 'badge badge--ok' : 'badge'}>通</span>
+                      <span className={item.usageSummary.hasCall ? 'badge badge--ok' : 'badge'}>話</span>
+                      <span className={item.usageSummary.hasSms ? 'badge badge--ok' : 'badge'}>S</span>
+                      {hasNoUsageActivity ? (
+                        <span className="badge badge--warn">利用実績なし</span>
+                      ) : (
+                        <span className="badge">不足 {missingUsageKinds}種別</span>
+                      )}
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+            <div className="button-row">
+              <Link className="button" to="/lines?sort=latestActivityAsc&contractActiveOnly=true">回線一覧で確認する</Link>
+            </div>
+          </>
+        )}
+      </article>
+
+      <article className="card">
+        <div className="card__header">
+          <h3>長期未活動の回線</h3>
+          <span className={summary.inactiveLines.length === 0 ? 'badge badge--ok' : 'badge'}>
+            {summary.inactiveLines.length === 0 ? '問題なし' : `${summary.inactiveLines.length}件`}
+          </span>
+        </div>
+        {summary.inactiveLines.length === 0 ? (
+          <p className="muted">長期未活動の回線はありません。</p>
+        ) : (
+          <>
+            <ul className="list list--drafts">
+              {summary.inactiveLines.map((item) => (
+                <li key={item.draft.id}>
+                  <div className="list__row">
+                    <strong>{item.draft.lineName}</strong>
+                    <span className={item.draft.status === '利用中' ? 'badge badge--ok' : 'badge'}>{item.draft.status}</span>
+                  </div>
+                  <span>{item.draft.carrier}</span>
+                  <span>最終活動: {item.latestActivityDate ? new Intl.DateTimeFormat('ja-JP', { year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(`${item.latestActivityDate}T00:00:00`)) : '記録なし'}</span>
+                  {item.draft.phoneNumber ? (
+                    <div className="button-row button-row--tight">
+                      <Link className="button button--sm" to={`/lines/history?quickActivity=${encodeURIComponent(item.draft.phoneNumber)}`}>
+                        活動を記録
+                      </Link>
+                    </div>
+                  ) : null}
+                </li>
+              ))}
+            </ul>
+            <div className="button-row">
+              <Link className="button" to="/lines?sort=latestActivityAsc">回線一覧で確認する</Link>
+            </div>
+          </>
+        )}
+      </article>
+
+      <article className="card">
+        <div className="card__header">
+          <h3>通知方針と対象</h3>
+          <span className={notificationSettings.enabled ? 'badge badge--ok' : 'badge'}>
+            {notificationSettings.enabled ? `${summary.notificationEligibleCount}件` : '無効'}
+          </span>
+        </div>
+        <dl className="definition-list">
+          <div>
+            <dt>通知対象の期限</dt>
+            <dd>{formatReminderWindow(notificationSettings.reminderWindow)}</dd>
+          </div>
+          <div>
+            <dt>再通知の扱い</dt>
+            <dd>{formatRelaunchPolicy(notificationSettings.relaunchPolicy)}</dd>
+          </div>
+          <div>
+            <dt>状態別件数</dt>
+            <dd>利用中 {summary.activeCount}件 / 解約予定 {summary.closingCount}件 / 登録総数 {drafts.length}件</dd>
+          </div>
+        </dl>
+        {!notificationSettings.enabled ? (
+          <p className="muted">通知は無効です。`/settings/notifications` で有効化すると、ここに対象回線が並びます。</p>
+        ) : summary.notificationTargets.length === 0 ? (
+          <p className="muted">現在の設定では通知対象になる回線はありません。</p>
+        ) : (
+          <ul className="list list--drafts">
+            {summary.notificationTargets.map((item) => (
+              <li key={item.draft.id}>
+                <div className="list__row">
+                  <strong>{item.draft.lineName}</strong>
+                  <span className="badge">{item.reasonLabel}</span>
+                </div>
+                <span>{item.draft.carrier}</span>
+                <span>次回確認日: {formatReviewDate(item.draft.nextReviewDate)}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+        <div className="button-row">
+          <Link className="button" to="/settings/notifications">通知設定を開く</Link>
+        </div>
+      </article>
+
+      <article className="card">
+        <div className="card__header">
+          <h3>収支サマリー</h3>
+          <span className="badge">概算</span>
+        </div>
+        <dl className="definition-list">
+          <div>
+            <dt>累計支払コスト</dt>
+            <dd>{formatYenAmount(summary.balanceSummary.totalPaidCost)}</dd>
+          </div>
+          <div>
+            <dt>受取済み特典</dt>
+            <dd>{formatYenAmount(summary.balanceSummary.totalReceivedBenefit)}</dd>
+          </div>
+          <div>
+            <dt>実質収支</dt>
+            <dd>{formatYenAmount(summary.balanceSummary.netBalance)}</dd>
+          </div>
+          <div>
+            <dt>受取済み特典あり回線</dt>
+            <dd>{summary.balanceSummary.coveredLineCount}件</dd>
+          </div>
+        </dl>
+        {summary.balanceSummary.receivedBenefitLines.length > 0 ? (
+          <ul className="list list--drafts">
+            {summary.balanceSummary.receivedBenefitLines.map((item) => (
+              <li key={item.draft.id}>
+                <div className="list__row">
+                  <strong>{item.draft.lineName}</strong>
+                  <span className={item.draft.status === '利用中' ? 'badge badge--ok' : 'badge'}>{item.draft.status}</span>
+                </div>
+                <span>{item.draft.carrier}</span>
+                <span>受取済み特典: {formatYenAmount(item.receivedBenefit)}</span>
+                <div className="button-row button-row--tight">
+                  <Link className="button button--sm" to={`/lines?openDraft=${encodeURIComponent(item.draft.id)}&focusSection=benefits`}>
+                    該当回線を開く
+                  </Link>
+                </div>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="muted">受取済み特典のある回線はまだありません。</p>
+        )}
+      </article>
+
+      <article className="card">
+        <div className="card__header">
+          <h3>次回確認日が近い回線</h3>
+          <span className="badge">最大5件</span>
+        </div>
+        {summary.nearest.length === 0 ? (
+          <p className="muted">次回確認日が設定された回線はまだありません。</p>
+        ) : (
+          <ul className="list list--drafts">
+            {summary.nearest.map((draft) => (
+              <li key={draft.id}>
+                <div className="list__row">
+                  <strong>{draft.lineName}</strong>
+                  <span className={draft.status === '利用中' ? 'badge badge--ok' : 'badge'}>{draft.status}</span>
+                </div>
+                <span>{draft.carrier}</span>
+                <span>回線種別: {draft.lineType}</span>
+                <span>月額費用: {draft.monthlyCost == null ? '未設定' : formatCurrency(draft.monthlyCost)}</span>
+                <span>次回確認日: {formatReviewDate(draft.nextReviewDate)}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </article>
+
+      {summary.contractHolderSummary.length > 0 ? (
+        <article className="card">
+          <div className="card__header">
+            <h3>名義別サマリー</h3>
+            <span className="badge">{summary.contractHolderSummary.length}名義</span>
+          </div>
+          <ul className="list list--drafts">
+            {summary.contractHolderSummary.map((item) => (
+              <li key={item.holder}>
+                <div className="list__row">
+                  <strong>{item.holder}</strong>
+                  <span className={item.activeLines > 0 ? 'badge badge--ok' : 'badge'}>
+                    利用中 {item.activeLines}件
+                  </span>
+                </div>
+                <span>総回線数: {item.totalLines}件</span>
+                <span>月額合計: {formatCurrency(item.monthlyTotal)}</span>
+                <span>平均契約月数: {item.avgContractMonths}ヶ月</span>
+              </li>
+            ))}
+          </ul>
+        </article>
+      ) : null}
+    </div>
+  );
+}
+
 export function DashboardPage(): JSX.Element {
   const [drafts, setDrafts] = useState<LineDraft[]>(() => lineDraftStore.load());
   const [historyEntries, setHistoryEntries] = useState<LineHistoryEntry[]>(() => lineHistoryStore.load());
@@ -748,6 +1457,9 @@ export function DashboardPage(): JSX.Element {
   const notificationSettings = loadNotificationSettings();
   const summary = buildSummary(drafts, historyEntries, notificationSettings.reminderWindow);
   const isFirstRun = drafts.length === 0 && historyEntries.length === 0;
+  const kpiCards = buildKpiCards(summary, notificationSettings.enabled);
+  const healthRings = buildHealthRings(summary, drafts);
+  const actionGroups = buildActionGroups(summary);
 
   function handleImportSampleData(): void {
     try {
@@ -811,543 +1523,71 @@ export function DashboardPage(): JSX.Element {
         </section>
       ) : null}
 
-      <section className="card-grid">
-        <article className="card card--accent">
-          <div className="card__header">
-            <h3>危険案件サマリー</h3>
-            <span className={summary.dangerCount === 0 ? 'badge badge--ok' : 'badge'}>
-              {summary.dangerCount === 0 ? '問題なし' : '要確認'}
-            </span>
-          </div>
-          <p className="metric">{summary.dangerCount}件</p>
-          <p className="muted">
-            次回確認日が今日以前の回線を危険案件として集計します。日付未設定の回線は件数に含めません。
-          </p>
-        </article>
-
-        <article className="card card--accent">
-          <div className="card__header">
-            <h3>契約終了が近い回線</h3>
-            <span className={summary.contractEndAlerts.length === 0 ? 'badge badge--ok' : 'badge'}>
-              {summary.contractEndAlerts.length === 0 ? '該当なし' : `${summary.contractEndAlerts.length}件`}
-            </span>
-          </div>
-          <p className="muted">契約終了日が{CONTRACT_END_ALERT_DAYS}日以内（または超過）の利用中・解約予定回線を表示します（最大5件）。</p>
-          {summary.contractEndAlerts.length === 0 ? (
-            <p className="muted">契約終了が近い回線はありません。</p>
-          ) : (
-            <>
-              <ul className="list list--drafts">
-                {summary.contractEndAlerts.map((item) => (
-                  <li key={item.draft.id}>
-                    <div className="list__row">
-                      <strong>{item.draft.lineName}</strong>
-                      <span className={item.draft.status === '利用中' ? 'badge badge--ok' : 'badge'}>{item.draft.status}</span>
-                    </div>
-                    <span>{item.draft.carrier}</span>
-                    <span>契約終了日: {item.draft.contractEndDate}</span>
-                    <span className="badge">
-                      {item.daysUntilEnd < 0
-                        ? `${Math.abs(item.daysUntilEnd)}日超過`
-                        : item.daysUntilEnd === 0
-                          ? '今日終了'
-                          : `あと${item.daysUntilEnd}日`}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-              <div className="button-row">
-                <Link className="button" to="/lines">回線一覧で確認する</Link>
-              </div>
-            </>
-          )}
-        </article>
-
-        <article className="card card--accent">
-          <div className="card__header">
-            <h3>今後のアクション予定</h3>
-            <span className={summary.plannedActions.length === 0 ? 'badge badge--ok' : 'badge'}>
-              {summary.plannedActions.length === 0 ? '該当なし' : `${summary.plannedActions.length}件`}
-            </span>
-          </div>
-          <p className="muted">予定日が{PLANNED_ACTION_ALERT_DAYS}日以内、または超過している利用中・解約予定回線を表示します（最大5件）。</p>
-          {summary.plannedActions.length === 0 ? (
-            <p className="muted">直近のアクション予定はありません。</p>
-          ) : (
-            <>
-              <ul className="list list--drafts">
-                {summary.plannedActions.map((item) => (
-                  <li key={item.draft.id}>
-                    <div className="list__row">
-                      <strong>{item.draft.lineName}</strong>
-                      <span className={item.draft.status === '利用中' ? 'badge badge--ok' : 'badge'}>{item.draft.status}</span>
-                    </div>
-                    <span>{item.draft.carrier}</span>
-                    <span>予定種別: {item.draft.plannedExitType || '未設定'}</span>
-                    <span>予定日: {formatReviewDate(item.draft.plannedExitDate)}</span>
-                    <span>次キャリア: {item.draft.plannedNextCarrier || '未設定'}</span>
-                    <span className="badge">
-                      {item.daysUntilAction < 0
-                        ? '予定日超過'
-                        : item.daysUntilAction === 0
-                          ? '今日'
-                          : `あと${item.daysUntilAction}日`}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-              <div className="button-row">
-                <Link className="button" to="/lines">回線一覧で確認する</Link>
-              </div>
-            </>
-          )}
-        </article>
-
-        <article className="card card--accent">
-          <div className="card__header">
-            <h3>番号・無料オプション期限</h3>
-            <span className={summary.deadlineAlerts.length === 0 ? 'badge badge--ok' : 'badge'}>
-              {summary.deadlineAlerts.length === 0 ? '該当なし' : `${summary.deadlineAlerts.length}件`}
-            </span>
-          </div>
-          <p className="muted">MNP予約番号の有効期限と無料オプション期限が3日以内、または超過している利用中・解約予定回線を表示します（最大5件）。</p>
-          {summary.deadlineAlerts.length === 0 ? (
-            <p className="muted">直近の番号・無料オプション期限アラートはありません。</p>
-          ) : (
-            <>
-              <ul className="list list--drafts">
-                {summary.deadlineAlerts.map((item) => (
-                  <li key={`${item.draft.id}-${item.type}`}>
-                    <div className="list__row">
-                      <strong>{item.draft.lineName}</strong>
-                      <span className={item.draft.status === '利用中' ? 'badge badge--ok' : 'badge'}>{item.draft.status}</span>
-                    </div>
-                    <span>{item.draft.carrier}</span>
-                    <span>{formatDeadlineAlertType(item.type)}: {formatReviewDate(item.deadline)}</span>
-                    {item.type === 'mnpReservationExpiry' ? <span>予約番号: {item.draft.mnpReservationNumber}</span> : null}
-                    <span className="badge">{formatDeadlineAlertLabel(item)}</span>
-                  </li>
-                ))}
-              </ul>
-              <div className="button-row">
-                <Link className="button" to="/lines">回線一覧で確認する</Link>
-              </div>
-            </>
-          )}
-        </article>
-
-        <article className="card card--accent">
-          <div className="card__header">
-            <h3>特典期限アラート</h3>
-            <span className={summary.benefitDeadlineAlerts.length === 0 ? 'badge badge--ok' : 'badge'}>
-              {summary.benefitDeadlineAlerts.length === 0 ? '該当なし' : `${summary.benefitDeadlineAlerts.length}件`}
-            </span>
-          </div>
-          <p className="muted">未受取かつ受取期限日が{BENEFIT_ALERT_DAYS}日以内、または超過している特典を表示します（最大5件）。</p>
-          {summary.benefitDeadlineAlerts.length === 0 ? (
-            <p className="muted">直近の特典期限アラートはありません。</p>
-          ) : (
-            <>
-              <ul className="list list--drafts">
-                {summary.benefitDeadlineAlerts.map((item) => (
-                  <li key={`${item.draft.id}-${item.benefit.id}`}>
-                    <div className="list__row">
-                      <strong>{item.draft.lineName}</strong>
-                      <span className="badge">{formatBenefitDeadlineLabel(item.daysUntilDeadline)}</span>
-                    </div>
-                    <span>{item.draft.carrier}</span>
-                    <span>特典種別: {item.benefit.benefitType}</span>
-                    <span>金額: {formatBenefitAmount(item.benefit.amount)}</span>
-                    <span>受取期限日: {formatReviewDate(item.benefit.deadlineDate)}</span>
-                  </li>
-                ))}
-              </ul>
-              <div className="button-row">
-                <Link className="button" to="/lines">回線一覧で確認する</Link>
-              </div>
-            </>
-          )}
-        </article>
-
-        <article className="card card--accent">
-          <div className="card__header">
-            <h3>光回線の残債解消予定</h3>
-            <span className={summary.fiberDebtItems.length === 0 ? 'badge badge--ok' : 'badge'}>
-              {summary.fiberDebtItems.length === 0 ? '該当なし' : `${summary.fiberDebtItems.length}件`}
-            </span>
-          </div>
-          <p className="muted">`利用中` または `解約予定` の光回線について、残債解消予定日と概算残債を表示します（最大5件）。</p>
-          {summary.fiberDebtItems.length === 0 ? (
-            <p className="muted">直近で確認が必要な光回線はありません。</p>
-          ) : (
-            <>
-              <ul className="list list--drafts">
-                {summary.fiberDebtItems.map((item) => (
-                  <li key={item.draft.id}>
-                    <div className="list__row">
-                      <strong>{item.draft.lineName}</strong>
-                      <span className={item.draft.status === '利用中' ? 'badge badge--ok' : 'badge'}>{item.draft.status}</span>
-                    </div>
-                    <span>{item.draft.fiberIspName || item.draft.carrier}</span>
-                    <span>残債解消予定日: {item.debtClearDate ? formatReviewDate(item.debtClearDate) : '算出不可'}</span>
-                    <span>概算残債: {item.remainingDebt == null ? '算出不可' : formatYenAmount(item.remainingDebt)}</span>
-                    {item.daysUntilClear != null ? (
-                      <span className="badge">
-                        {item.daysUntilClear < 0
-                          ? '経過済み'
-                          : item.daysUntilClear === 0
-                            ? '今日'
-                            : `あと${item.daysUntilClear}日`}
-                      </span>
-                    ) : null}
-                    <div className="button-row button-row--tight">
-                      <Link className="button button--sm" to={`/lines?openDraft=${encodeURIComponent(item.draft.id)}&focusSection=fiber`}>
-                        該当回線を開く
-                      </Link>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-              <div className="button-row">
-                <Link className="button" to="/lines">回線一覧で確認する</Link>
-              </div>
-            </>
-          )}
-        </article>
-
-        <article className="card">
-          <div className="card__header">
-            <h3>状態別件数</h3>
-            <span className="badge">実データ</span>
-          </div>
-          <div className="stats-row">
-            <div className="stat-box">
-              <span>利用中</span>
-              <strong>{summary.activeCount}件</strong>
-            </div>
-            <div className="stat-box">
-              <span>解約予定</span>
-              <strong>{summary.closingCount}件</strong>
-            </div>
-            <div className="stat-box">
-              <span>登録総数</span>
-              <strong>{drafts.length}件</strong>
-            </div>
-          </div>
-        </article>
-
-        <article className="card">
-          <div className="card__header">
-            <h3>近日期限</h3>
-            <span className="badge">実データ</span>
-          </div>
-          <div className="stats-row">
-            <div className="stat-box">
-              <span>今日期限</span>
-              <strong>{summary.todayCount}件</strong>
-            </div>
-            <div className="stat-box">
-              <span>1〜3日</span>
-              <strong>{summary.within3Days}件</strong>
-            </div>
-            <div className="stat-box">
-              <span>4〜7日</span>
-              <strong>{summary.within7Days}件</strong>
-            </div>
-          </div>
-        </article>
-
-        <article className="card">
-          <div className="card__header">
-            <h3>通知方針サマリー</h3>
-            <span className={notificationSettings.enabled ? 'badge badge--ok' : 'badge'}>
-              {notificationSettings.enabled ? '利用する' : '利用しない'}
-            </span>
-          </div>
-          <dl className="definition-list">
-            <div>
-              <dt>通知対象の期限</dt>
-              <dd>{formatReminderWindow(notificationSettings.reminderWindow)}</dd>
-            </div>
-            <div>
-              <dt>再通知の扱い</dt>
-              <dd>{formatRelaunchPolicy(notificationSettings.relaunchPolicy)}</dd>
-            </div>
-            <div>
-              <dt>現在の通知対象件数</dt>
-              <dd>{notificationSettings.enabled ? `${summary.notificationEligibleCount}件` : '無効'}</dd>
-            </div>
-          </dl>
-          <p className="muted">
-            {notificationSettings.enabled
-              ? '現在の設定と次回確認日から、通知対象になり得る回線件数を表示しています。閉アプリ時通知そのものはこの MVP では保証しません。'
-              : '通知は無効です。`/settings/notifications` で有効にすると、現在の設定で通知対象になる件数をここで確認できます。'}
-          </p>
-        </article>
-      </section>
-
-      <section className="card-grid card-grid--single">
-        <article className="card">
-          <div className="card__header">
-            <h3>通知理由別件数</h3>
-            <span className={notificationSettings.enabled ? 'badge badge--ok' : 'badge'}>
-              {notificationSettings.enabled ? '理由別集計' : '無効'}
-            </span>
-          </div>
-          {!notificationSettings.enabled ? (
-            <p className="muted">通知は無効です。`/settings/notifications` で通知を有効にすると、理由別件数をここで確認できます。</p>
-          ) : (
-            <div className="stats-row">
-              <Link className="stat-box" to={buildLinesLink({ reasonLabel: '期限超過' })}>
-                <span>期限超過</span>
-                <strong>{summary.notificationReasonSummary.overdue}件</strong>
-              </Link>
-              <Link className="stat-box" to={buildLinesLink({ reasonLabel: '今日期限' })}>
-                <span>今日期限</span>
-                <strong>{summary.notificationReasonSummary.today}件</strong>
-              </Link>
-              <Link className="stat-box" to={buildLinesLink({ reasonLabel: '3日以内' })}>
-                <span>3日以内</span>
-                <strong>{summary.notificationReasonSummary.within3Days}件</strong>
-              </Link>
-              <Link className="stat-box" to={buildLinesLink({ reasonLabel: '7日以内' })}>
-                <span>7日以内</span>
-                <strong>{summary.notificationReasonSummary.within7Days}件</strong>
-              </Link>
-            </div>
-          )}
-        </article>
-
-        <article className="card">
-          <div className="card__header">
-            <h3>通知対象の回線一覧</h3>
-            <span className={notificationSettings.enabled ? 'badge badge--ok' : 'badge'}>
-              {notificationSettings.enabled ? `最大${summary.notificationTargets.length}件` : '無効'}
-            </span>
-          </div>
-          {!notificationSettings.enabled ? (
-            <p className="muted">通知は無効です。`/settings/notifications` で通知を有効にすると、ここに対象回線が表示されます。</p>
-          ) : summary.notificationTargets.length === 0 ? (
-            <p className="muted">現在の設定では通知対象になる回線はありません。期限設定か次回確認日を見直すと、ここに候補が表示されます。</p>
-          ) : (
-            <>
-              <ul className="list list--drafts">
-                {summary.notificationTargets.map((item) => (
-                  <li key={item.draft.id}>
-                    <div className="list__row">
-                      <strong>{item.draft.lineName}</strong>
-                      <span className={item.draft.status === '利用中' ? 'badge badge--ok' : 'badge'}>{item.draft.status}</span>
-                    </div>
-                    <span>{item.draft.carrier}</span>
-                    <span>次回確認日: {formatReviewDate(item.draft.nextReviewDate)}</span>
-                    <span>下4桁: {item.draft.last4 || '未設定'}</span>
-                    <span>契約名義メモ: {item.draft.contractHolderNote || '未設定'}</span>
-                    <span className="badge">{item.reasonLabel}</span>
-                    <div className="button-row button-row--tight">
-                      <Link className="button" to={buildLinesLink({ reasonLabel: item.reasonLabel, notificationTargetOnly: true })}>
-                        この条件で回線一覧を開く
-                      </Link>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-              <div className="button-row">
-                <Link className="button" to="/lines">
-                  回線一覧で確認する
+      <section className="dashboard-command">
+        <section className="dashboard-kpi-grid" aria-label="Summary KPI">
+          {kpiCards.map((item) => (
+            <article key={item.id} className={`card dashboard-kpi-card dashboard-kpi-card--${item.tone}`}>
+              <span className="dashboard-kpi-card__label">{item.label}</span>
+              <strong className="dashboard-kpi-card__value">{item.value}</strong>
+              <p className="muted">{item.detail}</p>
+              <div className="button-row button-row--tight">
+                <Link className="button button--sm" to={item.to}>
+                  {item.ctaLabel}
                 </Link>
               </div>
-            </>
-          )}
-        </article>
+            </article>
+          ))}
+        </section>
 
-        <article className="card">
+        <section className="card dashboard-health-panel" aria-label="Hopping Health">
           <div className="card__header">
-            <h3>月額費用サマリー</h3>
-            <span className="badge">実データ</span>
+            <div>
+              <p className="eyebrow">Hopping Health</p>
+              <h3>既存集計を 3 つの観点でまとめ直したファーストビュー</h3>
+            </div>
+            <span className="badge badge--info">KPI first</span>
           </div>
-          <p className="metric">{formatCurrency(summary.monthlyTotal)}</p>
-          <p className="muted">月額費用が入力された回線だけを合計します。未設定の回線は合計に含めません。</p>
-        </article>
+          <p className="muted">
+            総合点は作らず、`安全離脱` `期限警告` `実績不足` を分けて可視化します。各リングから既存の drilldown にそのまま入れます。
+          </p>
+          <div className="dashboard-ring-grid">
+            {healthRings.map((ring) => renderRingGauge(ring))}
+          </div>
+        </section>
 
-        <article className="card">
-          <div className="card__header">
-            <h3>収支サマリー</h3>
-            <span className="badge">概算</span>
+      <section className="dashboard-action-groups" aria-label="Actionable Alerts">
+        <div className="card__header">
+          <div>
+            <p className="eyebrow">Actionable Alerts</p>
+            <h3>優先度ごとに確認対象をまとめたアコーディオン</h3>
           </div>
-          <dl className="definition-list">
-            <div>
-              <dt>累計支払コスト</dt>
-              <dd>{formatYenAmount(summary.balanceSummary.totalPaidCost)}</dd>
-            </div>
-            <div>
-              <dt>受取済み特典</dt>
-              <dd>{formatYenAmount(summary.balanceSummary.totalReceivedBenefit)}</dd>
-            </div>
-            <div>
-              <dt>実質収支</dt>
-              <dd>{formatYenAmount(summary.balanceSummary.netBalance)}</dd>
-            </div>
-            <div>
-              <dt>受取済み特典あり回線</dt>
-              <dd>{summary.balanceSummary.coveredLineCount}件</dd>
-            </div>
-          </dl>
-          <p className="muted">月額費用は `契約開始日` からの経過月数で概算し、受取済み特典は `receivedFlag = true` かつ金額ありの特典だけを集計します。</p>
-          {summary.balanceSummary.receivedBenefitLines.length > 0 ? (
-            <>
-              <ul className="list list--drafts">
-                {summary.balanceSummary.receivedBenefitLines.map((item) => (
-                  <li key={item.draft.id}>
-                    <div className="list__row">
-                      <strong>{item.draft.lineName}</strong>
-                      <span className={item.draft.status === '利用中' ? 'badge badge--ok' : 'badge'}>{item.draft.status}</span>
-                    </div>
-                    <span>{item.draft.carrier}</span>
-                    <span>受取済み特典: {formatYenAmount(item.receivedBenefit)}</span>
-                    <div className="button-row button-row--tight">
-                      <Link className="button button--sm" to={`/lines?openDraft=${encodeURIComponent(item.draft.id)}&focusSection=benefits`}>
-                        該当回線を開く
-                      </Link>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-              <div className="button-row">
-                <Link className="button" to="/lines">回線一覧で確認する</Link>
+        </div>
+
+        {actionGroups.map((group) => (
+          <details
+            key={group.id}
+            className={`dashboard-accordion dashboard-accordion--${group.tone}`}
+            open={group.defaultOpen}
+          >
+            <summary className="dashboard-accordion__summary">
+              <div>
+                <strong>{group.label}</strong>
+                <p className="muted">{group.description}</p>
               </div>
-            </>
-          ) : null}
-        </article>
+              <span className={`badge badge--${group.tone === 'danger' ? 'danger' : group.tone === 'warn' ? 'warn' : 'info'}`}>
+                {group.count}件
+              </span>
+            </summary>
 
-        {summary.contractHolderSummary.length > 0 ? (
-          <article className="card">
-            <div className="card__header">
-              <h3>名義別サマリー</h3>
-              <span className="badge">{summary.contractHolderSummary.length}名義</span>
+            <div className="dashboard-accordion__content">
+              {group.id === 'critical' ? renderCriticalPanels(summary) : null}
+              {group.id === 'warning' ? renderWarningPanels(summary) : null}
+              {group.id === 'watch' ? renderWatchPanels(summary, drafts, notificationSettings) : null}
             </div>
-            <p className="muted">名義が2種類以上あるときだけ、契約者ごとの回線数・利用中件数・月額合計・平均契約月数を表示します。</p>
-            <ul className="list list--drafts">
-              {summary.contractHolderSummary.map((item) => (
-                <li key={item.holder}>
-                  <div className="list__row">
-                    <strong>{item.holder}</strong>
-                    <span className={item.activeLines > 0 ? 'badge badge--ok' : 'badge'}>
-                      利用中 {item.activeLines}件
-                    </span>
-                  </div>
-                  <span>総回線数: {item.totalLines}件</span>
-                  <span>月額合計: {formatCurrency(item.monthlyTotal)}</span>
-                  <span>平均契約月数: {item.avgContractMonths}ヶ月</span>
-                </li>
-              ))}
-            </ul>
-          </article>
-        ) : null}
-
-        <article className="card">
-          <div className="card__header">
-            <h3>利用実績種別の巡回</h3>
-            <span className={summary.usageAlertItems.length === 0 ? 'badge badge--ok' : 'badge'}>
-              {summary.usageAlertItems.length === 0 ? '問題なし' : `${summary.usageAlertItems.length}件`}
-            </span>
-          </div>
-          <p className="muted">`利用中` または `解約予定` の回線について、直近 {USAGE_SUMMARY_DAYS} 日の `通 / 話 / S` 実績に不足がある回線を表示します（最大5件）。</p>
-          {summary.usageAlertItems.length === 0 ? (
-            <p className="muted">利用実績種別の不足がある回線はありません。</p>
-          ) : (
-            <>
-              <ul className="list list--drafts">
-                {summary.usageAlertItems.map((item) => {
-                  const missingUsageKinds = countMissingUsageKinds(item.usageSummary);
-                  const hasNoUsageActivity = missingUsageKinds === 3;
-                  return (
-                    <li key={item.draft.id}>
-                      <div className="list__row">
-                        <strong>{item.draft.lineName}</strong>
-                        <span className={item.draft.status === '利用中' ? 'badge badge--ok' : 'badge'}>{item.draft.status}</span>
-                      </div>
-                      <span>{item.draft.carrier}</span>
-                      <span>最終活動: {item.usageSummary.lastActivityDate ? formatReviewDate(item.usageSummary.lastActivityDate) : '記録なし'}</span>
-                      <div className="badge-row">
-                        <span className={item.usageSummary.hasCommunication ? 'badge badge--ok' : 'badge'}>通</span>
-                        <span className={item.usageSummary.hasCall ? 'badge badge--ok' : 'badge'}>話</span>
-                        <span className={item.usageSummary.hasSms ? 'badge badge--ok' : 'badge'}>S</span>
-                        {hasNoUsageActivity ? (
-                          <span className="badge badge--warn">利用実績なし</span>
-                        ) : (
-                          <span className="badge">不足 {missingUsageKinds}種別</span>
-                        )}
-                      </div>
-                    </li>
-                  );
-                })}
-              </ul>
-              <div className="button-row">
-                <Link className="button" to="/lines?sort=latestActivityAsc&contractActiveOnly=true">回線一覧で確認する</Link>
-              </div>
-            </>
-          )}
-        </article>
-
-        <article className="card">
-          <div className="card__header">
-            <h3>長期未活動の回線</h3>
-            <span className={summary.inactiveLines.length === 0 ? 'badge badge--ok' : 'badge'}>
-              {summary.inactiveLines.length === 0 ? '問題なし' : `${summary.inactiveLines.length}件`}
-            </span>
-          </div>
-          <p className="muted">活動ログがない、または最終活動日から{INACTIVE_THRESHOLD_DAYS}日以上経過している回線を表示します（最大5件）。</p>
-          {summary.inactiveLines.length === 0 ? (
-            <p className="muted">長期未活動の回線はありません。</p>
-          ) : (
-            <>
-              <ul className="list list--drafts">
-                {summary.inactiveLines.map((item) => (
-                  <li key={item.draft.id}>
-                    <div className="list__row">
-                      <strong>{item.draft.lineName}</strong>
-                      <span className={item.draft.status === '利用中' ? 'badge badge--ok' : 'badge'}>{item.draft.status}</span>
-                    </div>
-                    <span>{item.draft.carrier}</span>
-                    <span>最終活動: {item.latestActivityDate ? new Intl.DateTimeFormat('ja-JP', { year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(`${item.latestActivityDate}T00:00:00`)) : '記録なし'}</span>
-                    {item.draft.phoneNumber && (
-                      <Link className="button button--sm" to={`/lines/history?quickActivity=${encodeURIComponent(item.draft.phoneNumber)}`}>活動を記録</Link>
-                    )}
-                  </li>
-                ))}
-              </ul>
-              <div className="button-row">
-                <Link className="button" to="/lines?sort=latestActivityAsc">回線一覧で確認する</Link>
-              </div>
-            </>
-          )}
-        </article>
-
-        <article className="card">
-          <div className="card__header">
-            <h3>次回確認日が近い回線</h3>
-            <span className="badge">最大5件</span>
-          </div>
-          {summary.nearest.length === 0 ? (
-            <p className="muted">次回確認日が設定された回線はまだありません。`/lines` から日付を入れるとここに表示されます。</p>
-          ) : (
-            <ul className="list list--drafts">
-              {summary.nearest.map((draft) => (
-                <li key={draft.id}>
-                  <div className="list__row">
-                    <strong>{draft.lineName}</strong>
-                    <span className={draft.status === '利用中' ? 'badge badge--ok' : 'badge'}>{draft.status}</span>
-                  </div>
-                  <span>{draft.carrier}</span>
-                  <span>回線種別: {draft.lineType}</span>
-                  <span>月額費用: {draft.monthlyCost == null ? '未設定' : formatCurrency(draft.monthlyCost)}</span>
-                  <span>次回確認日: {formatReviewDate(draft.nextReviewDate)}</span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </article>
+          </details>
+        ))}
       </section>
-    </div>
+    </section>
+  </div>
   );
 }
