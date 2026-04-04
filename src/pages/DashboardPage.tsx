@@ -13,7 +13,7 @@ import {
   parseReviewDate,
   startOfDay,
 } from '../lib/lineAnalytics';
-import { buildHistoryLink, buildLineEventFeed, groupLineEventsBySeverity, type LineEvent, type LineEventGroup } from '../lib/lineEvents';
+import { buildHistoryLink, buildLineEventFeed, groupLineEventsBySeverity, type LineEvent, type LineEventGroup, type LineEventOrigin } from '../lib/lineEvents';
 import {
   loadNotificationSettings,
   type NotificationRelaunchPolicy,
@@ -232,6 +232,7 @@ type DashboardSummary = {
 
 type KpiCardViewModel = {
   id: string;
+  accent: string;
   label: string;
   value: string;
   detail: string;
@@ -801,6 +802,7 @@ function buildKpiCards(summary: DashboardSummary, notificationSettingsEnabled: b
   return [
     {
       id: 'danger',
+      accent: 'ALERT',
       label: 'Danger Alerts',
       value: `${summary.dangerCount}件`,
       detail: '次回確認日が今日以前の回線',
@@ -810,6 +812,7 @@ function buildKpiCards(summary: DashboardSummary, notificationSettingsEnabled: b
     },
     {
       id: 'notifications',
+      accent: 'REVIEW',
       label: 'Notifications',
       value: notificationSettingsEnabled ? `${summary.notificationEligibleCount}件` : '無効',
       detail: notificationSettingsEnabled ? '通知設定上の対象件数' : '通知設定で有効化',
@@ -821,6 +824,7 @@ function buildKpiCards(summary: DashboardSummary, notificationSettingsEnabled: b
     },
     {
       id: 'monthly',
+      accent: 'COST',
       label: 'Monthly Cost',
       value: formatCurrency(summary.monthlyTotal),
       detail: '月額費用の入力済み回線のみ集計',
@@ -830,6 +834,7 @@ function buildKpiCards(summary: DashboardSummary, notificationSettingsEnabled: b
     },
     {
       id: 'balance',
+      accent: 'NET',
       label: 'Net Balance',
       value: formatYenAmount(summary.balanceSummary.netBalance),
       detail: '受取済み特典を反映した概算収支',
@@ -942,7 +947,7 @@ function buildActionGroups(eventGroups: LineEventGroup[]): ActionGroupViewModel[
 }
 
 function renderEventMetaTags(event: LineEvent): JSX.Element | null {
-  const metaTags = [event.carrier, event.status, ...event.meta].filter(Boolean);
+  const metaTags = Array.from(new Set([event.carrier, event.status, ...getUniqueEventMetaTags(event)].filter(Boolean)));
   if (metaTags.length === 0) {
     return null;
   }
@@ -959,6 +964,14 @@ function renderEventMetaTags(event: LineEvent): JSX.Element | null {
   );
 }
 
+function getUniqueEventMetaTags(event: LineEvent): string[] {
+  return Array.from(new Set(event.meta.filter(Boolean)));
+}
+
+function getEventOriginLabel(origin: LineEventOrigin): string {
+  return origin === 'history' ? '履歴由来' : '回線由来';
+}
+
 function renderActionEventRow(event: LineEvent): JSX.Element {
   const showHistoryLink = Boolean(event.phoneNumber) && !event.to.startsWith('/lines/history');
 
@@ -967,6 +980,7 @@ function renderActionEventRow(event: LineEvent): JSX.Element {
       <div className="dashboard-event-row__main">
         <div className="dashboard-event-row__title-row">
           <strong>{event.title}</strong>
+          <span className="badge">{getEventOriginLabel(event.origin)}</span>
           <span className={`badge badge--${event.severity === 'critical' ? 'danger' : event.severity === 'warning' ? 'warn' : 'info'}`}>
             {event.severity === 'critical' ? 'Critical' : event.severity === 'warning' ? 'Warning' : 'Watch'}
           </span>
@@ -1554,6 +1568,15 @@ export function DashboardPage(): JSX.Element {
             保存済み回線の次回確認日、契約状態、月額費用に加えて、通知方針を見比べながら今日の優先度を確認できます。
           </p>
         </div>
+        <div className="dashboard-header-chips" aria-label="dashboard status summary">
+          <span className={`badge ${summary.notificationReasonSummary.overdue > 0 ? 'badge--danger' : 'badge--info'}`}>
+            期限超過 {summary.notificationReasonSummary.overdue}件
+          </span>
+          <span className={`badge ${summary.todayCount > 0 ? 'badge--warn' : 'badge--info'}`}>
+            今日期限 {summary.todayCount}件
+          </span>
+          <span className="badge badge--ok">契約中 {summary.activeCount}件</span>
+        </div>
       </header>
 
       {errorMessage ? <p className="notice notice--warn">{errorMessage}</p> : null}
@@ -1594,9 +1617,39 @@ export function DashboardPage(): JSX.Element {
       ) : null}
 
       <section className="dashboard-command">
+        <section className="card dashboard-hero-panel" aria-label="Command Center overview">
+          <div className="dashboard-hero-panel__content">
+            <div>
+              <p className="eyebrow">Command Center</p>
+              <h3>既存の期限・予定・実績を、今日の判断に必要な密度へ再配置しています。</h3>
+              <p className="muted">
+                KPI は量、Hopping Health は傾向、Actionable Alerts は処理順を示します。既存の drilldown はそのまま使えます。
+              </p>
+            </div>
+            <div className="dashboard-hero-panel__chips" aria-label="command center quick metrics">
+              <span className="badge badge--info">通知対象 {summary.notificationEligibleCount}件</span>
+              <span className={`badge ${summary.contractEndAlerts.length > 0 ? 'badge--warn' : 'badge--ok'}`}>
+                契約終了警告 {summary.contractEndAlerts.length}件
+              </span>
+              <span className={`badge ${summary.usageAlertItems.length > 0 ? 'badge--warn' : 'badge--ok'}`}>
+                実績不足 {summary.usageAlertItems.length}件
+              </span>
+              <span className={`badge ${summary.balanceSummary.netBalance >= 0 ? 'badge--ok' : 'badge--warn'}`}>
+                概算収支 {formatYenAmount(summary.balanceSummary.netBalance)}
+              </span>
+            </div>
+          </div>
+        </section>
+
         <section className="dashboard-kpi-grid" aria-label="Summary KPI">
           {kpiCards.map((item) => (
             <article key={item.id} className={`card dashboard-kpi-card dashboard-kpi-card--${item.tone}`}>
+              <div className="dashboard-kpi-card__topline">
+                <span className="dashboard-kpi-card__accent">{item.accent}</span>
+                <span className={`badge badge--${item.tone === 'danger' ? 'danger' : item.tone === 'warn' ? 'warn' : item.tone === 'ok' ? 'ok' : 'info'}`}>
+                  {item.label}
+                </span>
+              </div>
               <span className="dashboard-kpi-card__label">{item.label}</span>
               <strong className="dashboard-kpi-card__value">{item.value}</strong>
               <p className="muted">{item.detail}</p>
