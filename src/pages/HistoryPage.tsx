@@ -129,7 +129,7 @@ const ACTIVITY_MEMO_FALLBACK_BY_TYPE: Record<string, string[]> = {
   利用実績確認: ['通話・通信テスト実施。正常。', '1周年確認。問題なし。'],
   通信実施: ['通信テスト実施。正常。', '通信速度テスト。正常。'],
   通話実施: ['通話テスト実施。正常。', '最終通話テスト実施。正常。'],
-  SMS送信: ['SMS送受信テスト実施。正常。'],
+  SMS送信: ['SMS受送信テスト実施。正常。'],
   料金確認: ['請求確認。月額変動なし。', '月次確認。', '年次確認。月額変動なし。'],
   プラン変更: ['プラン変更を実施。', 'オプション変更内容を確認。'],
   その他: ['MNP予約番号取得。転出準備。', '解約手続き完了。'],
@@ -615,6 +615,25 @@ function formatDaysUntilLabel(daysUntil: number): string {
     return '今日';
   }
   return `あと${daysUntil}日`;
+}
+
+function getUniqueEventMetaItems(items: string[]): string[] {
+  return Array.from(new Set(items.filter(Boolean)));
+}
+
+function getHistoryEventOriginLabel(origin: LineEvent['origin']): string {
+  return origin === 'history' ? '履歴由来' : '回線由来';
+}
+
+function getHistoryEventSeverityLabel(severity: LineEvent['severity']): string {
+  switch (severity) {
+    case 'critical':
+      return 'Critical';
+    case 'warning':
+      return 'Warning';
+    case 'watch':
+      return 'Watch';
+  }
 }
 
 function calculateContractDurationDays(contractStartDate: string, contractEndDate: string): number | null {
@@ -1421,11 +1440,15 @@ export function HistoryPage(): JSX.Element {
       </header>
 
       <section className="card-grid card-grid--history-hero">
-        <article className="card card--accent">
+        <article className="card card--accent history-hero-card history-hero-card--summary">
           <div className="card__header">
-            <h3>履歴の要点</h3>
+            <div>
+              <p className="eyebrow">History Summary</p>
+              <h3>履歴の要点</h3>
+            </div>
             <span className="badge">{visibleLineHistoryGroups.length}番号</span>
           </div>
+          <p className="muted history-hero-card__lead">記録対象の電話番号、表示条件、活動ログの可視量を先に確認してから入力へ入ります。</p>
           <div className="history-kpi-grid">
             <div className="history-kpi">
               <span className="history-kpi__label">履歴件数</span>
@@ -1447,9 +1470,12 @@ export function HistoryPage(): JSX.Element {
           </div>
         </article>
 
-        <article className="card">
+        <article className="card history-hero-card history-hero-card--actions">
           <div className="card__header">
-            <h3>クイック操作</h3>
+            <div>
+              <p className="eyebrow">Quick Actions</p>
+              <h3>クイック操作</h3>
+            </div>
             <span className="badge">履歴 / タイムライン</span>
           </div>
           <p className="muted">フォーム、一覧、入出力をすばやく切り替えます。</p>
@@ -1466,7 +1492,7 @@ export function HistoryPage(): JSX.Element {
             ) : null}
           </div>
           {historyIntentView || quickActivityDraft ? (
-            <div className="detail-panel" style={{ marginTop: '0.75rem' }}>
+            <div className="detail-panel history-context-panel" style={{ marginTop: '0.75rem' }}>
               <div className="card__header">
                 <h3>開いている文脈</h3>
                 {historyIntentView ? (
@@ -1487,7 +1513,7 @@ export function HistoryPage(): JSX.Element {
               ) : null}
               {historyIntentView ? <p className="muted" style={{ marginTop: 0 }}>{historyIntentView.description}</p> : null}
               {contextualHistoryEvents.length > 0 ? (
-                <ul className="list list--drafts">
+                <ul className="list list--drafts history-context-events">
                   {contextualHistoryEvents.map((event) => (
                     <li key={event.id}>
                       <div className="list__row">
@@ -1513,7 +1539,7 @@ export function HistoryPage(): JSX.Element {
       </section>
 
       <section className="card-grid card-grid--single">
-        <article className="card">
+        <article className="card history-event-feed-card">
           <div className="card__header">
             <h3>今後のイベント</h3>
             <span className="badge badge--info">
@@ -1544,6 +1570,8 @@ export function HistoryPage(): JSX.Element {
                           <div className="dashboard-event-row__main">
                             <div className="dashboard-event-row__title-row">
                               <strong>{event.title}</strong>
+                              <span className="badge">{getHistoryEventOriginLabel(event.origin)}</span>
+                              <span className={`badge badge--${severityTone}`}>{getHistoryEventSeverityLabel(event.severity)}</span>
                               <span className={`badge badge--${severityTone}`}>
                                 {daysUntil == null ? '日付未設定' : formatDaysUntilLabel(daysUntil)}
                               </span>
@@ -1552,7 +1580,7 @@ export function HistoryPage(): JSX.Element {
                             <p className="dashboard-event-row__detail">{event.detail}</p>
                             <div className="badge-row">
                               {event.dueDateLabel ? <span className="badge badge--info">{event.dueDateLabel}</span> : null}
-                              {event.meta.map((metaItem) => (
+                              {getUniqueEventMetaItems(event.meta).map((metaItem) => (
                                 <span key={`${event.id}-${metaItem}`} className="badge">{metaItem}</span>
                               ))}
                             </div>
@@ -1792,7 +1820,7 @@ export function HistoryPage(): JSX.Element {
       </section>
 
       <section className="card-grid card-grid--single">
-        <article className="card" id="history-timeline">
+        <article className="card history-timeline-card" id="history-timeline">
           <div className="card__header">
             <h3>電話番号単位の履歴タイムライン</h3>
             <span className="badge">{visibleLineHistoryGroups.length}番号 / {totalVisibleTimelineEntries}件</span>
@@ -1846,7 +1874,7 @@ export function HistoryPage(): JSX.Element {
           ) : (
             <div className="stack">
               {visibleLineHistoryGroups.map((group) => (
-                <div key={group.phoneNumber} className="detail-panel">
+                <div key={group.phoneNumber} className="detail-panel history-group-card">
                   <div className="card__header">
                     <h3>{group.maskedPhoneNumber}</h3>
                     <span className="badge">表示 {group.visibleEntries.length}件 / 全 {group.entries.length}件</span>
@@ -1872,7 +1900,7 @@ export function HistoryPage(): JSX.Element {
                       const timelineStyle = calculateTimelineStyleForWindow(entry, timelineWindow, today, group.earliestDate, group.latestDate);
                       const previousEntry = index > 0 ? group.visibleEntries[index - 1] : null;
                       return (
-                        <div key={entry.id} className="detail-panel" style={{ margin: 0 }}>
+                        <div key={entry.id} className="detail-panel history-entry-card" style={{ margin: 0 }}>
                           <div className="card__header">
                             <h3>{entry.carrier}</h3>
                             <span className={isCurrentHistoryStatus(entry.status) ? 'badge badge--ok' : 'badge'}>{entry.status}</span>
