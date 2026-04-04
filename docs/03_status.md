@@ -4,10 +4,10 @@
 
 - Bootstrap Issue: #1（永続 open）
 - Context Hub Issue: #2（永続 open）
-- 現在地: 共通イベントフィードと command center 化を main に反映し、`HistoryPage` の月別 read-only 一覧まで整えた。`Actionable Alerts` には `回線由来` / `履歴由来` の出所ラベルを付け、`HistoryPage` の event feed も同じ優先度・出所ラベルで読めるように揃えた
+- 現在地: 共通イベントフィードと command center 化を main に反映し、`HistoryPage` の月別 read-only 一覧まで整えた。`Actionable Alerts` には `回線由来` / `履歴由来` の出所ラベルも付け、dashboard と history の visual language も揃え始めた
 - 参照資料: Gemini / 初期資料パックを精査し、現行 product には `line-centric / local-first` を維持したまま、将来の `devices / tasks / secret vault / calendar / ROI` を別フェーズとして分離する方針を確認した
 - 運用前提: PR 必須 / approval 任意 / required check `check-and-build`
-- 直近の作業: `HistoryPage` の `今後のイベント` を月別 read-only 一覧として追加し、共通イベントフィードを calendar 前段として見せる PR を進めた。あわせて `Actionable Alerts` と `今後のイベント` に出所・優先度ラベルを追加した
+- 直近の作業: `HistoryPage` の `今後のイベント` を月別 read-only 一覧として追加し、共通イベントフィードを calendar 前段として見せる PR を進めた。あわせて `Actionable Alerts` に出所ラベルを追加した
 - 追加確認: Playwright MCP はローカル `cwd` で起動でき、`/lines/history` の実画面確認が可能。開発環境では起動時に古い service worker / cache を自動 cleanup するため、Chrome の hard reload 依存を減らした
 - 安全性: 統合バックアップのインポートは `lineDrafts` / `lineHistory` の両方を検証し、途中失敗時は復元前の状態へロールバックするようにした
 
@@ -44,7 +44,7 @@
 - `mnpReservationNumber` / `mnpReservationExpiry` / `freeOptionDeadline` を構造化して保存・表示
 - `LineDraft.benefits: BenefitRecord[]` を導入し、特典 / キャッシュバックを構造化して保存・表示
 - 特典の種別 / 金額 / 受取期限日 / 受取条件 / 受取済み / 受取日 / メモを追加・編集・削除可能
-- `利用中` / `解約予定` の回線に、180日以内の `通 / 話 / S` 利用実績バッジを表示
+- `利用中` / `解約予定` の回線に、180 日以内の `通 / 話 / S` 利用実績バッジを表示
 - `lineType === 光回線` のときだけ、移行種別 / ISP 名 / 工事費関連を構造化して保存・表示
 - 光回線の詳細に `残債解消予定日` と `概算残債` を表示
 - 行ボタンから「活動を記録」→ `/lines/history?quickActivity=<phone>` へ遷移
@@ -88,3 +88,10 @@
 - GitHub Actions: `Repo sanity` に加えて `CI` workflow で `npm run check` / `npm run build` を実行
 - `main` 保護: PR 必須 / approval 任意 / required check `check-and-build`
 - 仕様起点の資料から、現行実装に未着手の未来フェーズとして `devices / tasks / secret vault / calendar / ROI` を切り分けた
+
+## 次の候補
+
+1. `共通イベントフィード` を起点に、`/` の要アクション一覧と `HistoryPage` の入力導線の整合をさらに詰める
+2. 統合カレンダーに先立ち、各日付を共通イベント列として扱うための整理案を詰める
+3. Gemini 案を参考にしつつ、既存 route を崩さない範囲で compact KPI / badge / iconography の統一を続ける
+4. 仕様起点の資料を踏まえ、`devices / tasks / secret vault / calendar / ROI` は future roadmap として個別に扱う
