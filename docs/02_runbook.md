@@ -16,7 +16,7 @@
 
 - ダッシュボード（`/`）
   - [ ] localStorage 空の状態で、初回ガイドと `回線一覧で1件追加する` / `確認用サンプルデータを読み込む` / `バックアップを復元する` が表示される
-  - [ ] `確認用サンプルデータを読み込む` で、`Summary KPI / Hopping Health / Actionable Alerts` の 3 層に件数と回線が即時反映される
+  - [ ] `確認用サンプルデータを読み込む` で、`Summary KPI / Hopping Health / Actionable Alerts` の 3 層に件数と回線が即時反映され、dark command center 風の card hierarchy で表示される
   - [ ] `Summary KPI` に `Danger Alerts / Notifications / Monthly Cost / Net Balance` が表示される
   - [ ] `Hopping Health` に `安全離脱 / 期限警告 / 実績不足` の 3 リングが表示される
   - [ ] `Actionable Alerts` が `Critical / Warning / Watch` のアコーディオンで表示され、共通イベントフィード由来の行として並び、`回線由来` / `履歴由来` のラベルが見える
@@ -54,7 +54,7 @@
   - [ ] ダッシュボードの `該当回線を開く` で `/lines?openDraft=<id>&focusSection=...` が開き、対象回線の必要な詳細位置まで寄れる
 - 履歴・タイムライン（`/lines/history`）
   - [ ] 履歴 0 件時に `履歴フォームに戻る` / `確認用サンプルデータを読み込む` / `回線一覧で1件追加する` / `バックアップを復元する` が表示される
-  - [ ] 履歴ページ上部に `履歴の要点` / `クイック操作` が表示され、`フォームへ` / `タイムラインへ` で移動できる
+  - [ ] 履歴ページ上部に `履歴の要点` / `クイック操作` が command center と共通の visual language で表示され、`フォームへ` / `タイムラインへ` で移動できる
   - [ ] `Actionable Alerts` 由来の `historyIntent` / `quickActivity` を受け取ると、開いている文脈カードが表示される
   - [ ] `今後のイベント` が月別の read-only 一覧として表示され、共通イベントフィード由来の各行から既存 drilldown に飛べる
   - [ ] `?quickActivity=<phone>` で履歴フォームが自動セットされる
