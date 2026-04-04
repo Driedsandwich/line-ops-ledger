@@ -4,9 +4,9 @@
 
 - Bootstrap Issue: #1（永続 open）
 - Context Hub Issue: #2（永続 open）
-- 現在地: 共通イベントフィードと command center 化を main に反映し、`HistoryPage` の月別 read-only 一覧まで整えた
+- 現在地: 共通イベントフィードと command center 化を main に反映し、`HistoryPage` の月別 read-only 一覧まで整えた。`Actionable Alerts` には `回線由来` / `履歴由来` の出所ラベルも付けた
 - 運用前提: PR 必須 / approval 任意 / required check `check-and-build`
-- 直近の作業: `HistoryPage` の `今後のイベント` を月別 read-only 一覧として追加し、共通イベントフィードを calendar 前段として見せる PR を進めた
+- 直近の作業: `HistoryPage` の `今後のイベント` を月別 read-only 一覧として追加し、共通イベントフィードを calendar 前段として見せる PR を進めた。あわせて `Actionable Alerts` に出所ラベルを追加した
 - 追加確認: Playwright MCP はローカル `cwd` で起動でき、`/lines/history` の実画面確認が可能
 
 ## 実装済み主要機能
@@ -15,7 +15,7 @@
 - データ 0 件時の初回ガイド（回線追加 / 確認用サンプルデータ投入 / 履歴確認 / バックアップ復元）
 - `Summary KPI` で `Danger Alerts / Notifications / Monthly Cost / Net Balance` を横並び表示
 - `Hopping Health` で `安全離脱 / 期限警告 / 実績不足` の 3 リングを表示
-- `Actionable Alerts` を `Critical / Warning / Watch` のアコーディオンで整理
+- `Actionable Alerts` を `Critical / Warning / Watch` のアコーディオンで整理し、回線由来 / 履歴由来の出所ラベルを表示
 - `Actionable Alerts` は共通イベントフィード由来で、`安全離脱 / 期限警告 / 実績不足` の3分類を維持したまま並べ替えている
 - `Actionable Alerts` から `履歴で記録` で `HistoryPage` へ飛び、`quickActivity` と `historyIntent` を受けた文脈カードを表示できる
 - `HistoryPage` に `今後のイベント` の月別 read-only 一覧を追加し、共通イベントフィードを calendar 前段として確認できるようにした
@@ -29,7 +29,7 @@
 - `収支サマリー` から、受取済み特典がある回線一覧と `/lines?openDraft=<id>&focusSection=benefits` で該当回線を直接開く導線を表示
 - 光回線向けの `残債解消予定日 / あとN日 / 概算残債` ダッシュボード補助カードと、`/lines?openDraft=<id>&focusSection=fiber` で該当回線を直接開く導線
 - `利用中` / `解約予定` 回線について、`通 / 話 / S` の不足種別を巡回できるダッシュボード補助カードと `contractActiveOnly=true` / `usagePriority=<kind>` 付きの `/lines` 導線
-- 共通イベントフィードを read-only 集約として `src/lib/lineEvents.ts` に分離し、`plannedExitDate` / `mnpReservationExpiry` / `freeOptionDeadline` / `benefits.deadlineDate` / `nextReviewDate` / `contractEndDate` / 光回線残債 / 長期未活動 を横断して扱えるようにした
+- 共通イベントフィードを read-only 集約として `src/lib/lineEvents.ts` に分離し、`plannedExitDate` / `mnpReservationExpiry` / `freeOptionDeadline` / `benefits.deadlineDate` / `nextReviewDate` / `contractEndDate` / 光回線残債 / 長期未活動 / 利用実績不足 を横断して扱えるようにした
 - 通知方針サマリー / 通知理由別件数 / 通知対象回線一覧
 - サイドバーの `設定` は見出しに整理し、`ストレージ` / `バックアップ` / `通知設定` / `活動種別` の配下リンクが重複しない状態にした
 

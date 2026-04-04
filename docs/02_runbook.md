@@ -19,7 +19,7 @@
   - [ ] `確認用サンプルデータを読み込む` で、`Summary KPI / Hopping Health / Actionable Alerts` の 3 層に件数と回線が即時反映される
   - [ ] `Summary KPI` に `Danger Alerts / Notifications / Monthly Cost / Net Balance` が表示される
   - [ ] `Hopping Health` に `安全離脱 / 期限警告 / 実績不足` の 3 リングが表示される
-  - [ ] `Actionable Alerts` が `Critical / Warning / Watch` のアコーディオンで表示され、共通イベントフィード由来の行として並ぶ
+  - [ ] `Actionable Alerts` が `Critical / Warning / Watch` のアコーディオンで表示され、共通イベントフィード由来の行として並び、`回線由来` / `履歴由来` のラベルが見える
   - [ ] `Actionable Alerts` の `履歴で記録` から `/lines/history?quickActivity=<phone>&historyIntent=<kind>` へ飛び、履歴ページ上部に開いている文脈が表示される
   - [ ] `今後のアクション予定` に、予定日が60日以内または超過の利用中 / 解約予定回線が表示される
   - [ ] `番号・無料オプション期限` に、MNP予約番号期限と無料オプション期限が3日以内または超過の利用中 / 解約予定回線が表示される

@@ -185,7 +185,7 @@
   - タイムライン本体は維持しつつ、履歴件数・表示中件数・可視ログ件数を先頭で確認できるようにした
   - `check` / `build` と Playwright で `/lines/history` の表示を確認中
 - Issue #195 継続: 共通イベントフィード準備と command center の安定化
-  - `src/lib/lineEvents.ts` を追加し、`plannedExitDate` / `mnpReservationExpiry` / `freeOptionDeadline` / `benefit.deadlineDate` / `nextReviewDate` / `contractEndDate` / 光回線残債 / 長期未活動 / 利用実績不足 を read-only に集約するイベントフィードを導入した
+  - `src/lib/lineEvents.ts` を追加し、`plannedExitDate` / `mnpReservationExpiry` / `freeOptionDeadline` / `benefits.deadlineDate` / `nextReviewDate` / `contractEndDate` / 光回線残債 / 長期未活動 / 利用実績不足 を read-only に集約するイベントフィードを導入した
   - `DashboardPage` の `Actionable Alerts` をイベントフィード由来の `Critical / Warning / Watch` アコーディオンへ寄せ、既存 drilldown を維持した
   - `DashboardPage` と `LinesPage` に散っていた safe-exit / fiber-debt の計算を `src/lib/lineAnalytics.ts` に寄せ、重複ロジックを削減した
   - `check` / `build` を通過し、続いて docs を現状へ同期した
@@ -193,6 +193,10 @@
   - PR #202 を squash merge し、`main` に共通イベントフィードと command center 安定化を反映した
   - `agent-browser` を npm 経由で導入し、Chrome をインストールしたうえで `/` と `/lines/history` の実画面を確認した
   - `/` は `Summary KPI / Hopping Health / Actionable Alerts` の 3 層、`/lines/history` は `履歴の要点 / クイック操作 / タイムライン` を維持していることを確認した
+- `Actionable Alerts` に回線由来 / 履歴由来の出所ラベルを追加
+  - `LineEvent.origin` を導入し、履歴由来の `usageShortage` / `inactiveLine` と、それ以外の回線由来イベントを区別できるようにした
+  - `DashboardPage` の `Actionable Alerts` 行に `回線由来` / `履歴由来` のラベルを表示するようにした
+  - `docs/02_runbook.md` / `docs/03_status.md` を現状へ同期した
 - Issue #205: Dashboard のイベントから HistoryPage へ文脈付きで遷移できるようにする
   - `DashboardPage` の `Actionable Alerts` に `履歴で記録` の導線を追加し、`quickActivity` と `historyIntent` を付けて履歴ページへ飛べるようにした
   - `HistoryPage` に `開いている文脈` カードを追加し、Dashboard から来た意図と関連イベントを上部で確認できるようにした
