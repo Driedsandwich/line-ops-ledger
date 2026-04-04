@@ -1,12 +1,12 @@
 # Status
 
-## 現在地（2026-04-04）
+## 現在地（2026-04-05）
 
 - Bootstrap Issue: #1（永続 open）
 - Context Hub Issue: #2（永続 open）
-- 現在地: 共通イベントフィードと command center 化を main に反映し、`HistoryPage` の月別 read-only 一覧まで整えた
+- 現在地: 共通イベントフィードと command center 化を main に反映し、`HistoryPage` の月別 read-only 一覧まで整えた。docs の goal / requirements を現行実装に合わせて基準固定する段階に入っている
 - 運用前提: PR 必須 / approval 任意 / required check `check-and-build`
-- 直近の作業: `HistoryPage` の `今後のイベント` を月別 read-only 一覧として追加し、共通イベントフィードを calendar 前段として見せる PR を進めた
+- 直近の作業: `docs/00_goal.md` / `docs/01_requirements.md` を現行実装に合わせて埋め、`docs/02_runbook.md` と `docs/03_status.md` を command center / event feed / HistoryPage の現在地に合わせて同期している
 - 追加確認: Playwright MCP はローカル `cwd` で起動でき、`/lines/history` の実画面確認が可能
 
 ## 実装済み主要機能
@@ -88,4 +88,4 @@
 
 1. `HistoryPage` の月別 read-only 一覧とタイムライン視認性をもう少し見やすく整える
 2. `共通イベントフィード` を起点に、`/` の要アクション一覧と `HistoryPage` の入力導線の整合をさらに詰める
-3. 統合カレンダーに先立ち、各日付を共通イベント列として扱うための整理案を詰める
+3. `docs/04_decisions.md` に将来フェーズ分離の判断ログを残す

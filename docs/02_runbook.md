@@ -1,5 +1,11 @@
 # Runbook
 
+## 現在の前提
+
+- 現行製品は `line-centric / local-first` の command center 型 UI として運用する
+- `/`、`/lines`、`/lines/history`、`/settings/*` は既存の drilldown を維持する
+- 将来フェーズの `devices / tasks / secret vault / calendar / ROI` は分離して扱う
+
 ## 10分で再開する手順
 
 1. `README.md` を読む
@@ -11,6 +17,7 @@
 7. PR では GitHub Actions の `CI` workflow が成功していることを確認する
 8. `main` へは PR 必須 / approval 任意 / required check `check-and-build` の前提で進める
 9. サイドバーの `設定` は見出しで、`ストレージ` / `バックアップ` / `通知設定` / `活動種別` が配下リンクとして表示されることを確認する
+10. ブラウザのキャッシュが古いときは、開発サーバー再起動で最新表示を取り込む
 
 ## 動作確認チェックリスト
 

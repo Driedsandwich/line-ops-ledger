@@ -1,5 +1,10 @@
 # AI Log
 
+## 2026-04-05
+- `docs/00_goal.md` / `docs/01_requirements.md` を現行の line-centric / local-first 方針に合わせて基準固定
+- `docs/02_runbook.md` / `docs/03_status.md` を current state に同期し、将来フェーズの `devices / tasks / secret vault / calendar / ROI` は別扱いとして整理
+- branch は `codex/spec-baseline-sync` で進行中
+
 ## 2026-03-17
 - repo `Driedsandwich/line-ops-ledger` を確認
 - Bootstrap Issue #1 を作成
