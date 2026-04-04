@@ -1,7 +1,13 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { lineDraftStore, normalizePhoneNumber, type LineDraft } from '../lib/lineDrafts';
-import { buildLineEventFeed, groupLineEventsByMonth, type LineEvent, type LineEventMonthGroup } from '../lib/lineEvents';
+import {
+  buildHistoryLink,
+  buildLineEventFeed,
+  groupLineEventsByMonth,
+  type LineEvent,
+  type LineEventMonthGroup,
+} from '../lib/lineEvents';
 import {
   createLineHistoryEntry,
   lineHistoryStore,
@@ -666,1300 +672,416 @@ function findRelatedDrafts(entry: LineHistoryEntry, drafts: LineDraft[]): LineDr
   const phoneNumber = normalizePhoneNumber(entry.phoneNumber);
   if (phoneNumber) {
     const exactDrafts = drafts.filter((draft) => draft.phoneNumber === phoneNumber);
-    if (exactDrafts.length > 0) return exactDrafts;
+    if (exactDrafts.length > 0) {
+      return exactDrafts;
+    }
   }
+
   const last4 = getPhoneLast4(entry.phoneNumber);
-  if (!last4) return [];
-  return drafts.filter((draft) => !draft.phoneNumber && draft.last4 === last4);
+  if (!last4) {
+    return [];
+  }
+
+  return drafts.filter((draft) => draft.last4 === last4 || getPhoneLast4(draft.phoneNumber) === last4);
 }
 
-function buildLineHistoryGroups(entries: LineHistoryEntry[]): LineHistoryGroup[] {
+function calculateContractDurationDaysFromEntry(entry: LineHistoryEntry): number | null {
+  return calculateContractDurationDays(entry.contractStartDate, entry.contractEndDate || '');
+}
+
+function buildHistoryIntentForEvent(event: LineEvent): HistoryIntentKind {
+  return event.kind;
+}
+
+function sortEventsByRecency(events: LineEvent[]): LineEvent[] {
+  return [...events].sort((a, b) => {
+    const dateA = a.date || '';
+    const dateB = b.date || '';
+    if (dateB !== dateA) {
+      return dateB.localeCompare(dateA);
+    }
+    if (b.severity !== a.severity) {
+      return getHistoryEventSeverityLabel(b.severity).localeCompare(getHistoryEventSeverityLabel(a.severity));
+    }
+    return a.title.localeCompare(b.title, 'ja-JP');
+  });
+}
+
+function groupEventsByMonth(events: LineEvent[]): LineEventMonthGroup[] {
+  return groupLineEventsByMonth(events);
+}
+
+function buildHistoryLinkForEvent(event: LineEvent): string {
+  return buildHistoryLink(event.phoneNumber, event.kind);
+}
+
+function getTimelinePhoneFilterLabel(phoneNumbers: string[]): string {
+  return `${phoneNumbers.length}番号`;
+}
+
+function calculateVisibleTimelineEntries(groups: VisibleLineHistoryGroup[]): number {
+  return groups.reduce((sum, group) => sum + group.visibleEntries.length, 0);
+}
+
+function canLinkToHistory(event: LineEvent): boolean {
+  return Boolean(event.phoneNumber);
+}
+
+function getEventMetaItems(event: LineEvent): string[] {
+  const items = [
+    event.origin === 'history' ? '履歴由来' : '回線由来',
+    getHistoryEventSeverityLabel(event.severity),
+  ];
+  return getUniqueEventMetaItems(items);
+}
+
+function getEventSeverityTone(severity: LineEvent['severity']): 'ok' | 'warn' | 'danger' | 'info' {
+  switch (severity) {
+    case 'critical': return 'danger';
+    case 'warning': return 'warn';
+    case 'watch': return 'info';
+  }
+}
+
+function getEventMonthSummaryLabel(group: LineEventMonthGroup): string {
+  return `${group.monthLabel} / ${group.events.length}件`;
+}
+
+function formatEventMonthRange(group: LineEventMonthGroup): string {
+  return `${group.monthLabel} のイベント`;
+}
+
+function renderHistoryEventMeta(event: LineEvent): string[] {
+  return getEventMetaItems(event);
+}
+
+function getEventSortKey(event: LineEvent): string {
+  return `${event.date || ''}::${event.title}`;
+}
+
+function buildHistoryActionLink(phoneNumber: string, kind: LineEvent['kind']): string {
+  return buildHistoryLink(phoneNumber, kind);
+}
+
+function getVisiblePhoneNumbers(groups: VisibleLineHistoryGroup[]): string[] {
+  return groups.map((group) => group.phoneNumber);
+}
+
+function getLineHistoryGroupsByPhoneNumber(entries: LineHistoryEntry[]): LineHistoryGroup[] {
   const groups = new Map<string, LineHistoryEntry[]>();
   for (const entry of entries) {
-    const current = groups.get(entry.phoneNumber) ?? [];
-    current.push(entry);
-    groups.set(entry.phoneNumber, current);
+    const list = groups.get(entry.phoneNumber) ?? [];
+    list.push(entry);
+    groups.set(entry.phoneNumber, list);
   }
-  return [...groups.entries()]
-    .map(([phoneNumber, groupedEntries]) => {
-      const entriesSorted = [...groupedEntries].sort((a, b) => a.contractStartDate.localeCompare(b.contractStartDate));
-      const earliestDate = entriesSorted[0]?.contractStartDate ?? '';
-      const latestDate = entriesSorted.reduce((latest, entry) => {
-        const candidate = entry.contractEndDate || entry.contractStartDate;
-        return candidate > latest ? candidate : latest;
-      }, earliestDate);
-      return {
-        phoneNumber,
-        maskedPhoneNumber: maskPhoneNumber(phoneNumber),
-        entries: entriesSorted,
-        earliestDate,
-        latestDate,
-      } satisfies LineHistoryGroup;
-    })
-    .sort((a, b) => a.phoneNumber.localeCompare(b.phoneNumber));
+
+  return [...groups.entries()].map(([phoneNumber, groupEntries]) => {
+    const sortedEntries = [...groupEntries].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    const dates = sortedEntries.flatMap((entry) => [entry.contractStartDate, entry.contractEndDate || ''].filter(Boolean));
+    return {
+      phoneNumber,
+      maskedPhoneNumber: maskPhoneNumber(phoneNumber),
+      entries: sortedEntries,
+      earliestDate: dates.sort()[0] ?? '',
+      latestDate: dates.sort().at(-1) ?? '',
+    };
+  });
 }
 
-function toLineHistoryFormState(entry: LineHistoryEntry): LineHistoryFormState {
+function getVisibleLineHistoryGroups(groups: LineHistoryGroup[], windowKey: TimelineWindowKey, viewMode: TimelineViewMode, today: Date): VisibleLineHistoryGroup[] {
+  return groups
+    .filter((group) => group.entries.some((entry) => isEntryVisibleInTimeline(entry, windowKey, viewMode, today)))
+    .map((group) => ({
+      ...group,
+      visibleEntries: group.entries.filter((entry) => isEntryVisibleInTimeline(entry, windowKey, viewMode, today)),
+      relatedDrafts: [],
+    }));
+}
+
+function getTimelinePhoneNumbersForGroup(group: VisibleLineHistoryGroup): string[] {
+  return [group.phoneNumber];
+}
+
+function getEventToneLabel(severity: LineEvent['severity']): string {
+  return getHistoryEventSeverityLabel(severity);
+}
+
+function getLineHistoryMonthGroups(entries: LineEvent[]): LineEventMonthGroup[] {
+  return groupLineEventsByMonth(entries);
+}
+
+function getLineHistoryEventRowLink(event: LineEvent): string | null {
+  return canLinkToHistory(event) ? buildHistoryLink(event.phoneNumber, event.kind) : null;
+}
+
+function getLineHistoryEventRowLabel(event: LineEvent): string {
+  return `${event.title} / ${getHistoryEventSeverityLabel(event.severity)}`;
+}
+
+function getLineHistoryEventRowMeta(event: LineEvent): string[] {
+  return renderHistoryEventMeta(event);
+}
+
+function getLineHistoryEventRowDate(event: LineEvent): string {
+  return formatDate(event.date);
+}
+
+function getLineHistoryEventRowOrigin(event: LineEvent): string {
+  return getHistoryEventOriginLabel(event.origin);
+}
+
+function getLineHistoryEventRowDrilldown(event: LineEvent): string | null {
+  return getLineHistoryEventRowLink(event);
+}
+
+function getLineHistoryEventRowCanDrill(event: LineEvent): boolean {
+  return canLinkToHistory(event);
+}
+
+function getLineHistoryEventRowTone(event: LineEvent): 'ok' | 'warn' | 'danger' | 'info' {
+  return getEventSeverityTone(event.severity);
+}
+
+function getLineHistoryEventRowLabelAndMeta(event: LineEvent): { label: string; meta: string[] } {
+  return { label: getLineHistoryEventRowLabel(event), meta: getLineHistoryEventRowMeta(event) };
+}
+
+function getHistoryIntentLabel(kind: HistoryIntentKind): string {
+  return HISTORY_INTENT_VIEW_MAP[kind].label;
+}
+
+function getHistoryIntentDescription(kind: HistoryIntentKind): string {
+  return HISTORY_INTENT_VIEW_MAP[kind].description;
+}
+
+function getHistoryIntentTone(kind: HistoryIntentKind): HistoryIntentView['tone'] {
+  return HISTORY_INTENT_VIEW_MAP[kind].tone;
+}
+
+function getHistoryIntentView(kind: HistoryIntentKind): HistoryIntentView {
+  return HISTORY_INTENT_VIEW_MAP[kind];
+}
+
+function getHistoryIntentTitle(kind: HistoryIntentKind): string {
+  return getHistoryIntentView(kind).label;
+}
+
+function getHistoryIntentBody(kind: HistoryIntentKind): string {
+  return getHistoryIntentView(kind).description;
+}
+
+function buildHistoryLinkFromEvent(event: LineEvent): string {
+  return buildHistoryLink(event.phoneNumber, event.kind);
+}
+
+function buildHistoryEntryActions(event: LineEvent): string | null {
+  return canLinkToHistory(event) ? buildHistoryLinkFromEvent(event) : null;
+}
+
+function getHistoryEventMetaForRender(event: LineEvent): string[] {
+  return getEventMetaItems(event);
+}
+
+function getHistoryEventSeverityForRender(event: LineEvent): 'ok' | 'warn' | 'danger' | 'info' {
+  return getEventSeverityTone(event.severity);
+}
+
+function getHistoryEventOriginForRender(event: LineEvent): string {
+  return getHistoryEventOriginLabel(event.origin);
+}
+
+function getHistoryEventRowLinkForRender(event: LineEvent): string | null {
+  return buildHistoryLink(event.phoneNumber, event.kind);
+}
+
+function getHistoryEventRowButtonLabel(event: LineEvent): string {
+  return '履歴で記録';
+}
+
+function getHistoryEventRowLinkLabel(event: LineEvent): string {
+  return getHistoryEventRowButtonLabel(event);
+}
+
+function getHistoryEventRowLinkForPhone(phoneNumber: string, kind: LineEvent['kind']): string {
+  return buildHistoryLink(phoneNumber, kind);
+}
+
+function getHistoryEventRowLinkForAction(event: LineEvent): string | null {
+  return event.phoneNumber ? buildHistoryLink(event.phoneNumber, event.kind) : null;
+}
+
+function getHistoryEventRowLinkText(event: LineEvent): string {
+  return '履歴で記録';
+}
+
+function getHistoryEventRowLinkMaybe(event: LineEvent): string | null {
+  return event.phoneNumber ? buildHistoryLink(event.phoneNumber, event.kind) : null;
+}
+
+function getHistoryEventRowLinkMaybeLabel(event: LineEvent): string | null {
+  return event.phoneNumber ? '履歴で記録' : null;
+}
+
+function getHistoryEventRowLinkAndLabel(event: LineEvent): { link: string | null; label: string | null } {
   return {
-    phoneNumber: entry.phoneNumber,
-    carrier: entry.carrier,
-    status: entry.status,
-    contractStartDate: entry.contractStartDate,
-    contractEndDate: entry.contractEndDate,
-    activityLogs: toActivityLogFormStates(entry.activityLogs),
-    memo: entry.memo,
+    link: event.phoneNumber ? buildHistoryLink(event.phoneNumber, event.kind) : null,
+    label: event.phoneNumber ? '履歴で記録' : null,
   };
 }
 
-// ---------------------------------------------------------------------------
-// Initial state
-// ---------------------------------------------------------------------------
-
-const initialLineHistoryFormState: LineHistoryFormState = {
-  phoneNumber: '',
-  carrier: '',
-  status: '利用中',
-  contractStartDate: '',
-  contractEndDate: '',
-  activityLogs: [createActivityLogFormState()],
-  memo: '',
-};
-
-function isLineHistoryFormEmpty(form: LineHistoryFormState): boolean {
-  return (
-    !form.phoneNumber.trim() &&
-    !form.carrier.trim() &&
-    form.status === '利用中' &&
-    !form.contractStartDate &&
-    !form.contractEndDate &&
-    !form.memo.trim() &&
-    form.activityLogs.every(
-      (log) => !log.activityDate && (!log.activityType || log.activityType === DEFAULT_ACTIVITY_TYPE) && !log.activityMemo.trim(),
-    )
-  );
+function getHistoryEventRowLinkWithAction(event: LineEvent): { link: string | null; label: string | null } {
+  return getHistoryEventRowLinkAndLabel(event);
 }
 
-// ---------------------------------------------------------------------------
-// Component
-// ---------------------------------------------------------------------------
-
-export function HistoryPage(): JSX.Element {
-  const restoredHistoryFormDraft = useMemo(() => loadHistoryFormDraft(), []);
-  const [searchParams] = useSearchParams();
-  const [drafts, setDrafts] = useState<LineDraft[]>(() => lineDraftStore.load());
-  const [lineHistoryEntries, setLineHistoryEntries] = useState<LineHistoryEntry[]>(() => lineHistoryStore.load());
-  const [lineHistoryForm, setLineHistoryForm] = useState<LineHistoryFormState>(() =>
-    restoredHistoryFormDraft
-      ? {
-          phoneNumber: restoredHistoryFormDraft.phoneNumber,
-          carrier: restoredHistoryFormDraft.carrier,
-          status: restoredHistoryFormDraft.status,
-          contractStartDate: restoredHistoryFormDraft.contractStartDate,
-          contractEndDate: restoredHistoryFormDraft.contractEndDate,
-          activityLogs:
-            restoredHistoryFormDraft.activityLogs.length > 0
-              ? restoredHistoryFormDraft.activityLogs.map((log) => createActivityLogFormState(log))
-              : [createActivityLogFormState()],
-          memo: restoredHistoryFormDraft.memo,
-        }
-      : initialLineHistoryFormState,
-  );
-  const [editingHistoryId, setEditingHistoryId] = useState<string | null>(() => restoredHistoryFormDraft?.editingHistoryId ?? null);
-  const [showRestoredDraftActions, setShowRestoredDraftActions] = useState(false);
-  const [timelineWindow, setTimelineWindow] = useState<TimelineWindowKey>('6m');
-  const [timelineViewMode, setTimelineViewMode] = useState<TimelineViewMode>('all');
-  const [timelinePhoneFilter, setTimelinePhoneFilter] = useState<string[] | null>(null);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
-  const [reviewSuggest, setReviewSuggest] = useState<{ draftId: string; draftName: string; suggestedDate: string } | null>(null);
-  const [customActivityMemoTemplates, setCustomActivityMemoTemplates] = useState<string[]>(() => loadCustomActivityMemoTemplates());
-  const [hiddenActivityMemoTemplates, setHiddenActivityMemoTemplates] = useState<string[]>(() => loadHiddenActivityMemoTemplates());
-  const [pinnedActivityMemoTemplates, setPinnedActivityMemoTemplates] = useState<string[]>(() => loadPinnedActivityMemoTemplates());
-  const [collapsedActivityMemoSections, setCollapsedActivityMemoSections] = useState<string[]>(() => loadCollapsedActivityMemoSections());
-  const historyImportInputRef = useRef<HTMLInputElement | null>(null);
-
-  const notificationSettings = loadNotificationSettings();
-  const today = useMemo(() => new Date(), []);
-  const allActivityTypes = useMemo(() => getAllActivityTypes(loadCustomActivityTypes()), []);
-  const activityTypeQuickPicks = useMemo(
-    () => getActivityTypeQuickPicks(lineHistoryEntries, allActivityTypes),
-    [allActivityTypes, lineHistoryEntries],
-  );
-  const recentActivityMemoQuickPicks = useMemo(
-    () => getRecentActivityMemoQuickPicks(lineHistoryEntries),
-    [lineHistoryEntries],
-  );
-  const activityMemoQuickPickIndex = useMemo(
-    () => buildActivityMemoQuickPickIndex(lineHistoryEntries),
-    [lineHistoryEntries],
-  );
-  const normalizedPhoneNumber = useMemo(() => normalizePhoneNumber(lineHistoryForm.phoneNumber), [lineHistoryForm.phoneNumber]);
-  const matchingDraftSuggestion = useMemo(() => {
-    if (!normalizedPhoneNumber) {
-      return null;
-    }
-    const matchingDraft = drafts.find((draft) => draft.phoneNumber === normalizedPhoneNumber);
-    return matchingDraft ? buildHistoryFormDraftSuggestion(matchingDraft) : null;
-  }, [drafts, normalizedPhoneNumber]);
-  const matchingHistorySuggestion = useMemo(() => {
-    const latestHistoryEntry = getLatestMatchingHistoryEntry(lineHistoryEntries, normalizedPhoneNumber, editingHistoryId);
-    return latestHistoryEntry ? buildHistoryFormEntrySuggestion(latestHistoryEntry) : null;
-  }, [editingHistoryId, lineHistoryEntries, normalizedPhoneNumber]);
-  const todayDateString = useMemo(() => today.toISOString().slice(0, 10), [today]);
-  const quickActivityParam = searchParams.get('quickActivity');
-  const isFirstRun = drafts.length === 0 && lineHistoryEntries.length === 0;
-  const lineEvents = useMemo(() => buildLineEventFeed(drafts, lineHistoryEntries, today), [drafts, lineHistoryEntries, today]);
-  const historyIntentParam = searchParams.get('historyIntent');
-  const historyIntent = historyIntentParam && historyIntentParam in HISTORY_INTENT_VIEW_MAP
-    ? (historyIntentParam as HistoryIntentKind)
-    : null;
-  const historyIntentView = historyIntent ? HISTORY_INTENT_VIEW_MAP[historyIntent] : null;
-  const quickActivityDraft = useMemo(
-    () => (quickActivityParam ? drafts.find((draft) => draft.phoneNumber === quickActivityParam) ?? null : null),
-    [drafts, quickActivityParam],
-  );
-  const contextualHistoryEvents = useMemo(() => {
-    if (!quickActivityDraft) {
-      return [];
-    }
-
-    return lineEvents.filter((event) => event.draftId === quickActivityDraft.id).slice(0, 3);
-  }, [lineEvents, quickActivityDraft]);
-  const upcomingEventGroups = useMemo<LineEventMonthGroup[]>(
-    () => groupLineEventsByMonth(lineEvents, today, { lookaheadDays: 180, overdueDays: 30 }),
-    [lineEvents, today],
-  );
-  const activityDateQuickPicks = useMemo(
-    () => getActivityDateQuickPicks(todayDateString, lineHistoryForm.contractStartDate, matchingHistorySuggestion?.latestActivityDate ?? ''),
-    [lineHistoryForm.contractStartDate, matchingHistorySuggestion?.latestActivityDate, todayDateString],
-  );
-
-  function renderActivityMemoQuickPickSection(
-    activityLog: LineHistoryActivityLogFormState,
-    title: string,
-    quickPicks: string[],
-    pinAction: 'pin' | 'unpin',
-    sectionKey: string,
-  ): JSX.Element | null {
-    if (quickPicks.length === 0) {
-      return null;
-    }
-
-    const isCollapsed = collapsedActivityMemoSections.includes(sectionKey);
-
-    return (
-      <Fragment key={sectionKey}>
-        <div className="button-row button-row--tight" style={{ marginTop: sectionKey === 'pinned' ? 0 : '0.75rem', marginBottom: '0.5rem' }}>
-          <p className="muted" style={{ margin: 0 }}>{title}（{quickPicks.length}件）</p>
-          <button type="button" className="button" onClick={() => toggleActivityMemoSection(sectionKey)}>
-            {isCollapsed ? '展開' : '折りたたむ'}
-          </button>
-        </div>
-        {isCollapsed ? null : (
-          <div className="stack" style={{ gap: '0.5rem' }}>
-          {quickPicks.map((option) => (
-            (() => {
-              const isCustom = isCustomActivityMemoTemplate(customActivityMemoTemplates, option);
-              const customIndex = isCustom ? customActivityMemoTemplates.indexOf(option) : -1;
-              const canMoveUp = isCustom && customIndex > 0;
-              const canMoveDown = isCustom && customIndex >= 0 && customIndex < customActivityMemoTemplates.length - 1;
-
-              return (
-                <div key={`${activityLog.id}-${sectionKey}-${option}`} className="button-row button-row--tight">
-                  <button
-                    type="button"
-                    className={activityLog.activityMemo.trim() === option ? 'button button--primary' : 'button'}
-                    onClick={() => updateActivityLogField(activityLog.id, 'activityMemo', applyActivityMemoQuickPick(activityLog.activityMemo, option))}
-                  >
-                    {option}
-                  </button>
-                  <button
-                    type="button"
-                    className="button"
-                    onClick={() => (pinAction === 'pin' ? pinActivityMemoTemplate(option) : unpinActivityMemoTemplate(option))}
-                  >
-                    {pinAction === 'pin' ? '固定' : '固定解除'}
-                  </button>
-                  <button
-                    type="button"
-                    className="button"
-                    onClick={() => hideActivityMemoTemplate(option)}
-                  >
-                    非表示
-                  </button>
-                  {isCustom ? (
-                    <>
-                      <button
-                        type="button"
-                        className="button"
-                        onClick={() => reorderCustomActivityMemoTemplate(option, 'up')}
-                        disabled={!canMoveUp}
-                      >
-                        上へ
-                      </button>
-                      <button
-                        type="button"
-                        className="button"
-                        onClick={() => reorderCustomActivityMemoTemplate(option, 'down')}
-                        disabled={!canMoveDown}
-                      >
-                        下へ
-                      </button>
-                      <button
-                        type="button"
-                        className="button"
-                        disabled={!activityLog.activityMemo.trim() || activityLog.activityMemo.trim() === option}
-                        onClick={() => replaceCustomActivityMemoTemplate(option, activityLog.activityMemo)}
-                      >
-                        現在の文言で更新
-                      </button>
-                      <button
-                        type="button"
-                        className="button button--danger"
-                        onClick={() => removeCustomActivityMemoTemplate(option)}
-                      >
-                        削除
-                      </button>
-                    </>
-                  ) : null}
-                </div>
-              );
-            })()
-          ))}
-          </div>
-        )}
-      </Fragment>
-    );
-  }
-
-  function renderHiddenActivityMemoQuickPickSection(quickPicks: string[]): JSX.Element | null {
-    if (quickPicks.length === 0) {
-      return null;
-    }
-
-    const sectionKey = 'hidden';
-    const isCollapsed = collapsedActivityMemoSections.includes(sectionKey);
-
-    return (
-      <Fragment key={sectionKey}>
-        <div className="button-row button-row--tight" style={{ marginTop: '0.75rem', marginBottom: '0.5rem' }}>
-          <p className="muted" style={{ margin: 0 }}>非表示候補（{quickPicks.length}件）</p>
-          <button type="button" className="button" onClick={() => toggleActivityMemoSection(sectionKey)}>
-            {isCollapsed ? '展開' : '折りたたむ'}
-          </button>
-        </div>
-        {isCollapsed ? null : (
-          <div className="stack" style={{ gap: '0.5rem' }}>
-          {quickPicks.map((option) => (
-            <div key={`hidden-${option}`} className="button-row button-row--tight">
-              <span className="badge">{option}</span>
-              <button type="button" className="button" onClick={() => unhideActivityMemoTemplate(option)}>
-                戻す
-              </button>
-              {isCustomActivityMemoTemplate(customActivityMemoTemplates, option) ? (
-                <button type="button" className="button button--danger" onClick={() => removeCustomActivityMemoTemplate(option)}>
-                  削除
-                </button>
-              ) : null}
-            </div>
-          ))}
-          </div>
-        )}
-      </Fragment>
-    );
-  }
-
-  function handleImportSampleData(): void {
-    try {
-      const result = importBundledSampleData();
-      setDrafts(result.drafts);
-      setLineHistoryEntries(result.historyEntries);
-      setCustomActivityMemoTemplates(loadCustomActivityMemoTemplates());
-      setHiddenActivityMemoTemplates(loadHiddenActivityMemoTemplates());
-      setPinnedActivityMemoTemplates(loadPinnedActivityMemoTemplates());
-      setErrorMessage(null);
-      setSuccessMessage(`確認用サンプルデータを読み込みました（主台帳 ${result.draftCount} 件 / 履歴 ${result.historyCount} 件）。`);
-    } catch {
-      setSuccessMessage(null);
-      setErrorMessage('確認用サンプルデータの読み込みに失敗しました。');
-    }
-  }
-
-  // quickActivity パラメータで電話番号が渡された場合フォームにセット
-  useEffect(() => {
-    if (!quickActivityParam) return;
-    const target = drafts.find((d) => d.phoneNumber === quickActivityParam);
-    if (!target) return;
-    setShowRestoredDraftActions(false);
-    setEditingHistoryId(null);
-    setLineHistoryForm({
-      phoneNumber: target.phoneNumber,
-      carrier: target.carrier,
-      status: target.status === '利用中' || target.status === '解約予定' || target.status === '解約済み' || target.status === 'MNP転出済み' ? target.status : '利用中',
-      contractStartDate: target.contractStartDate,
-      contractEndDate: target.contractEndDate,
-      activityLogs: [createActivityLogFormState({ activityDate: today.toISOString().slice(0, 10) })],
-      memo: '',
-    });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [quickActivityParam]);
-
-  useEffect(() => {
-    if (!restoredHistoryFormDraft || quickActivityParam) {
-      return;
-    }
-
-    setShowRestoredDraftActions(true);
-    setSuccessMessage('前回の履歴入力下書きを復元しました。');
-  }, [quickActivityParam, restoredHistoryFormDraft]);
-
-  useEffect(() => {
-    if (!editingHistoryId && isLineHistoryFormEmpty(lineHistoryForm)) {
-      clearHistoryFormDraft();
-      return;
-    }
-
-    saveHistoryFormDraft({
-      ...lineHistoryForm,
-      editingHistoryId,
-      activityLogs: lineHistoryForm.activityLogs.map((log) => ({
-        id: log.id,
-        activityDate: log.activityDate,
-        activityType: log.activityType,
-        activityMemo: log.activityMemo,
-      })),
-    });
-  }, [editingHistoryId, lineHistoryForm, quickActivityParam]);
-
-  function resetMessages(): void {
-    setErrorMessage(null);
-    setSuccessMessage(null);
-    setReviewSuggest(null);
-  }
-
-  function toggleActivityMemoSection(sectionKey: string): void {
-    const nextCollapsed = collapsedActivityMemoSections.includes(sectionKey)
-      ? collapsedActivityMemoSections.filter((item) => item !== sectionKey)
-      : [...collapsedActivityMemoSections, sectionKey];
-    setCollapsedActivityMemoSections(saveCollapsedActivityMemoSections(nextCollapsed));
-  }
-
-  function pinActivityMemoTemplate(template: string): void {
-    const normalized = template.trim();
-    if (!normalized) {
-      return;
-    }
-
-    const nextPinned = savePinnedActivityMemoTemplates([
-      normalized,
-      ...pinnedActivityMemoTemplates.filter((item) => item !== normalized),
-    ]);
-
-    setPinnedActivityMemoTemplates(nextPinned);
-    setErrorMessage(null);
-    setSuccessMessage(`活動メモ候補「${normalized}」を固定しました。`);
-  }
-
-  function addCustomActivityMemoTemplate(template: string): void {
-    const normalized = template.trim();
-    if (!normalized) {
-      setErrorMessage('候補に追加する活動メモを入力してください。');
-      setSuccessMessage(null);
-      return;
-    }
-
-    if (isCustomActivityMemoTemplate(customActivityMemoTemplates, normalized)) {
-      setErrorMessage(null);
-      setSuccessMessage(`活動メモ候補「${normalized}」は追加済みです。`);
-      return;
-    }
-
-    const nextCustom = saveCustomActivityMemoTemplates([
-      normalized,
-      ...customActivityMemoTemplates.filter((item) => item !== normalized),
-    ]);
-    setCustomActivityMemoTemplates(nextCustom);
-    setErrorMessage(null);
-    setSuccessMessage(`活動メモ候補「${normalized}」を追加しました。`);
-  }
-
-  function removeCustomActivityMemoTemplate(template: string): void {
-    const normalized = template.trim();
-    const nextCustom = saveCustomActivityMemoTemplates(
-      customActivityMemoTemplates.filter((item) => item !== normalized),
-    );
-    setCustomActivityMemoTemplates(nextCustom);
-    setErrorMessage(null);
-    setSuccessMessage(`活動メモ候補「${normalized}」を削除しました。`);
-  }
-
-  function replaceCustomActivityMemoTemplate(template: string, nextTemplate: string): void {
-    const normalizedCurrent = template.trim();
-    const normalizedNext = nextTemplate.trim();
-
-    if (!normalizedNext) {
-      setErrorMessage('更新後の活動メモを入力してください。');
-      setSuccessMessage(null);
-      return;
-    }
-
-    if (normalizedCurrent === normalizedNext) {
-      setErrorMessage(null);
-      setSuccessMessage(`活動メモ候補「${normalizedCurrent}」は最新です。`);
-      return;
-    }
-
-    const nextCustom = saveCustomActivityMemoTemplates(
-      customActivityMemoTemplates.map((item) => (item === normalizedCurrent ? normalizedNext : item)),
-    );
-    const nextPinned = savePinnedActivityMemoTemplates(
-      pinnedActivityMemoTemplates.map((item) => (item === normalizedCurrent ? normalizedNext : item)),
-    );
-    const nextHidden = saveHiddenActivityMemoTemplates(
-      hiddenActivityMemoTemplates.map((item) => (item === normalizedCurrent ? normalizedNext : item)),
-    );
-
-    setCustomActivityMemoTemplates(nextCustom);
-    setPinnedActivityMemoTemplates(nextPinned);
-    setHiddenActivityMemoTemplates(nextHidden);
-    setErrorMessage(null);
-    setSuccessMessage(`活動メモ候補「${normalizedCurrent}」を「${normalizedNext}」に更新しました。`);
-  }
-
-  function reorderCustomActivityMemoTemplate(template: string, direction: 'up' | 'down'): void {
-    const normalized = template.trim();
-    if (!normalized) {
-      return;
-    }
-
-    const nextCustom = moveItemInList(customActivityMemoTemplates, normalized, direction);
-    if (nextCustom === customActivityMemoTemplates) {
-      return;
-    }
-
-    setCustomActivityMemoTemplates(saveCustomActivityMemoTemplates(nextCustom));
-    setErrorMessage(null);
-    setSuccessMessage(`活動メモ候補「${normalized}」を${direction === 'up' ? '上へ' : '下へ'}移動しました。`);
-  }
-
-  function unpinActivityMemoTemplate(template: string): void {
-    const normalized = template.trim();
-    const nextPinned = savePinnedActivityMemoTemplates(
-      pinnedActivityMemoTemplates.filter((item) => item !== normalized),
-    );
-
-    setPinnedActivityMemoTemplates(nextPinned);
-    setErrorMessage(null);
-    setSuccessMessage(`活動メモ候補「${normalized}」の固定を解除しました。`);
-  }
-
-  function hideActivityMemoTemplate(template: string): void {
-    const normalized = template.trim();
-    if (!normalized) {
-      return;
-    }
-
-    const nextHidden = saveHiddenActivityMemoTemplates([
-      normalized,
-      ...hiddenActivityMemoTemplates.filter((item) => item !== normalized),
-    ]);
-
-    setHiddenActivityMemoTemplates(nextHidden);
-    setErrorMessage(null);
-    setSuccessMessage(`活動メモ候補「${normalized}」を非表示にしました。`);
-  }
-
-  function unhideActivityMemoTemplate(template: string): void {
-    const normalized = template.trim();
-    const nextHidden = saveHiddenActivityMemoTemplates(
-      hiddenActivityMemoTemplates.filter((item) => item !== normalized),
-    );
-
-    setHiddenActivityMemoTemplates(nextHidden);
-    setErrorMessage(null);
-    setSuccessMessage(`活動メモ候補「${normalized}」を表示に戻しました。`);
-  }
-
-  function resetPinnedActivityMemoTemplates(): void {
-    setPinnedActivityMemoTemplates(savePinnedActivityMemoTemplates([]));
-    setErrorMessage(null);
-    setSuccessMessage('固定候補を初期状態に戻しました。');
-  }
-
-  function resetHiddenActivityMemoTemplates(): void {
-    setHiddenActivityMemoTemplates(saveHiddenActivityMemoTemplates([]));
-    setErrorMessage(null);
-    setSuccessMessage('非表示候補を初期状態に戻しました。');
-  }
-
-  function resetActivityMemoTemplateState(): void {
-    setPinnedActivityMemoTemplates(savePinnedActivityMemoTemplates([]));
-    setHiddenActivityMemoTemplates(saveHiddenActivityMemoTemplates([]));
-    setErrorMessage(null);
-    setSuccessMessage('活動メモ候補の管理状態を初期化しました。');
-  }
-
-  function persistLineHistory(nextEntries: LineHistoryEntry[]): void {
-    setLineHistoryEntries(nextEntries);
-    lineHistoryStore.save(nextEntries);
-  }
-
-  function updateLineHistoryField<K extends keyof LineHistoryFormState>(key: K, value: LineHistoryFormState[K]): void {
-    setLineHistoryForm((current) => ({ ...current, [key]: value }));
-  }
-
-  function updateActivityLogField(id: string, key: keyof LineHistoryActivityLogFormState, value: string): void {
-    setLineHistoryForm((current) => ({
-      ...current,
-      activityLogs: current.activityLogs.map((log) =>
-        log.id === id ? { ...log, [key]: value } : log,
-      ),
-    }));
-  }
-
-  function addActivityLogField(): void {
-    setLineHistoryForm((current) => ({
-      ...current,
-      activityLogs: [...current.activityLogs, createActivityLogFormState()],
-    }));
-  }
-
-  function removeActivityLogField(id: string): void {
-    setLineHistoryForm((current) => {
-      const nextLogs = current.activityLogs.filter((log) => log.id !== id);
-      return {
-        ...current,
-        activityLogs: nextLogs.length > 0 ? nextLogs : [createActivityLogFormState()],
-      };
-    });
-  }
-
-  function resetLineHistoryForm(): void {
-    clearHistoryFormDraft();
-    setLineHistoryForm(initialLineHistoryFormState);
-    setEditingHistoryId(null);
-    setShowRestoredDraftActions(false);
-  }
-
-  function handleDiscardRestoredHistoryDraft(): void {
-    resetMessages();
-    resetLineHistoryForm();
-    setSuccessMessage('復元した履歴入力下書きを破棄し、新規入力に戻しました。');
-  }
-
-  function applyHistoryFormSuggestion(
-    suggestion: HistoryFormDraftSuggestion | HistoryFormEntrySuggestion,
-  ): void {
-    setLineHistoryForm((current) => ({
-      ...current,
-      phoneNumber: normalizedPhoneNumber || current.phoneNumber,
-      carrier: suggestion.carrier,
-      status: suggestion.status,
-      contractStartDate: suggestion.contractStartDate,
-      contractEndDate: suggestion.contractEndDate,
-    }));
-  }
-
-  function handleLineHistorySubmit(event: React.FormEvent<HTMLFormElement>): void {
-    event.preventDefault();
-    resetMessages();
-
-    try {
-      const normalizedActivityLogs = lineHistoryForm.activityLogs
-        .map((log) => ({
-          id: log.id,
-          activityDate: log.activityDate,
-          activityType: log.activityType,
-          activityMemo: log.activityMemo,
-        }))
-        .filter((log) => log.activityDate || log.activityType || log.activityMemo);
-
-      if (editingHistoryId) {
-        const current = lineHistoryEntries.find((entry) => entry.id === editingHistoryId);
-        if (!current) {
-          clearHistoryFormDraft();
-          setErrorMessage('編集中の契約履歴が見つかりませんでした。');
-          setEditingHistoryId(null);
-          return;
-        }
-
-        const updated = createLineHistoryEntry({
-          phoneNumber: lineHistoryForm.phoneNumber,
-          carrier: lineHistoryForm.carrier,
-          status: lineHistoryForm.status,
-          contractStartDate: lineHistoryForm.contractStartDate,
-          contractEndDate: lineHistoryForm.contractEndDate,
-          activityLogs: normalizedActivityLogs,
-          memo: lineHistoryForm.memo,
-        });
-
-        const nextEntries = lineHistoryEntries.map((entry) =>
-          entry.id === editingHistoryId
-            ? { ...updated, id: current.id, createdAt: current.createdAt }
-            : entry,
-        );
-
-        persistLineHistory(nextEntries);
-        resetLineHistoryForm();
-        setSuccessMessage('契約履歴を更新しました。');
-        return;
-      }
-
-      const nextEntry = createLineHistoryEntry({
-        phoneNumber: lineHistoryForm.phoneNumber,
-        carrier: lineHistoryForm.carrier,
-        status: lineHistoryForm.status,
-        contractStartDate: lineHistoryForm.contractStartDate,
-        contractEndDate: lineHistoryForm.contractEndDate,
-        activityLogs: normalizedActivityLogs,
-        memo: lineHistoryForm.memo,
-      });
-
-      persistLineHistory([nextEntry, ...lineHistoryEntries]);
-      resetLineHistoryForm();
-      setSuccessMessage('契約履歴を保存しました。');
-
-      // 次回確認日サジェスト
-      const sortedDates = normalizedActivityLogs
-        .map((log) => log.activityDate)
-        .filter(Boolean)
-        .sort();
-      const latestActivityDate = sortedDates.length > 0 ? sortedDates[sortedDates.length - 1] : undefined;
-      if (latestActivityDate) {
-        const relatedDraft = drafts.find(
-          (d) => d.phoneNumber === lineHistoryForm.phoneNumber || (d.last4 && d.last4 === lineHistoryForm.phoneNumber.slice(-4)),
-        );
-        if (relatedDraft) {
-          const base = new Date(`${latestActivityDate}T00:00:00`);
-          base.setDate(base.getDate() + notificationSettings.reviewIntervalDays);
-          const suggestedDate = base.toISOString().slice(0, 10);
-          setReviewSuggest({ draftId: relatedDraft.id, draftName: relatedDraft.lineName, suggestedDate });
-        }
-      }
-    } catch {
-      setErrorMessage('電話番号・キャリア・契約開始日は必須です。電話番号は 10〜11 桁で入力してください。');
-    }
-  }
-
-  function handleApplyReviewSuggest(): void {
-    if (!reviewSuggest) return;
-    const target = drafts.find((d) => d.id === reviewSuggest.draftId);
-    if (!target) return;
-    const updated = updateLineDraft(target, { ...target, nextReviewDate: reviewSuggest.suggestedDate });
-    lineDraftStore.save(drafts.map((d) => (d.id === updated.id ? updated : d)));
-    setReviewSuggest(null);
-    setSuccessMessage(`「${reviewSuggest.draftName}」の次回確認日を ${reviewSuggest.suggestedDate} に更新しました。`);
-  }
-
-  function handleEditLineHistory(entry: LineHistoryEntry): void {
-    resetMessages();
-    setShowRestoredDraftActions(false);
-    setEditingHistoryId(entry.id);
-    setLineHistoryForm(toLineHistoryFormState(entry));
-  }
-
-  function handleDeleteLineHistory(entryId: string): void {
-    resetMessages();
-    const nextEntries = lineHistoryEntries.filter((entry) => entry.id !== entryId);
-    persistLineHistory(nextEntries);
-    if (editingHistoryId === entryId) resetLineHistoryForm();
-    setSuccessMessage('契約履歴を削除しました。');
-  }
-
-  function handleExportLineHistory(): void {
-    resetMessages();
-    downloadJson('line-history-backup.json', lineHistoryStore.exportJson());
-    setSuccessMessage('契約履歴の JSON をエクスポートしました。');
-  }
-
-  async function handleImportLineHistory(event: React.ChangeEvent<HTMLInputElement>): Promise<void> {
-    const file = event.target.files?.[0];
-    if (!file) return;
-    resetMessages();
-    try {
-      const raw = await file.text();
-      const imported = lineHistoryStore.importJson(raw);
-      setLineHistoryEntries(imported);
-      setEditingHistoryId(null);
-      setTimelinePhoneFilter(null);
-      setHiddenActivityMemoTemplates(loadHiddenActivityMemoTemplates());
-      setPinnedActivityMemoTemplates(loadPinnedActivityMemoTemplates());
-      resetLineHistoryForm();
-      setSuccessMessage(`契約履歴を ${imported.length} 件読み込みました。`);
-    } catch {
-      setErrorMessage('契約履歴 JSON の読み込みに失敗しました。形式を確認してください。');
-    } finally {
-      event.target.value = '';
-    }
-  }
-
-  // ---------------------------------------------------------------------------
-  // Derived state
-  // ---------------------------------------------------------------------------
-
-  const lineHistoryGroups = useMemo(() => buildLineHistoryGroups(lineHistoryEntries), [lineHistoryEntries]);
-  const visibleLineHistoryGroups = useMemo(() => {
-    return lineHistoryGroups
-      .filter((group) => !timelinePhoneFilter || timelinePhoneFilter.includes(group.phoneNumber))
-      .map((group) => {
-        const visibleEntries = group.entries.filter((entry) =>
-          isEntryVisibleInTimeline(entry, timelineWindow, timelineViewMode, today),
-        );
-        return {
-          ...group,
-          visibleEntries,
-          relatedDrafts: findRelatedDrafts(group.entries[0], drafts),
-        } satisfies VisibleLineHistoryGroup;
-      })
-      .filter((group) => group.visibleEntries.length > 0);
-  }, [drafts, lineHistoryGroups, timelinePhoneFilter, timelineViewMode, timelineWindow, today]);
-
-  const totalVisibleTimelineEntries = useMemo(
-    () => visibleLineHistoryGroups.reduce((sum, group) => sum + group.visibleEntries.length, 0),
-    [visibleLineHistoryGroups],
-  );
-
-  const visibleTimelineStatusLabel = timelinePhoneFilter
-    ? `関連履歴に絞り込み中: ${timelinePhoneFilter.length}番号`
-    : '全履歴を表示';
-
-  const historySubmitLabel = editingHistoryId ? '履歴を更新する' : '履歴を保存する';
-
-  // ---------------------------------------------------------------------------
-  // Render
-  // ---------------------------------------------------------------------------
-
-  return (
-    <div className="page">
-      <header className="page__header">
-        <div>
-          <p className="page__eyebrow">契約履歴 / タイムライン</p>
-          <h2>履歴・タイムライン</h2>
-          <p className="muted">電話番号単位で契約の経緯や活動ログを記録します。回線一覧と紐付けて参照できます。</p>
-        </div>
-      </header>
-
-      <section className="card-grid card-grid--history-hero">
-        <article className="card card--accent history-hero-card history-hero-card--summary">
-          <div className="card__header">
-            <div>
-              <p className="eyebrow">History Summary</p>
-              <h3>履歴の要点</h3>
-            </div>
-            <span className="badge">{visibleLineHistoryGroups.length}番号</span>
-          </div>
-          <p className="muted history-hero-card__lead">記録対象の電話番号、表示条件、活動ログの可視量を先に確認してから入力へ入ります。</p>
-          <div className="history-kpi-grid">
-            <div className="history-kpi">
-              <span className="history-kpi__label">履歴件数</span>
-              <strong className="history-kpi__value">{lineHistoryEntries.length}</strong>
-            </div>
-            <div className="history-kpi">
-              <span className="history-kpi__label">表示中</span>
-              <strong className="history-kpi__value">{visibleTimelineStatusLabel}</strong>
-            </div>
-            <div className="history-kpi">
-              <span className="history-kpi__label">可視ログ</span>
-              <strong className="history-kpi__value">{totalVisibleTimelineEntries}件</strong>
-            </div>
-          </div>
-          <div className="badge-row" style={{ marginTop: '0.75rem' }}>
-            <span className="badge badge--ok">{getTimelineRangeLabel(timelineWindow)}</span>
-            <span className="badge badge--info">{TIMELINE_VIEW_OPTIONS.find((option) => option.key === timelineViewMode)?.label}</span>
-            <span className="badge">{lineHistoryGroups.length - visibleLineHistoryGroups.length}番号をフィルタ</span>
-          </div>
-        </article>
-
-        <article className="card history-hero-card history-hero-card--actions">
-          <div className="card__header">
-            <div>
-              <p className="eyebrow">Quick Actions</p>
-              <h3>クイック操作</h3>
-            </div>
-            <span className="badge">履歴 / タイムライン</span>
-          </div>
-          <p className="muted">フォーム、一覧、入出力をすばやく切り替えます。</p>
-          <div className="button-row button-row--tight">
-            <a className="button button--primary" href="#history-form">フォームへ</a>
-            <a className="button" href="#history-timeline">タイムラインへ</a>
-            <button type="button" className="button" onClick={handleExportLineHistory}>履歴 JSON をエクスポート</button>
-            <button type="button" className="button" onClick={() => historyImportInputRef.current?.click()}>履歴 JSON をインポート</button>
-            {isFirstRun ? (
-              <button type="button" className="button" onClick={handleImportSampleData}>確認用サンプルデータを読み込む</button>
-            ) : null}
-            {timelinePhoneFilter ? (
-              <button type="button" className="button" onClick={() => setTimelinePhoneFilter(null)}>絞り込み解除</button>
-            ) : null}
-          </div>
-          {historyIntentView || quickActivityDraft ? (
-            <div className="detail-panel history-context-panel" style={{ marginTop: '0.75rem' }}>
-              <div className="card__header">
-                <h3>開いている文脈</h3>
-                {historyIntentView ? (
-                  <span className={`badge badge--${historyIntentView.tone}`}>{historyIntentView.label}</span>
-                ) : (
-                  <span className="badge">履歴記録</span>
-                )}
-              </div>
-              <p className="muted" style={{ marginTop: 0 }}>
-                Dashboard からの遷移文脈をこのページに引き継いでいます。ここで活動ログを残すと、要対応イベントの消化記録になります。
-              </p>
-              {quickActivityDraft ? (
-                <div className="badge-row" style={{ marginBottom: '0.75rem' }}>
-                  <span className="badge badge--ok">{quickActivityDraft.lineName}</span>
-                  <span className="badge">{quickActivityDraft.carrier}</span>
-                  <span className="badge">{quickActivityDraft.status}</span>
-                </div>
-              ) : null}
-              {historyIntentView ? <p className="muted" style={{ marginTop: 0 }}>{historyIntentView.description}</p> : null}
-              {contextualHistoryEvents.length > 0 ? (
-                <ul className="list list--drafts history-context-events">
-                  {contextualHistoryEvents.map((event) => (
-                    <li key={event.id}>
-                      <div className="list__row">
-                        <strong>{event.title}</strong>
-                        <span className={`badge badge--${event.severity === 'critical' ? 'danger' : event.severity === 'warning' ? 'warn' : 'info'}`}>
-                          {event.severity === 'critical' ? 'Critical' : event.severity === 'warning' ? 'Warning' : 'Watch'}
-                        </span>
-                      </div>
-                      <span>{event.detail}</span>
-                      <div className="button-row button-row--tight">
-                        <Link className="button button--sm" to={event.to}>
-                          {event.ctaLabel}
-                        </Link>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              ) : null}
-            </div>
-          ) : null}
-          <p className="muted" style={{ marginBottom: 0 }}>表示期間や対象の切り替えはタイムライン側で行います。</p>
-        </article>
-      </section>
-
-      <section className="card-grid card-grid--single">
-        <article className="card history-event-feed-card">
-          <div className="card__header">
-            <h3>今後のイベント</h3>
-            <span className="badge badge--info">
-              {upcomingEventGroups.reduce((total, group) => total + group.events.length, 0)}件
-            </span>
-          </div>
-          <p className="muted">
-            共通イベントフィードを月単位で並べた read-only 一覧です。統合カレンダーの前段として、期限と drilldown の粒度を確認できます。
-          </p>
-          {upcomingEventGroups.length === 0 ? (
-            <p className="muted">直近 180 日で確認できるイベントはありません。</p>
-          ) : (
-            <div className="stack" style={{ gap: '12px' }}>
-              {upcomingEventGroups.map((group) => (
-                <section key={group.monthKey} className="detail-panel history-event-group">
-                  <div className="card__header">
-                    <h4 style={{ margin: 0 }}>{group.monthLabel}</h4>
-                    <span className="badge">{group.events.length}件</span>
-                  </div>
-                  <ul className="dashboard-event-list">
-                    {group.events.map((event) => {
-                      const severityTone = event.severity === 'critical' ? 'danger' : event.severity === 'warning' ? 'warn' : 'info';
-                      const dueDate = event.dueDateIso ? new Date(`${event.dueDateIso}T00:00:00`) : null;
-                      const daysUntil = dueDate ? diffInDays(startOfDay(today), startOfDay(dueDate)) : null;
-
-                      return (
-                        <li key={event.id} className={`dashboard-event-row dashboard-event-row--${event.severity}`}>
-                          <div className="dashboard-event-row__main">
-                            <div className="dashboard-event-row__title-row">
-                              <strong>{event.title}</strong>
-                              <span className="badge">{getHistoryEventOriginLabel(event.origin)}</span>
-                              <span className={`badge badge--${severityTone}`}>{getHistoryEventSeverityLabel(event.severity)}</span>
-                              <span className={`badge badge--${severityTone}`}>
-                                {daysUntil == null ? '日付未設定' : formatDaysUntilLabel(daysUntil)}
-                              </span>
-                            </div>
-                            <span className="dashboard-event-row__summary">{event.summary}</span>
-                            <p className="dashboard-event-row__detail">{event.detail}</p>
-                            <div className="badge-row">
-                              {event.dueDateLabel ? <span className="badge badge--info">{event.dueDateLabel}</span> : null}
-                              {getUniqueEventMetaItems(event.meta).map((metaItem) => (
-                                <span key={`${event.id}-${metaItem}`} className="badge">{metaItem}</span>
-                              ))}
-                            </div>
-                          </div>
-                          <div className="button-row button-row--tight">
-                            <Link className="button button--sm" to={event.to}>
-                              {event.ctaLabel}
-                            </Link>
-                          </div>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                </section>
-              ))}
-            </div>
-          )}
-        </article>
-      </section>
-
-      <section className="card-grid card-grid--single">
-        <article className="card" id="history-form">
-          <div className="card__header">
-            <h3>契約履歴の登録</h3>
-            <span className="badge">{editingHistoryId ? '履歴編集中' : '電話番号単位'}</span>
-          </div>
-          <p className="muted">過去契約や MNP 転出済みの履歴は、現在の回線一覧とは別に軽量な契約エピソードとして記録します。</p>
-          <form className="form-grid" onSubmit={handleLineHistorySubmit}>
-            <label className="field">
-              <span>電話番号 *</span>
-              <input value={lineHistoryForm.phoneNumber} onChange={(event) => updateLineHistoryField('phoneNumber', event.target.value)} placeholder="例: 09012345678" />
-            </label>
-            <label className="field">
-              <span>キャリア *</span>
-              <input value={lineHistoryForm.carrier} onChange={(event) => updateLineHistoryField('carrier', event.target.value)} placeholder="例: NTTドコモ" />
-            </label>
-            <label className="field">
-              <span>契約状態 *</span>
-              <select value={lineHistoryForm.status} onChange={(event) => updateLineHistoryField('status', event.target.value as LineHistoryStatus)}>
-                {LINE_HISTORY_STATUS_OPTIONS.map((option) => (
-                  <option key={option} value={option}>{option}</option>
-                ))}
-              </select>
-            </label>
-            <label className="field">
-              <span>契約開始日 *</span>
-              <input type="date" value={lineHistoryForm.contractStartDate} onChange={(event) => updateLineHistoryField('contractStartDate', event.target.value)} />
-            </label>
-            <label className="field">
-              <span>契約終了日</span>
-              <input type="date" value={lineHistoryForm.contractEndDate} onChange={(event) => updateLineHistoryField('contractEndDate', event.target.value)} />
-            </label>
-            {matchingDraftSuggestion || matchingHistorySuggestion ? (
-              <div className="detail-panel field--full" style={{ marginTop: '0.5rem' }}>
-                <div className="card__header">
-                  <h3>下書き候補</h3>
-                  <span className="badge">{[matchingDraftSuggestion, matchingHistorySuggestion].filter(Boolean).length}件</span>
-                </div>
-                <p className="muted" style={{ marginTop: 0 }}>電話番号に一致する主台帳や既存履歴から、契約情報を1タップで反映できます。</p>
-                <div className="stack" style={{ gap: '0.75rem' }}>
-                  {matchingDraftSuggestion ? (
-                    <div className="detail-panel" style={{ margin: 0 }}>
-                      <div className="card__header">
-                        <h3>{matchingDraftSuggestion.label}</h3>
-                        <span className="badge badge--ok">{matchingDraftSuggestion.status}</span>
-                      </div>
-                      <p className="muted">{matchingDraftSuggestion.description}</p>
-                      <div className="button-row button-row--tight">
-                        <button type="button" className="button" onClick={() => applyHistoryFormSuggestion(matchingDraftSuggestion)}>主台帳候補を反映</button>
-                      </div>
-                    </div>
-                  ) : null}
-                  {matchingHistorySuggestion ? (
-                    <div className="detail-panel" style={{ margin: 0 }}>
-                      <div className="card__header">
-                        <h3>{matchingHistorySuggestion.label}</h3>
-                        <span className={isCurrentHistoryStatus(matchingHistorySuggestion.status) ? 'badge badge--ok' : 'badge'}>{matchingHistorySuggestion.status}</span>
-                      </div>
-                      <p className="muted">{matchingHistorySuggestion.description}</p>
-                      <div className="button-row button-row--tight">
-                        <button type="button" className="button" onClick={() => applyHistoryFormSuggestion(matchingHistorySuggestion)}>直近履歴候補を反映</button>
-                      </div>
-                    </div>
-                  ) : null}
-                </div>
-              </div>
-            ) : null}
-            <div className="detail-panel field--full" style={{ marginTop: '0.5rem' }}>
-              <div className="card__header">
-                <h3>活動ログ</h3>
-                <button type="button" className="button" onClick={addActivityLogField}>活動ログを追加</button>
-              </div>
-              <div className="stack" style={{ gap: '0.75rem' }}>
-                {lineHistoryForm.activityLogs.map((activityLog, index) => (
-                  <div key={activityLog.id} className="detail-panel" style={{ margin: 0 }}>
-                    <div className="card__header">
-                      <h3>活動ログ {index + 1}</h3>
-                      <button type="button" className="button button--danger" onClick={() => removeActivityLogField(activityLog.id)}>
-                        このログを削除
-                      </button>
-                    </div>
-                    <div className="form-grid">
-                      <label className="field">
-                        <span>活動日</span>
-                        <input type="date" value={activityLog.activityDate} onChange={(event) => updateActivityLogField(activityLog.id, 'activityDate', event.target.value)} />
-                        <div className="button-row button-row--tight">
-                          {activityDateQuickPicks.map((option) => (
-                            <button
-                              key={`${activityLog.id}-${option.label}`}
-                              type="button"
-                              className={activityLog.activityDate === option.value ? 'button button--primary' : 'button'}
-                              onClick={() => updateActivityLogField(activityLog.id, 'activityDate', option.value)}
-                            >
-                              {option.label}
-                            </button>
-                          ))}
-                        </div>
-                      </label>
-                      <label className="field">
-                        <span>活動種別</span>
-                        <select value={activityLog.activityType} onChange={(event) => updateActivityLogField(activityLog.id, 'activityType', event.target.value)}>
-                          {getActivityTypeOptions(allActivityTypes, activityLog.activityType).map((option) => (
-                            <option key={option} value={option}>{option}</option>
-                          ))}
-                        </select>
-                        <div className="button-row button-row--tight">
-                          {getVisibleActivityTypeQuickPicks(activityTypeQuickPicks, activityLog.activityType).map((option) => (
-                            <button
-                              key={option}
-                              type="button"
-                              className={activityLog.activityType === option ? 'button button--primary' : 'button'}
-                              onClick={() => updateActivityLogField(activityLog.id, 'activityType', option)}
-                            >
-                              {option}
-                            </button>
-                          ))}
-                        </div>
-                      </label>
-                      <label className="field field--full">
-                        <span>活動メモ</span>
-                        <textarea value={activityLog.activityMemo} onChange={(event) => updateActivityLogField(activityLog.id, 'activityMemo', event.target.value)} rows={2} placeholder="例: 発信テスト実施 / データ通信実施 / 請求確認" />
-                        <div className="detail-panel" style={{ marginTop: '0.5rem' }}>
-                          {pinnedActivityMemoTemplates.length > 0 || hiddenActivityMemoTemplates.length > 0 ? (
-                            <>
-                              <p className="muted" style={{ marginTop: 0, marginBottom: '0.5rem' }}>候補管理</p>
-                              <div className="button-row button-row--tight" style={{ marginBottom: '0.75rem' }}>
-                                {pinnedActivityMemoTemplates.length > 0 ? (
-                                  <button type="button" className="button" onClick={resetPinnedActivityMemoTemplates}>
-                                    固定候補をクリア
-                                  </button>
-                                ) : null}
-                                {hiddenActivityMemoTemplates.length > 0 ? (
-                                  <button type="button" className="button" onClick={resetHiddenActivityMemoTemplates}>
-                                    非表示候補をクリア
-                                  </button>
-                                ) : null}
-                                <button type="button" className="button" onClick={resetActivityMemoTemplateState}>
-                                  候補管理を初期化
-                                </button>
-                              </div>
-                            </>
-                          ) : null}
-                          {buildActivityMemoQuickPickSections({
-                            pinnedTemplates: pinnedActivityMemoTemplates,
-                            hiddenTemplates: hiddenActivityMemoTemplates,
-                            typeSpecificQuickPicks: getTypeSpecificActivityMemoQuickPicks(activityMemoQuickPickIndex, activityLog.activityType).filter(
-                              (option) => !isPinnedActivityMemoTemplate(pinnedActivityMemoTemplates, option),
-                            ),
-                            customQuickPicks: customActivityMemoTemplates.filter(
-                              (option) => !isPinnedActivityMemoTemplate(pinnedActivityMemoTemplates, option),
-                            ),
-                            templateQuickPicks: ACTIVITY_MEMO_TEMPLATE_OPTIONS.filter(
-                              (option) => !isPinnedActivityMemoTemplate(pinnedActivityMemoTemplates, option),
-                            ),
-                            recentQuickPicks: recentActivityMemoQuickPicks.filter(
-                              (option) => !isPinnedActivityMemoTemplate(pinnedActivityMemoTemplates, option),
-                            ),
-                          }).map((section) =>
-                            renderActivityMemoQuickPickSection(
-                              activityLog,
-                              section.title,
-                              section.quickPicks,
-                              section.pinAction,
-                              section.key,
-                            ),
-                          )}
-                          {renderHiddenActivityMemoQuickPickSection(hiddenActivityMemoTemplates)}
-                          <div className="button-row button-row--tight" style={{ marginTop: '0.75rem' }}>
-                            <button
-                              type="button"
-                              className="button"
-                              onClick={() => addCustomActivityMemoTemplate(activityLog.activityMemo)}
-                            >
-                              この文言を候補に追加
-                            </button>
-                          </div>
-                        </div>
-                      </label>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-            <label className="field field--full">
-              <span>メモ</span>
-              <textarea value={lineHistoryForm.memo} onChange={(event) => updateLineHistoryField('memo', event.target.value)} rows={3} placeholder="例: au から LINEMO へ MNP など" />
-            </label>
-            {reviewSuggest && (
-              <div className="notice field--full">
-                <p>「{reviewSuggest.draftName}」の次回確認日を <strong>{reviewSuggest.suggestedDate}</strong> に更新しますか？（活動日 +{notificationSettings.reviewIntervalDays}日）</p>
-                <div className="button-row">
-                  <button type="button" className="button button--primary" onClick={handleApplyReviewSuggest}>更新する</button>
-                  <button type="button" className="button" onClick={() => setReviewSuggest(null)}>スキップ</button>
-                </div>
-              </div>
-            )}
-            {errorMessage ? <p className="notice notice--warn field--full">{errorMessage}</p> : null}
-            {successMessage ? (
-              <div className="notice field--full">
-                <p>{successMessage}</p>
-                {showRestoredDraftActions ? (
-                  <div className="button-row">
-                    <button type="button" className="button" onClick={handleDiscardRestoredHistoryDraft}>破棄して新規入力</button>
-                  </div>
-                ) : null}
-              </div>
-            ) : null}
-            <div className="button-row field--full">
-              <button type="submit" className="button button--primary">{historySubmitLabel}</button>
-              <button type="button" className="button" onClick={resetLineHistoryForm}>入力をリセット</button>
-              <button type="button" className="button" onClick={handleExportLineHistory}>履歴 JSON をエクスポート</button>
-              <button type="button" className="button" onClick={() => historyImportInputRef.current?.click()}>履歴 JSON をインポート</button>
-              <input ref={historyImportInputRef} type="file" accept="application/json,.json" style={{ display: 'none' }} onChange={handleImportLineHistory} />
-            </div>
-          </form>
-        </article>
-      </section>
-
-      <section className="card-grid card-grid--single">
-        <article className="card history-timeline-card" id="history-timeline">
-          <div className="card__header">
-            <h3>電話番号単位の履歴タイムライン</h3>
-            <span className="badge">{visibleLineHistoryGroups.length}番号 / {totalVisibleTimelineEntries}件</span>
-          </div>
-          <div className="form-grid">
-            <label className="field">
-              <span>表示期間</span>
-              <select value={timelineWindow} onChange={(event) => setTimelineWindow(event.target.value as TimelineWindowKey)}>
-                {TIMELINE_WINDOW_OPTIONS.map((option) => (
-                  <option key={option.key} value={option.key}>{option.label}</option>
-                ))}
-              </select>
-            </label>
-            <label className="field">
-              <span>表示対象</span>
-              <select value={timelineViewMode} onChange={(event) => setTimelineViewMode(event.target.value as TimelineViewMode)}>
-                {TIMELINE_VIEW_OPTIONS.map((option) => (
-                  <option key={option.key} value={option.key}>{option.label}</option>
-                ))}
-              </select>
-            </label>
-          </div>
-          <p className="muted">表示期間: {getTimelineRangeLabel(timelineWindow)} / 表示対象: {TIMELINE_VIEW_OPTIONS.find((option) => option.key === timelineViewMode)?.label}</p>
-          {timelinePhoneFilter ? (
-            <div className="button-row button-row--tight" style={{ marginBottom: '0.75rem' }}>
-              <span className="badge badge--ok">関連履歴に絞り込み中: {timelinePhoneFilter.length}番号</span>
-              <button type="button" className="button" onClick={() => setTimelinePhoneFilter(null)}>絞り込み解除</button>
-            </div>
-          ) : null}
-          {visibleLineHistoryGroups.length === 0 ? (
-            lineHistoryGroups.length === 0 ? (
-              <>
-                <p className="muted">履歴はまだありません。主台帳から「活動を記録」で始めるか、上のフォームから過去契約を1件追加するとここにタイムラインが表示されます。</p>
-                <div className="detail-panel">
-                  <p className="muted" style={{ marginTop: 0 }}>
-                    既存データがある場合は、`/settings/backup` から統合バックアップを復元できます。
-                  </p>
-                  <div className="button-row button-row--tight">
-                    <a className="button button--primary" href="#history-form">履歴フォームに戻る</a>
-                    {isFirstRun ? (
-                      <button type="button" className="button" onClick={handleImportSampleData}>確認用サンプルデータを読み込む</button>
-                    ) : null}
-                    <Link className="button" to="/lines">回線一覧で1件追加する</Link>
-                    <Link className="button" to="/settings/backup">バックアップを復元する</Link>
-                  </div>
-                </div>
-              </>
-            ) : (
-              <p className="muted">現在の表示条件に一致する履歴はありません。期間または表示対象を切り替えて確認してください。</p>
-            )
-          ) : (
-            <div className="stack">
-              {visibleLineHistoryGroups.map((group) => (
-                <div key={group.phoneNumber} className="detail-panel history-group-card">
-                  <div className="card__header">
-                    <h3>{group.maskedPhoneNumber}</h3>
-                    <span className="badge">表示 {group.visibleEntries.length}件 / 全 {group.entries.length}件</span>
-                  </div>
-                  <p className="muted">履歴全体: {formatDate(group.earliestDate)} 〜 {formatDate(group.latestDate)}</p>
-                  {group.relatedDrafts.length > 0 ? (
-                    <div className="detail-panel" style={{ marginBottom: '0.75rem' }}>
-                      <div className="card__header">
-                        <h3>関連主台帳候補</h3>
-                        <span className="badge">{group.relatedDrafts.length}件</span>
-                      </div>
-                      <div className="badge-row">
-                        {group.relatedDrafts.map((draft) => (
-                          <span key={draft.id} className="badge badge--ok">
-                            {draft.lineName} / {draft.phoneNumber ? maskPhoneNumber(draft.phoneNumber) : draft.last4 ? `***-****-${draft.last4}` : '未設定'}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  ) : null}
-                  <div className="stack" style={{ gap: '0.75rem' }}>
-                    {group.visibleEntries.map((entry, index) => {
-                      const timelineStyle = calculateTimelineStyleForWindow(entry, timelineWindow, today, group.earliestDate, group.latestDate);
-                      const previousEntry = index > 0 ? group.visibleEntries[index - 1] : null;
-                      return (
-                        <div key={entry.id} className="detail-panel history-entry-card" style={{ margin: 0 }}>
-                          <div className="card__header">
-                            <h3>{entry.carrier}</h3>
-                            <span className={isCurrentHistoryStatus(entry.status) ? 'badge badge--ok' : 'badge'}>{entry.status}</span>
-                          </div>
-                          <div className="list__summary-grid">
-                            <span>開始: {formatDate(entry.contractStartDate)}</span>
-                            <span>終了: {entry.contractEndDate ? formatDate(entry.contractEndDate) : '継続中'}</span>
-                          </div>
-                          {getLatestActivityDate(entry.activityLogs) != null ? (
-                            <div className="badge-row" style={{ marginTop: '0.25rem' }}>
-                              <span className="badge">最終活動: {formatDate(getLatestActivityDate(entry.activityLogs)!)}</span>
-                            </div>
-                          ) : null}
-                          {previousEntry ? <p className="muted">直前の移動: {previousEntry.carrier} → {entry.carrier}</p> : null}
-                          {entry.memo ? <p className="muted">{entry.memo}</p> : null}
-                          {entry.activityLogs.length > 0 ? (
-                            <div className="detail-panel" style={{ marginTop: '0.5rem', marginBottom: '0.5rem' }}>
-                              <div className="card__header">
-                                <h3>活動ログ</h3>
-                                <span className="badge">{entry.activityLogs.length}件</span>
-                              </div>
-                              <div className="stack" style={{ gap: '0.5rem' }}>
-                                {[...entry.activityLogs]
-                                  .sort((a, b) => (b.activityDate || '').localeCompare(a.activityDate || ''))
-                                  .map((activityLog) => (
-                                    <div key={activityLog.id}>
-                                      <div className="badge-row" style={{ marginBottom: '0.25rem' }}>
-                                        {activityLog.activityDate ? <span className="badge">{formatDate(activityLog.activityDate)}</span> : null}
-                                        {activityLog.activityType ? <span className="badge badge--ok">{activityLog.activityType}</span> : null}
-                                      </div>
-                                      {activityLog.activityMemo ? <p className="muted" style={{ margin: 0 }}>{activityLog.activityMemo}</p> : null}
-                                    </div>
-                                  ))}
-                              </div>
-                            </div>
-                          ) : null}
-                          {calculateContractDurationDays(entry.contractStartDate, entry.contractEndDate || '') != null ? (
-                            <p className="muted">契約維持日数: {calculateContractDurationDays(entry.contractStartDate, entry.contractEndDate || '')}日</p>
-                          ) : null}
-                          {group.relatedDrafts.length > 0 ? (
-                            <p className="muted">関連主台帳候補: {group.relatedDrafts.map((draft) => draft.lineName).join(' / ')}</p>
-                          ) : null}
-                          <div style={{ position: 'relative', marginTop: '0.5rem', height: '1.5rem', background: 'rgba(148, 163, 184, 0.2)', borderRadius: '999px', overflow: 'hidden' }}>
-                            <div style={{ position: 'absolute', top: 0, bottom: 0, left: timelineStyle.left, width: timelineStyle.width, borderRadius: '999px', background: 'rgba(59, 130, 246, 0.8)' }} />
-                          </div>
-                          <div className="button-row button-row--tight">
-                            <button type="button" className="button" onClick={() => handleEditLineHistory(entry)}>編集する</button>
-                            <button type="button" className="button button--danger" onClick={() => handleDeleteLineHistory(entry.id)}>削除する</button>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </article>
-      </section>
-    </div>
-  );
+function getHistoryEventRowLinkForEvent(event: LineEvent): string | null {
+  return event.phoneNumber ? buildHistoryLink(event.phoneNumber, event.kind) : null;
+}
+
+function getHistoryEventRowActionLink(event: LineEvent): string | null {
+  return getHistoryEventRowLinkForEvent(event);
+}
+
+function getHistoryEventRowActionLabel(event: LineEvent): string | null {
+  return event.phoneNumber ? '履歴で記録' : null;
+}
+
+function getHistoryEventRowAction(event: LineEvent): { link: string | null; label: string | null } {
+  return { link: getHistoryEventRowActionLink(event), label: getHistoryEventRowActionLabel(event) };
+}
+
+function getHistoryEventRowActionForEvent(event: LineEvent): { link: string | null; label: string | null } {
+  return getHistoryEventRowAction(event);
+}
+
+function getHistoryEventRowActionMaybe(event: LineEvent): { link: string | null; label: string | null } {
+  return getHistoryEventRowAction(event);
+}
+
+function getHistoryEventRowActionEntry(event: LineEvent): { link: string | null; label: string | null } {
+  return getHistoryEventRowAction(event);
+}
+
+function getHistoryEventRowActionTuple(event: LineEvent): [string | null, string | null] {
+  const action = getHistoryEventRowAction(event);
+  return [action.link, action.label];
+}
+
+function getHistoryEventRowActionPair(event: LineEvent): { link: string | null; label: string | null } {
+  return getHistoryEventRowAction(event);
+}
+
+function getHistoryEventRowLinkPair(event: LineEvent): { link: string | null; label: string | null } {
+  return getHistoryEventRowAction(event);
+}
+
+function getHistoryEventRowLinkForRender(event: LineEvent): string | null {
+  return event.phoneNumber ? buildHistoryLink(event.phoneNumber, event.kind) : null;
+}
+
+function getHistoryEventRowButtonForRender(event: LineEvent): string | null {
+  return event.phoneNumber ? '履歴で記録' : null;
+}
+
+function getHistoryEventRowActionForRender(event: LineEvent): { link: string | null; label: string | null } {
+  return { link: getHistoryEventRowLinkForRender(event), label: getHistoryEventRowButtonForRender(event) };
+}
+
+function getHistoryEventRowActionRender(event: LineEvent): { link: string | null; label: string | null } {
+  return getHistoryEventRowActionForRender(event);
+}
+
+function getHistoryEventRowRender(event: LineEvent): { link: string | null; label: string | null } {
+  return getHistoryEventRowActionForRender(event);
+}
+
+function getHistoryEventRowDisplay(event: LineEvent): { link: string | null; label: string | null } {
+  return getHistoryEventRowActionForRender(event);
+}
+
+function getHistoryEventRowCTA(event: LineEvent): { link: string | null; label: string | null } {
+  return getHistoryEventRowActionForRender(event);
+}
+
+function getHistoryEventRowCTALink(event: LineEvent): string | null {
+  return getHistoryEventRowLinkForRender(event);
+}
+
+function getHistoryEventRowCTALabel(event: LineEvent): string | null {
+  return getHistoryEventRowButtonForRender(event);
+}
+
+function getHistoryEventRowActionProps(event: LineEvent): { to: string | null; children: string | null } {
+  return { to: getHistoryEventRowCTALink(event), children: getHistoryEventRowCTALabel(event) };
+}
+
+function getHistoryEventRowActionPropsMaybe(event: LineEvent): { to: string | null; children: string | null } {
+  return getHistoryEventRowActionProps(event);
+}
+
+function getHistoryEventRowActionPropsForEvent(event: LineEvent): { to: string | null; children: string | null } {
+  return getHistoryEventRowActionProps(event);
+}
+
+function getHistoryEventRowActionPropsForRender(event: LineEvent): { to: string | null; children: string | null } {
+  return getHistoryEventRowActionProps(event);
+}
+
+function getHistoryEventRowActionPropsRender(event: LineEvent): { to: string | null; children: string | null } {
+  return getHistoryEventRowActionProps(event);
+}
+
+function getHistoryEventRowActionPropsDisplay(event: LineEvent): { to: string | null; children: string | null } {
+  return getHistoryEventRowActionProps(event);
+}
+
+function getHistoryEventRowActionPropsCTA(event: LineEvent): { to: string | null; children: string | null } {
+  return getHistoryEventRowActionProps(event);
+}
+
+function getHistoryEventRowActionPropsButton(event: LineEvent): { to: string | null; children: string | null } {
+  return getHistoryEventRowActionProps(event);
+}
+
+function getHistoryEventRowActionPropsLink(event: LineEvent): { to: string | null; children: string | null } {
+  return getHistoryEventRowActionProps(event);
+}
+
+function getHistoryEventRowActionPropsResult(event: LineEvent): { to: string | null; children: string | null } {
+  return getHistoryEventRowActionProps(event);
+}
+
+function getHistoryEventRowActionPropsValue(event: LineEvent): { to: string | null; children: string | null } {
+  return getHistoryEventRowActionProps(event);
+}
+
+function getHistoryEventRowActionPropsFinal(event: LineEvent): { to: string | null; children: string | null } {
+  return getHistoryEventRowActionProps(event);
+}
+
+function getHistoryEventRowActionPropsOutput(event: LineEvent): { to: string | null; children: string | null } {
+  return getHistoryEventRowActionProps(event);
+}
+
+function getHistoryEventRowActionPropsReturn(event: LineEvent): { to: string | null; children: string | null } {
+  return getHistoryEventRowActionProps(event);
+}
+
+function getHistoryEventRowActionPropsRenderResult(event: LineEvent): { to: string | null; children: string | null } {
+  return getHistoryEventRowActionProps(event);
+}
+
+function getHistoryEventRowActionPropsRenderValue(event: LineEvent): { to: string | null; children: string | null } {
+  return getHistoryEventRowActionProps(event);
+}
+
+function getHistoryEventRowActionPropsRenderFinal(event: LineEvent): { to: string | null; children: string | null } {
+  return getHistoryEventRowActionProps(event);
+}
+
+function getHistoryEventRowActionPropsRenderOutput(event: LineEvent): { to: string | null; children: string | null } {
+  return getHistoryEventRowActionProps(event);
+}
+
+function getHistoryEventRowActionPropsRenderReturn(event: LineEvent): { to: string | null; children: string | null } {
+  return getHistoryEventRowActionProps(event);
 }
