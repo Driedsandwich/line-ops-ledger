@@ -13,6 +13,8 @@ import type { LineHistoryEntry } from './lineHistory';
 
 export type EventSeverity = 'critical' | 'warning' | 'watch';
 
+export type LineEventOrigin = 'line' | 'history';
+
 export type LineEvent = {
   id: string;
   kind:
@@ -27,6 +29,7 @@ export type LineEvent = {
     | 'usageShortage'
     | 'inactiveLine';
   severity: EventSeverity;
+  origin: LineEventOrigin;
   title: string;
   summary: string;
   detail: string;
@@ -222,6 +225,16 @@ function pushEvent(events: LineEvent[], event: LineEvent): void {
   events.push(event);
 }
 
+function getLineEventOrigin(kind: LineEvent['kind']): LineEventOrigin {
+  switch (kind) {
+    case 'usageShortage':
+    case 'inactiveLine':
+      return 'history';
+    default:
+      return 'line';
+  }
+}
+
 export function buildLineEventFeed(
   drafts: LineDraft[],
   historyEntries: LineHistoryEntry[],
@@ -241,6 +254,7 @@ export function buildLineEventFeed(
             id: `${draft.id}:safeExit`,
             kind: 'safeExit',
             severity: createSeverityForDays(daysUntil, CONTRACT_END_ALERT_DAYS),
+            origin: getLineEventOrigin('safeExit'),
             title: createEventTitle('safeExit', ''),
             summary: draft.lineName,
             detail: `解約可能推奨日 ${formatDateLabel(safeExitDate)} / ${formatRelativeDayLabel(daysUntil)}`,
@@ -269,6 +283,7 @@ export function buildLineEventFeed(
             id: `${draft.id}:notificationTarget`,
             kind: 'notificationTarget',
             severity: createSeverityForDays(daysUntil, 7),
+            origin: getLineEventOrigin('notificationTarget'),
             title: '次回確認日',
             summary: draft.lineName,
             detail: `${formatDateLabel(nextReviewDate)} / ${formatRelativeDayLabel(daysUntil)}`,
@@ -297,6 +312,7 @@ export function buildLineEventFeed(
             id: `${draft.id}:contractEnd`,
             kind: 'contractEnd',
             severity: createSeverityForDays(daysUntil, CONTRACT_END_ALERT_DAYS),
+            origin: getLineEventOrigin('contractEnd'),
             title: createEventTitle('contractEnd', ''),
             summary: draft.lineName,
             detail: `契約終了日 ${formatDateLabel(endDate)} / ${formatRelativeDayLabel(daysUntil)}`,
@@ -325,6 +341,7 @@ export function buildLineEventFeed(
             id: `${draft.id}:plannedAction`,
             kind: 'plannedAction',
             severity: createSeverityForDays(daysUntil, PLANNED_ACTION_ALERT_DAYS),
+            origin: getLineEventOrigin('plannedAction'),
             title: createEventTitle('plannedAction', ''),
             summary: draft.lineName,
             detail: `予定種別 ${draft.plannedExitType || '未設定'} / ${formatDateLabel(plannedDate)} / ${formatRelativeDayLabel(daysUntil)}`,
@@ -353,6 +370,7 @@ export function buildLineEventFeed(
             id: `${draft.id}:mnpDeadline`,
             kind: 'mnpDeadline',
             severity: createSeverityForDays(daysUntil, DEADLINE_ALERT_DAYS),
+            origin: getLineEventOrigin('mnpDeadline'),
             title: createEventTitle('mnpDeadline', ''),
             summary: draft.lineName,
             detail: `予約番号 ${draft.mnpReservationNumber} / ${formatDateLabel(expiryDate)} / ${formatRelativeDayLabel(daysUntil)}`,
@@ -381,6 +399,7 @@ export function buildLineEventFeed(
             id: `${draft.id}:freeOptionDeadline`,
             kind: 'freeOptionDeadline',
             severity: createSeverityForDays(daysUntil, DEADLINE_ALERT_DAYS),
+            origin: getLineEventOrigin('freeOptionDeadline'),
             title: createEventTitle('freeOptionDeadline', ''),
             summary: draft.lineName,
             detail: `${formatDateLabel(freeOptionDate)} / ${formatRelativeDayLabel(daysUntil)}`,
@@ -418,6 +437,7 @@ export function buildLineEventFeed(
         id: `${draft.id}:benefit:${benefit.id}`,
         kind: 'benefitDeadline',
         severity: createSeverityForDays(daysUntil, BENEFIT_ALERT_DAYS),
+        origin: getLineEventOrigin('benefitDeadline'),
         title: createEventTitle('benefitDeadline', ''),
         summary: draft.lineName,
         detail: `${benefit.benefitType} / ${benefit.condition || '受取条件未設定'} / ${formatDateLabel(deadlineDate)} / ${formatRelativeDayLabel(daysUntil)}`,
@@ -451,6 +471,7 @@ export function buildLineEventFeed(
             id: `${draft.id}:fiberDebt`,
             kind: 'fiberDebt',
             severity: createSeverityForDays(daysUntil, FIBER_DEBT_ALERT_DAYS),
+            origin: getLineEventOrigin('fiberDebt'),
             title: createEventTitle('fiberDebt', ''),
             summary: draft.lineName,
             detail: `${formatDateLabel(debtClearDate)} / ${formatRelativeDayLabel(daysUntil)}${remainingDebt == null ? '' : ` / 残債 ${new Intl.NumberFormat('ja-JP').format(remainingDebt)}円`}`,
@@ -495,6 +516,7 @@ export function buildLineEventFeed(
           id: `${draft.id}:usage:${target.kind}`,
           kind: 'usageShortage',
           severity: 'watch',
+          origin: getLineEventOrigin('usageShortage'),
           title: `${target.label}不足`,
           summary: draft.lineName,
           detail: `直近 ${USAGE_SUMMARY_DAYS} 日の ${target.label} 実績がありません`,
@@ -518,6 +540,7 @@ export function buildLineEventFeed(
           id: `${draft.id}:inactive`,
           kind: 'inactiveLine',
           severity: 'watch',
+          origin: getLineEventOrigin('inactiveLine'),
           title: createEventTitle('inactiveLine', ''),
           summary: draft.lineName,
           detail: '活動記録がありません',
@@ -544,6 +567,7 @@ export function buildLineEventFeed(
               id: `${draft.id}:inactive`,
               kind: 'inactiveLine',
               severity: 'watch',
+              origin: getLineEventOrigin('inactiveLine'),
               title: createEventTitle('inactiveLine', ''),
               summary: draft.lineName,
               detail: `${formatDateLabel(latestActivityDateObj)} 以降の活動がありません`,
