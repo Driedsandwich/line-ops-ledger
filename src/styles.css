@@ -476,6 +476,51 @@ textarea {
   gap: 20px;
 }
 
+.dashboard-header-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: flex-start;
+  justify-content: flex-end;
+}
+
+.dashboard-hero-panel {
+  position: relative;
+  overflow: hidden;
+  background:
+    linear-gradient(135deg, rgba(37, 99, 235, 0.18), rgba(15, 23, 42, 0.92) 55%),
+    radial-gradient(circle at top right, rgba(56, 189, 248, 0.16), transparent 32%),
+    rgba(15, 23, 42, 0.92);
+}
+
+.dashboard-hero-panel::after {
+  content: "";
+  position: absolute;
+  inset: auto -10% -45% auto;
+  width: 260px;
+  height: 260px;
+  border-radius: 999px;
+  background: radial-gradient(circle, rgba(96, 165, 250, 0.15), transparent 68%);
+  pointer-events: none;
+}
+
+.dashboard-hero-panel__content {
+  position: relative;
+  display: grid;
+  gap: 18px;
+}
+
+.dashboard-hero-panel__content h3 {
+  margin: 0 0 10px;
+  max-width: 20em;
+}
+
+.dashboard-hero-panel__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 .dashboard-kpi-grid {
   display: grid;
   gap: 16px;
@@ -487,6 +532,42 @@ textarea {
   gap: 10px;
   min-height: 210px;
   align-content: start;
+  position: relative;
+  overflow: hidden;
+}
+
+.dashboard-kpi-card::after {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto auto;
+  width: 110px;
+  height: 110px;
+  border-radius: 999px;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.12), transparent 70%);
+  transform: translate(28%, -28%);
+  pointer-events: none;
+}
+
+.dashboard-kpi-card__topline {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.dashboard-kpi-card__accent {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 0 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(2, 6, 23, 0.34);
+  color: #cbd5e1;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
 }
 
 .dashboard-kpi-card__label {
@@ -525,6 +606,9 @@ textarea {
 .dashboard-health-panel {
   display: grid;
   gap: 16px;
+  background:
+    linear-gradient(180deg, rgba(15, 23, 42, 0.94), rgba(2, 6, 23, 0.82)),
+    rgba(15, 23, 42, 0.88);
 }
 
 .dashboard-ring-grid {
@@ -537,7 +621,7 @@ textarea {
   display: grid;
   gap: 16px;
   align-content: start;
-  background: rgba(2, 6, 23, 0.38);
+  background: linear-gradient(180deg, rgba(2, 6, 23, 0.56), rgba(2, 6, 23, 0.28));
 }
 
 .dashboard-ring-card__visual {
@@ -601,6 +685,83 @@ textarea {
 .dashboard-ring-card__body {
   display: grid;
   gap: 10px;
+}
+
+.history-hero-card {
+  position: relative;
+  overflow: hidden;
+}
+
+.history-hero-card::after {
+  content: "";
+  position: absolute;
+  inset: auto -6% -38% auto;
+  width: 180px;
+  height: 180px;
+  border-radius: 999px;
+  background: radial-gradient(circle, rgba(96, 165, 250, 0.12), transparent 72%);
+  pointer-events: none;
+}
+
+.history-hero-card--summary {
+  background:
+    linear-gradient(135deg, rgba(14, 116, 144, 0.18), rgba(15, 23, 42, 0.92) 58%),
+    rgba(15, 23, 42, 0.88);
+}
+
+.history-hero-card--actions {
+  background:
+    linear-gradient(135deg, rgba(30, 64, 175, 0.16), rgba(15, 23, 42, 0.9) 58%),
+    rgba(15, 23, 42, 0.88);
+}
+
+.history-hero-card__lead {
+  margin-top: 0;
+}
+
+.history-context-panel {
+  background: rgba(2, 6, 23, 0.42);
+}
+
+.history-context-events li {
+  border: 1px solid rgba(96, 165, 250, 0.12);
+}
+
+.history-event-feed-card {
+  background:
+    linear-gradient(180deg, rgba(15, 23, 42, 0.94), rgba(2, 6, 23, 0.82)),
+    rgba(15, 23, 42, 0.88);
+}
+
+.history-event-group {
+  background: rgba(2, 6, 23, 0.42);
+}
+
+.history-timeline-card {
+  background:
+    linear-gradient(180deg, rgba(15, 23, 42, 0.94), rgba(2, 6, 23, 0.82)),
+    rgba(15, 23, 42, 0.88);
+}
+
+.history-group-card {
+  background: rgba(2, 6, 23, 0.36);
+}
+
+.history-entry-card {
+  position: relative;
+  padding-left: 18px;
+  border: 1px solid rgba(96, 165, 250, 0.14);
+}
+
+.history-entry-card::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 16px;
+  bottom: 16px;
+  width: 4px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgba(56, 189, 248, 0.9), rgba(30, 64, 175, 0.55));
 }
 
 .dashboard-action-groups {
@@ -738,6 +899,10 @@ textarea {
 
   .dashboard-event-row {
     grid-template-columns: 1fr;
+  }
+
+  .dashboard-header-chips {
+    justify-content: flex-start;
   }
 }
 
