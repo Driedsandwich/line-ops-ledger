@@ -1,5 +1,11 @@
 # Runbook
 
+## 現在の前提
+
+- 現行製品は `line-centric / local-first` の command center 型 UI として運用する
+- `/`、`/lines`、`/lines/history`、`/settings/*` は既存の drilldown を維持する
+- 将来フェーズの `devices / tasks / secret vault / calendar / ROI` は分離して扱う
+
 ## 10分で再開する手順
 
 1. `README.md` を読む
@@ -11,15 +17,16 @@
 7. PR では GitHub Actions の `CI` workflow が成功していることを確認する
 8. `main` へは PR 必須 / approval 任意 / required check `check-and-build` の前提で進める
 9. サイドバーの `設定` は見出しで、`ストレージ` / `バックアップ` / `通知設定` / `活動種別` が配下リンクとして表示されることを確認する
+10. ブラウザのキャッシュが古いときは、開発サーバー再起動で最新表示を取り込む
 
 ## 動作確認チェックリスト
 
 - ダッシュボード（`/`）
   - [ ] localStorage 空の状態で、初回ガイドと `回線一覧で1件追加する` / `確認用サンプルデータを読み込む` / `バックアップを復元する` が表示される
-  - [ ] `確認用サンプルデータを読み込む` で、`Summary KPI / Hopping Health / Actionable Alerts` の 3 層に件数と回線が即時反映され、dark command center 風の card hierarchy で表示される
+  - [ ] `確認用サンプルデータを読み込む` で、`Summary KPI / Hopping Health / Actionable Alerts` の 3 層に件数と回線が即時反映される
   - [ ] `Summary KPI` に `Danger Alerts / Notifications / Monthly Cost / Net Balance` が表示される
   - [ ] `Hopping Health` に `安全離脱 / 期限警告 / 実績不足` の 3 リングが表示される
-  - [ ] `Actionable Alerts` が `Critical / Warning / Watch` のアコーディオンで表示され、共通イベントフィード由来の行として並び、`回線由来` / `履歴由来` のラベルが見える
+  - [ ] `Actionable Alerts` が `Critical / Warning / Watch` のアコーディオンで表示され、共通イベントフィード由来の行として並ぶ
   - [ ] `Actionable Alerts` の `履歴で記録` から `/lines/history?quickActivity=<phone>&historyIntent=<kind>` へ飛び、履歴ページ上部に開いている文脈が表示される
   - [ ] `今後のアクション予定` に、予定日が60日以内または超過の利用中 / 解約予定回線が表示される
   - [ ] `番号・無料オプション期限` に、MNP予約番号期限と無料オプション期限が3日以内または超過の利用中 / 解約予定回線が表示される
@@ -54,7 +61,7 @@
   - [ ] ダッシュボードの `該当回線を開く` で `/lines?openDraft=<id>&focusSection=...` が開き、対象回線の必要な詳細位置まで寄れる
 - 履歴・タイムライン（`/lines/history`）
   - [ ] 履歴 0 件時に `履歴フォームに戻る` / `確認用サンプルデータを読み込む` / `回線一覧で1件追加する` / `バックアップを復元する` が表示される
-  - [ ] 履歴ページ上部に `履歴の要点` / `クイック操作` が command center と共通の visual language で表示され、`フォームへ` / `タイムラインへ` で移動できる
+  - [ ] 履歴ページ上部に `履歴の要点` / `クイック操作` が表示され、`フォームへ` / `タイムラインへ` で移動できる
   - [ ] `Actionable Alerts` 由来の `historyIntent` / `quickActivity` を受け取ると、開いている文脈カードが表示される
   - [ ] `今後のイベント` が月別の read-only 一覧として表示され、共通イベントフィード由来の各行から既存 drilldown に飛べる
   - [ ] `?quickActivity=<phone>` で履歴フォームが自動セットされる

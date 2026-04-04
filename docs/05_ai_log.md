@@ -1,5 +1,10 @@
 # AI Log
 
+## 2026-04-05
+- `docs/00_goal.md` / `docs/01_requirements.md` を現行の line-centric / local-first 方針に合わせて基準固定
+- `docs/02_runbook.md` / `docs/03_status.md` を current state に同期し、将来フェーズの `devices / tasks / secret vault / calendar / ROI` は別扱いとして整理
+- branch は `codex/spec-baseline-sync` で進行中
+
 ## 2026-03-17
 - repo `Driedsandwich/line-ops-ledger` を確認
 - Bootstrap Issue #1 を作成
@@ -40,7 +45,7 @@
 - PR #118: 次回確認日サジェスト日数を設定化（Issue #115）
   - `reviewIntervalDays` を導入し、固定 +30 日を廃止
 - PR #111: 活動記録後「次回確認日を更新しますか？」サジェスト追加（Issue #110）
-  - 活動日+30日を提案、ワンクリックで nextReviewDate を更新
+  - 活動日+30日を提案、ワンタップで nextReviewDate を更新
 - Issue #91 クローズ漏れ対処（PR #92 マージ済み）
 - docs / README / Context Hub を現状に同期（本 PR）
 - PR #120（Issue #119）: 履歴・タイムラインを `/lines/history` へ分離、サイドバーサブナビ追加
@@ -180,7 +185,6 @@
   - `LinesPage` に `usagePriority` URL パラメータを追加し、対象種別の不足回線を優先表示して強調する
 
 ## 2026-04-04
-- Gemini の Canvas 生成物を UI/IA の参考として読み込み、dashboard と HistoryPage の visual language を dark command center 風に寄せる作業を開始
 - Issue #199: 履歴ページの視認性を整理する
   - `/lines/history` の上部に `履歴の要点` と `クイック操作` 帯を追加し、フォーム / タイムライン / 入出力をすばやく切り替えられるようにした
   - タイムライン本体は維持しつつ、履歴件数・表示中件数・可視ログ件数を先頭で確認できるようにした
@@ -194,10 +198,6 @@
   - PR #202 を squash merge し、`main` に共通イベントフィードと command center 安定化を反映した
   - `agent-browser` を npm 経由で導入し、Chrome をインストールしたうえで `/` と `/lines/history` の実画面を確認した
   - `/` は `Summary KPI / Hopping Health / Actionable Alerts` の 3 層、`/lines/history` は `履歴の要点 / クイック操作 / タイムライン` を維持していることを確認した
-- `Actionable Alerts` に回線由来 / 履歴由来の出所ラベルを追加
-  - `LineEvent.origin` を導入し、履歴由来の `usageShortage` / `inactiveLine` と、それ以外の回線由来イベントを区別できるようにした
-  - `DashboardPage` の `Actionable Alerts` 行に `回線由来` / `履歴由来` のラベルを表示するようにした
-  - `docs/02_runbook.md` / `docs/03_status.md` を現状へ同期した
 - Issue #205: Dashboard のイベントから HistoryPage へ文脈付きで遷移できるようにする
   - `DashboardPage` の `Actionable Alerts` に `履歴で記録` の導線を追加し、`quickActivity` と `historyIntent` を付けて履歴ページへ飛べるようにした
   - `HistoryPage` に `開いている文脈` カードを追加し、Dashboard から来た意図と関連イベントを上部で確認できるようにした
@@ -206,9 +206,3 @@
   - `lineEvents.ts` に実日付と月別グルーピング helper を追加し、calendar 前段として扱える read-only な一覧を組み立てた
   - `HistoryPage` に `今後のイベント` を追加し、共通イベントフィードを月単位で俯瞰できるようにした
   - `check` / `build` を通し、`http://127.0.0.1:4173/` と `/lines/history` の応答を確認した
-- Gemini Canvas の UI/IA を参考に、`/` と `/lines/history` の dark command center 風 visual language を強化した
-  - Dashboard の KPI と action list に compact chips / badge を追加し、情報密度を上げた
-  - `HistoryPage` の上部帯とイベント一覧の visual hierarchy を再整理した
-  - `Actionable Alerts` の重複メタタグを dedupe し、表示をすっきりさせた
-  - Playwright で `/` と `/lines/history` の実画面を確認し、低い viewport でもサイドバー縦スクロールが維持されることを確認した
-  - `npm run check` / `npm run build` を通過した
