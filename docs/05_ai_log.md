@@ -186,7 +186,7 @@
   - タイムライン本体は維持しつつ、履歴件数・表示中件数・可視ログ件数を先頭で確認できるようにした
   - `check` / `build` と Playwright で `/lines/history` の表示を確認中
 - Issue #195 継続: 共通イベントフィード準備と command center の安定化
-  - `src/lib/lineEvents.ts` を追加し、`plannedExitDate` / `mnpReservationExpiry` / `freeOptionDeadline` / `benefits.deadlineDate` / `nextReviewDate` / `contractEndDate` / 光回線残債 / 長期未活動 / 利用実績不足 を read-only に集約するイベントフィードを導入した
+  - `src/lib/lineEvents.ts` を追加し、`plannedExitDate` / `mnpReservationExpiry` / `freeOptionDeadline` / `benefit.deadlineDate` / `nextReviewDate` / `contractEndDate` / 光回線残債 / 長期未活動 / 利用実績不足 を read-only に集約するイベントフィードを導入した
   - `DashboardPage` の `Actionable Alerts` をイベントフィード由来の `Critical / Warning / Watch` アコーディオンへ寄せ、既存 drilldown を維持した
   - `DashboardPage` と `LinesPage` に散っていた safe-exit / fiber-debt の計算を `src/lib/lineAnalytics.ts` に寄せ、重複ロジックを削減した
   - `check` / `build` を通過し、続いて docs を現状へ同期した
@@ -209,6 +209,9 @@
 - Issue #210 継続: HistoryPage の月別イベント一覧に出所と優先度を付けて scanability を上げる
   - `今後のイベント` の各行に `回線由来` / `履歴由来` と `Critical / Warning / Watch` の badge を追加し、Dashboard の `Actionable Alerts` と視認性を揃えた
   - 既存の `quickActivity`、下書き復元、候補管理、export/import を維持しつつ、月別 read-only 一覧の意味づけを少し強めた
+- Issue #210 継続: `HistoryPage` の月別イベント一覧から `履歴で記録` に進めるようにした
+  - `今後のイベント` の各行に `履歴で記録` のリンクを追加し、共通イベントフィードを履歴入力に直結させた
+  - dashboard と history の両方で、同じイベントを `優先度 / 出所 / drilldown` の観点で読めるように揃えた
 - 開発時の Chrome 更新問題に対して、`src/main.tsx` で古い service worker / cache を起動時に自動 cleanup するようにした
   - dev 環境では既存 registration を unregister し、cache storage を削除してから必要時のみ 1 回再読み込みする
   - hard reload 依存を減らし、更新が反映されない問題をブラウザ側で吸収する
