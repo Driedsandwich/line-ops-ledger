@@ -180,12 +180,13 @@
   - `LinesPage` に `usagePriority` URL パラメータを追加し、対象種別の不足回線を優先表示して強調する
 
 ## 2026-04-04
+- Gemini の Canvas 生成物を UI/IA の参考として読み込み、dashboard と HistoryPage の visual language を dark command center 風に寄せる作業を開始
 - Issue #199: 履歴ページの視認性を整理する
   - `/lines/history` の上部に `履歴の要点` と `クイック操作` 帯を追加し、フォーム / タイムライン / 入出力をすばやく切り替えられるようにした
   - タイムライン本体は維持しつつ、履歴件数・表示中件数・可視ログ件数を先頭で確認できるようにした
   - `check` / `build` と Playwright で `/lines/history` の表示を確認中
 - Issue #195 継続: 共通イベントフィード準備と command center の安定化
-  - `src/lib/lineEvents.ts` を追加し、`plannedExitDate` / `mnpReservationExpiry` / `freeOptionDeadline` / `benefits.deadlineDate` / `nextReviewDate` / `contractEndDate` / 光回線残債 / 長期未活動 / 利用実績不足 を read-only に集約するイベントフィードを導入した
+  - `src/lib/lineEvents.ts` を追加し、`plannedExitDate` / `mnpReservationExpiry` / `freeOptionDeadline` / `benefit.deadlineDate` / `nextReviewDate` / `contractEndDate` / 光回線残債 / 長期未活動 / 利用実績不足 を read-only に集約するイベントフィードを導入した
   - `DashboardPage` の `Actionable Alerts` をイベントフィード由来の `Critical / Warning / Watch` アコーディオンへ寄せ、既存 drilldown を維持した
   - `DashboardPage` と `LinesPage` に散っていた safe-exit / fiber-debt の計算を `src/lib/lineAnalytics.ts` に寄せ、重複ロジックを削減した
   - `check` / `build` を通過し、続いて docs を現状へ同期した
@@ -205,3 +206,9 @@
   - `lineEvents.ts` に実日付と月別グルーピング helper を追加し、calendar 前段として扱える read-only な一覧を組み立てた
   - `HistoryPage` に `今後のイベント` を追加し、共通イベントフィードを月単位で俯瞰できるようにした
   - `check` / `build` を通し、`http://127.0.0.1:4173/` と `/lines/history` の応答を確認した
+- Gemini Canvas の UI/IA を参考に、`/` と `/lines/history` の dark command center 風 visual language を強化した
+  - Dashboard の KPI と action list に compact chips / badge を追加し、情報密度を上げた
+  - `HistoryPage` の上部帯とイベント一覧の visual hierarchy を再整理した
+  - `Actionable Alerts` の重複メタタグを dedupe し、表示をすっきりさせた
+  - Playwright で `/` と `/lines/history` の実画面を確認し、低い viewport でもサイドバー縦スクロールが維持されることを確認した
+  - `npm run check` / `npm run build` を通過した
