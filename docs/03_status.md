@@ -4,7 +4,7 @@
 
 - Bootstrap Issue: #1（永続 open）
 - Context Hub Issue: #2（永続 open）
-- 現在地: 共通イベントフィードと command center 化を main に反映し、`HistoryPage` の月別 read-only 一覧まで整えた。`Actionable Alerts` には `回線由来` / `履歴由来` の出所ラベルも付けた
+- 現在地: 共通イベントフィードと command center 化を main に反映し、`HistoryPage` の月別 read-only 一覧まで整えた。`Actionable Alerts` には `回線由来` / `履歴由来` の出所ラベルも付け、dashboard と history の visual language も揃え始めた
 - 運用前提: PR 必須 / approval 任意 / required check `check-and-build`
 - 直近の作業: `HistoryPage` の `今後のイベント` を月別 read-only 一覧として追加し、共通イベントフィードを calendar 前段として見せる PR を進めた。あわせて `Actionable Alerts` に出所ラベルを追加した
 - 追加確認: Playwright MCP はローカル `cwd` で起動でき、`/lines/history` の実画面確認が可能
@@ -14,6 +14,7 @@
 ### ダッシュボード (`/`)
 - データ 0 件時の初回ガイド（回線追加 / 確認用サンプルデータ投入 / 履歴確認 / バックアップ復元）
 - `Summary KPI` で `Danger Alerts / Notifications / Monthly Cost / Net Balance` を横並び表示
+- `Summary KPI` / `Hopping Health` / `Actionable Alerts` を dark command center 風の card hierarchy と compact chips で整理
 - `Hopping Health` で `安全離脱 / 期限警告 / 実績不足` の 3 リングを表示
 - `Actionable Alerts` を `Critical / Warning / Watch` のアコーディオンで整理し、回線由来 / 履歴由来の出所ラベルを表示
 - `Actionable Alerts` は共通イベントフィード由来で、`安全離脱 / 期限警告 / 実績不足` の3分類を維持したまま並べ替えている
@@ -52,6 +53,7 @@
 - `?quickActivity=<phone>` で履歴フォームを自動セット
 - 電話番号に一致する主台帳候補 / 直近履歴候補のワンタップ反映
 - 上部の `履歴の要点` / `クイック操作` 帯で、フォーム / タイムライン / 入出力をすばやく切り替えられる
+- `履歴の要点` / `クイック操作` / `今後のイベント` / `タイムライン` を dashboard と近い visual language で表示し、timeline rail の視認性を強めた
 - Dashboard からの `historyIntent` / `quickActivity` を受け取ると、開いている文脈を上部で確認できる
 - 活動種別のクイック選択ボタン（頻出種別 + 定義済み種別）
 - 活動種別に応じた活動メモ候補（種別別の頻出文言 + fallback 候補）
