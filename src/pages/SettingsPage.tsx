@@ -81,6 +81,15 @@ function formatSchemaVersion(value: number | null): string {
   return value == null ? '不明' : `v${value}`;
 }
 
+function isCombinedBackupPayload(value: unknown): value is { lineDrafts: unknown; lineHistory: unknown } {
+  if (typeof value !== 'object' || value === null) {
+    return false;
+  }
+
+  const record = value as Record<string, unknown>;
+  return 'lineDrafts' in record && 'lineHistory' in record;
+}
+
 function formatReminderWindow(value: NotificationReminderWindow): string {
   switch (value) {
     case 'overdue':
@@ -191,16 +200,26 @@ export function SettingsPage({ section }: { section: SettingsSectionKey }): JSX.
     try {
       const raw = await file.text();
       const parsed: unknown = JSON.parse(raw);
+      const previousDrafts = lineDraftStore.load();
+      const previousHistory = lineHistoryStore.load();
 
-      if (
-        typeof parsed === 'object' &&
-        parsed !== null &&
-        'lineDrafts' in parsed &&
-        'lineHistory' in parsed
-      ) {
-        const combined = parsed as { lineDrafts: unknown; lineHistory: unknown };
-        const importedDrafts = lineDraftStore.importJson(JSON.stringify(combined.lineDrafts));
-        const importedHistory = lineHistoryStore.importJson(JSON.stringify(combined.lineHistory));
+      if (isCombinedBackupPayload(parsed)) {
+        const combined = parsed;
+        if (!Array.isArray(combined.lineDrafts) || !Array.isArray(combined.lineHistory)) {
+          throw new Error('統合バックアップの形式が不正です。lineDrafts と lineHistory は両方とも配列である必要があります。');
+        }
+        let importedDrafts: Awaited<ReturnType<typeof lineDraftStore.importJson>> | undefined;
+        let importedHistory: Awaited<ReturnType<typeof lineHistoryStore.importJson>> | undefined;
+
+        try {
+          importedDrafts = lineDraftStore.importJson(JSON.stringify(combined.lineDrafts));
+          importedHistory = lineHistoryStore.importJson(JSON.stringify(combined.lineHistory));
+        } catch (importError) {
+          lineDraftStore.save(previousDrafts);
+          lineHistoryStore.save(previousHistory);
+          throw importError;
+        }
+
         await refresh();
         setActionMessage(`統合バックアップを復元しました（主台帳 ${importedDrafts.length} 件 / 履歴 ${importedHistory.length} 件）。`);
       } else {

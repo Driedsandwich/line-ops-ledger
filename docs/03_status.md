@@ -4,10 +4,12 @@
 
 - Bootstrap Issue: #1（永続 open）
 - Context Hub Issue: #2（永続 open）
-- 現在地: 共通イベントフィードと command center 化を main に反映し、`HistoryPage` の月別 read-only 一覧まで整えた。`Actionable Alerts` には `回線由来` / `履歴由来` の出所ラベルも付け、dashboard と history の visual language も揃え始めた
+- 現在地: 共通イベントフィードと command center 化を main に反映し、`HistoryPage` の月別 read-only 一覧まで整えた。`Actionable Alerts` には `回線由来` / `履歴由来` の出所ラベルを付け、`HistoryPage` の event feed も同じ優先度・出所ラベルで読めるように揃えた
+- 参照資料: Gemini / 初期資料パックを精査し、現行 product には `line-centric / local-first` を維持したまま、将来の `devices / tasks / secret vault / calendar / ROI` を別フェーズとして分離する方針を確認した
 - 運用前提: PR 必須 / approval 任意 / required check `check-and-build`
-- 直近の作業: `HistoryPage` の `今後のイベント` を月別 read-only 一覧として追加し、共通イベントフィードを calendar 前段として見せる PR を進めた。あわせて `Actionable Alerts` に出所ラベルを追加した
-- 追加確認: Playwright MCP はローカル `cwd` で起動でき、`/lines/history` の実画面確認が可能
+- 直近の作業: `HistoryPage` の `今後のイベント` を月別 read-only 一覧として追加し、共通イベントフィードを calendar 前段として見せる PR を進めた。あわせて `Actionable Alerts` と `今後のイベント` に出所・優先度ラベルを追加した
+- 追加確認: Playwright MCP はローカル `cwd` で起動でき、`/lines/history` の実画面確認が可能。開発環境では起動時に古い service worker / cache を自動 cleanup するため、Chrome の hard reload 依存を減らした
+- 安全性: 統合バックアップのインポートは `lineDrafts` / `lineHistory` の両方を検証し、途中失敗時は復元前の状態へロールバックするようにした
 
 ## 実装済み主要機能
 
@@ -53,7 +55,7 @@
 - `?quickActivity=<phone>` で履歴フォームを自動セット
 - 電話番号に一致する主台帳候補 / 直近履歴候補のワンタップ反映
 - 上部の `履歴の要点` / `クイック操作` 帯で、フォーム / タイムライン / 入出力をすばやく切り替えられる
-- `履歴の要点` / `クイック操作` / `今後のイベント` / `タイムライン` を dashboard と近い visual language で表示し、timeline rail の視認性を強めた
+- `履歴の要点` / `クイック操作` / `今後のイベント` / `タイムライン` を dashboard と近い visual language で表示し、timeline rail と event feed の視認性を強めた
 - Dashboard からの `historyIntent` / `quickActivity` を受け取ると、開いている文脈を上部で確認できる
 - 活動種別のクイック選択ボタン（頻出種別 + 定義済み種別）
 - 活動種別に応じた活動メモ候補（種別別の頻出文言 + fallback 候補）
@@ -85,9 +87,4 @@
 - 左側サイドバーはヘッダーを残したまま nav だけ縦スクロール可能
 - GitHub Actions: `Repo sanity` に加えて `CI` workflow で `npm run check` / `npm run build` を実行
 - `main` 保護: PR 必須 / approval 任意 / required check `check-and-build`
-
-## 次の候補
-
-1. `HistoryPage` の月別 read-only 一覧とタイムライン視認性をもう少し見やすく整える
-2. `共通イベントフィード` を起点に、`/` の要アクション一覧と `HistoryPage` の入力導線の整合をさらに詰める
-3. 統合カレンダーに先立ち、各日付を共通イベント列として扱うための整理案を詰める
+- 仕様起点の資料から、現行実装に未着手の未来フェーズとして `devices / tasks / secret vault / calendar / ROI` を切り分けた

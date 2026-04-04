@@ -186,7 +186,7 @@
   - タイムライン本体は維持しつつ、履歴件数・表示中件数・可視ログ件数を先頭で確認できるようにした
   - `check` / `build` と Playwright で `/lines/history` の表示を確認中
 - Issue #195 継続: 共通イベントフィード準備と command center の安定化
-  - `src/lib/lineEvents.ts` を追加し、`plannedExitDate` / `mnpReservationExpiry` / `freeOptionDeadline` / `benefit.deadlineDate` / `nextReviewDate` / `contractEndDate` / 光回線残債 / 長期未活動 / 利用実績不足 を read-only に集約するイベントフィードを導入した
+  - `src/lib/lineEvents.ts` を追加し、`plannedExitDate` / `mnpReservationExpiry` / `freeOptionDeadline` / `benefits.deadlineDate` / `nextReviewDate` / `contractEndDate` / 光回線残債 / 長期未活動 / 利用実績不足 を read-only に集約するイベントフィードを導入した
   - `DashboardPage` の `Actionable Alerts` をイベントフィード由来の `Critical / Warning / Watch` アコーディオンへ寄せ、既存 drilldown を維持した
   - `DashboardPage` と `LinesPage` に散っていた safe-exit / fiber-debt の計算を `src/lib/lineAnalytics.ts` に寄せ、重複ロジックを削減した
   - `check` / `build` を通過し、続いて docs を現状へ同期した
@@ -206,9 +206,12 @@
   - `lineEvents.ts` に実日付と月別グルーピング helper を追加し、calendar 前段として扱える read-only な一覧を組み立てた
   - `HistoryPage` に `今後のイベント` を追加し、共通イベントフィードを月単位で俯瞰できるようにした
   - `check` / `build` を通し、`http://127.0.0.1:4173/` と `/lines/history` の応答を確認した
-- Gemini Canvas の UI/IA を参考に、`/` と `/lines/history` の dark command center 風 visual language を強化した
-  - Dashboard の KPI と action list に compact chips / badge を追加し、情報密度を上げた
-  - `HistoryPage` の上部帯とイベント一覧の visual hierarchy を再整理した
-  - `Actionable Alerts` の重複メタタグを dedupe し、表示をすっきりさせた
-  - Playwright で `/` と `/lines/history` の実画面を確認し、低い viewport でもサイドバー縦スクロールが維持されることを確認した
-  - `npm run check` / `npm run build` を通過した
+- Issue #210 継続: HistoryPage の月別イベント一覧に出所と優先度を付けて scanability を上げる
+  - `今後のイベント` の各行に `回線由来` / `履歴由来` と `Critical / Warning / Watch` の badge を追加し、Dashboard の `Actionable Alerts` と視認性を揃えた
+  - 既存の `quickActivity`、下書き復元、候補管理、export/import を維持しつつ、月別 read-only 一覧の意味づけを少し強めた
+- 開発時の Chrome 更新問題に対して、`src/main.tsx` で古い service worker / cache を起動時に自動 cleanup するようにした
+  - dev 環境では既存 registration を unregister し、cache storage を削除してから必要時のみ 1 回再読み込みする
+  - hard reload 依存を減らし、更新が反映されない問題をブラウザ側で吸収する
+- Gemini master prompt / 初期資料パックを精査し、`docs/00_goal.md` / `docs/01_requirements.md` に現在の line-centric scope と future roadmap を反映した
+  - `devices / tasks / secret vault / calendar / ROI` は現行 product では未着手の future scope として整理した
+  - 統合バックアップの import では `lineDrafts` / `lineHistory` の両方を要求し、途中失敗時に復元前へ戻す rollback を追加した
