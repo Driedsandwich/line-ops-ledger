@@ -788,6 +788,7 @@ export function HistoryPage(): JSX.Element {
   }, [editingHistoryId, lineHistoryEntries, normalizedPhoneNumber]);
   const todayDateString = useMemo(() => today.toISOString().slice(0, 10), [today]);
   const quickActivityParam = searchParams.get('quickActivity');
+  const normalizedQuickActivityParam = quickActivityParam ? normalizePhoneNumber(quickActivityParam) : null;
   const isFirstRun = drafts.length === 0 && lineHistoryEntries.length === 0;
   const lineEvents = useMemo(() => buildLineEventFeed(drafts, lineHistoryEntries, today), [drafts, lineHistoryEntries, today]);
   const historyIntentParam = searchParams.get('historyIntent');
@@ -795,9 +796,16 @@ export function HistoryPage(): JSX.Element {
     ? (historyIntentParam as HistoryIntentKind)
     : null;
   const historyIntentView = historyIntent ? HISTORY_INTENT_VIEW_MAP[historyIntent] : null;
+  // URL パラメータから文脈を復元:
+  // - historyIntent は既知キーのみバッジ文脈として採用
+  // - quickActivity は主台帳の番号一致時のみ quickActivityDraft を復元
+  const normalizeDraftPhone = (phoneNumber: string): string => normalizePhoneNumber(phoneNumber);
   const quickActivityDraft = useMemo(
-    () => (quickActivityParam ? drafts.find((draft) => draft.phoneNumber === quickActivityParam) ?? null : null),
-    [drafts, quickActivityParam],
+    () =>
+      normalizedQuickActivityParam
+        ? drafts.find((draft) => normalizeDraftPhone(draft.phoneNumber) === normalizedQuickActivityParam) ?? null
+        : null,
+    [drafts, normalizedQuickActivityParam],
   );
   const contextualHistoryEvents = useMemo(() => {
     if (!quickActivityDraft) {
@@ -968,8 +976,8 @@ export function HistoryPage(): JSX.Element {
 
   // quickActivity パラメータで電話番号が渡された場合フォームにセット
   useEffect(() => {
-    if (!quickActivityParam) return;
-    const target = drafts.find((d) => d.phoneNumber === quickActivityParam);
+    if (!normalizedQuickActivityParam) return;
+    const target = drafts.find((d) => normalizeDraftPhone(d.phoneNumber) === normalizedQuickActivityParam);
     if (!target) return;
     setShowRestoredDraftActions(false);
     setEditingHistoryId(null);
@@ -983,16 +991,16 @@ export function HistoryPage(): JSX.Element {
       memo: '',
     });
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [quickActivityParam]);
+  }, [normalizedQuickActivityParam, quickActivityDraft]);
 
   useEffect(() => {
-    if (!restoredHistoryFormDraft || quickActivityParam) {
+    if (!restoredHistoryFormDraft || normalizedQuickActivityParam) {
       return;
     }
 
     setShowRestoredDraftActions(true);
     setSuccessMessage('前回の履歴入力下書きを復元しました。');
-  }, [quickActivityParam, restoredHistoryFormDraft]);
+  }, [normalizedQuickActivityParam, restoredHistoryFormDraft]);
 
   useEffect(() => {
     if (!editingHistoryId && isLineHistoryFormEmpty(lineHistoryForm)) {
@@ -1010,7 +1018,7 @@ export function HistoryPage(): JSX.Element {
         activityMemo: log.activityMemo,
       })),
     });
-  }, [editingHistoryId, lineHistoryForm, quickActivityParam]);
+  }, [editingHistoryId, lineHistoryForm, normalizedQuickActivityParam]);
 
   function resetMessages(): void {
     setErrorMessage(null);
@@ -1465,6 +1473,7 @@ export function HistoryPage(): JSX.Element {
               <button type="button" className="button" onClick={() => setTimelinePhoneFilter(null)}>絞り込み解除</button>
             ) : null}
           </div>
+          {/* historyIntent のみでも、導線の意図がある限り文脈パネルを表示する */}
           {historyIntentView || quickActivityDraft ? (
             <div className="detail-panel" style={{ marginTop: '0.75rem' }}>
               <div className="card__header">

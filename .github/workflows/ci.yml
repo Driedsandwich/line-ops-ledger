@@ -34,3 +34,9 @@ jobs:
 
       - name: Production build
         run: npm run build
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Side panel regression (360x812)
+        run: npm run test:sidepanel

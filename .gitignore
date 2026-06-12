@@ -3,3 +3,9 @@ dist/
 .vite/
 .DS_Store
 .env.local
+*.tsbuildinfo
+vite.config.d.ts
+vite.config.js
+test-results/
+playwright-report/
+blob-report/

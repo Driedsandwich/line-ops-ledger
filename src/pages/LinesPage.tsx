@@ -27,6 +27,7 @@ import {
   type LineHistoryActivityLog,
   type LineHistoryEntry,
 } from '../lib/lineHistory';
+import { buildHistoryLink } from '../lib/lineEvents';
 import {
   calculateFiberDebtClearDate,
   calculateFiberRemainingDebt,
@@ -1100,7 +1101,7 @@ export function LinesPage(): JSX.Element {
 
   function handleQuickActivityLog(draft: LineDraft): void {
     if (!draft.phoneNumber) return;
-    void navigate(`/lines/history?quickActivity=${encodeURIComponent(draft.phoneNumber)}`);
+    void navigate(buildHistoryLink(draft.phoneNumber));
   }
 
   function handleDelete(draftId: string): void {
@@ -2218,4 +2219,3 @@ export function LinesPage(): JSX.Element {
     </div>
   );
 }
-

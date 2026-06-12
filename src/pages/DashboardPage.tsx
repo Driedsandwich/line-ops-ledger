@@ -1375,7 +1375,7 @@ function renderWatchPanels(
                   <span>最終活動: {item.latestActivityDate ? new Intl.DateTimeFormat('ja-JP', { year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(`${item.latestActivityDate}T00:00:00`)) : '記録なし'}</span>
                   {item.draft.phoneNumber ? (
                     <div className="button-row button-row--tight">
-                      <Link className="button button--sm" to={`/lines/history?quickActivity=${encodeURIComponent(item.draft.phoneNumber)}`}>
+                      <Link className="button button--sm" to={buildHistoryLink(item.draft.phoneNumber, 'inactiveLine')}>
                         活動を記録
                       </Link>
                     </div>

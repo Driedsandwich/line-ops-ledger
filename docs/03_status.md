@@ -1,12 +1,12 @@
 # Status
 
-## 現在地（2026-04-05）
+## 現在地（2026-06-10）
 
 - Bootstrap Issue: #1（永続 open）
 - Context Hub Issue: #2（永続 open）
-- 現在地: 共通イベントフィードと command center 化を main に反映し、`HistoryPage` の月別 read-only 一覧まで整えた。docs の goal / requirements を現行実装に合わせて基準固定する段階に入っている
+- 現在地: 共通イベントフィードと command center 化を main に反映。`HistoryPage` の月別 read-only 一覧を維持し、今回の作業で `quickActivity` 導線を `buildHistoryLink` / 受け側正規化へ寄せ、サイドパネル標準（`メイン` / `履歴` / `設定`）の低 viewport 到達性を docs と Playwright 回帰に固定する
 - 運用前提: PR 必須 / approval 任意 / required check `check-and-build`
-- 直近の作業: `docs/00_goal.md` / `docs/01_requirements.md` を現行実装に合わせて埋め、`docs/02_runbook.md` と `docs/03_status.md` を command center / event feed / HistoryPage の現在地に合わせて同期している
+- 直近の作業: `HistoryPage` の `quickActivity` 受け口を正規化ベースへ更新し、未整形保存番号との一致を吸収。加えて `tests/sidepanel-check.spec.ts` 常設 29 ケース（7ルート到達性＋`quickActivity` 3件＋`historyIntent` 10件＋未一致 `quickActivity` + `historyIntent` 1件＋無効 `historyIntent` 1件＋`quickActivity` 未一致のみ 1件＋無効 `historyIntent` + unknown `quickActivity` 1件＋`historyIntent` 単体 1件＋`quickActivity` 異常値 + `historyIntent` 1件＋`quickActivity` 異常値のみ 1件＋`/lines/history` 非指定 2件）を通過。サイドパネル用回帰テストを `tests/sidepanel-check.spec.ts` として常設。
 - 追加確認: Playwright MCP はローカル `cwd` で起動でき、`/lines/history` の実画面確認が可能
 
 ## 実装済み主要機能
@@ -80,12 +80,12 @@
 ### インフラ
 - PWA（manifest / SW）/ SW は開発環境で無効 / ビルド時キャッシュバスト
 - `.env.local` の `VITE_DEV_LABEL` でサイドバーにブランチバッジ表示（`PR #NNN` 運用）
-- 左側サイドバーはヘッダーを残したまま nav だけ縦スクロール可能
+- 左側サイドパネル（サイドバー）はヘッダーを残したまま nav だけ縦スクロール可能
 - GitHub Actions: `Repo sanity` に加えて `CI` workflow で `npm run check` / `npm run build` を実行
 - `main` 保護: PR 必須 / approval 任意 / required check `check-and-build`
 
 ## 次の候補
 
-1. `HistoryPage` の月別 read-only 一覧とタイムライン視認性をもう少し見やすく整える
-2. `共通イベントフィード` を起点に、`/` の要アクション一覧と `HistoryPage` の入力導線の整合をさらに詰める
-3. `docs/04_decisions.md` に将来フェーズ分離の判断ログを残す
+1. `npm audit` を同条件で運用監視し、再発時のみ新規 PR で更新を実施する
+2. CI/ローカルで `npm outdated --depth=0` を 2 週間周期で実行し、patch/minor の更新候補を順に吸収する
+3. 低 viewport 時のサイドパネル到達性を再現環境で再確認し、`メイン / 履歴 / 設定` の各主要リンク到達を複数端末で確認する
