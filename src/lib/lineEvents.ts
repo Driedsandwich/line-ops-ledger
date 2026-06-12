@@ -8,7 +8,7 @@ import {
   parseReviewDate,
   startOfDay,
 } from './lineAnalytics';
-import type { LineDraft } from './lineDrafts';
+import { normalizePhoneNumber, type LineDraft } from './lineDrafts';
 import type { LineHistoryEntry } from './lineHistory';
 
 export type EventSeverity = 'critical' | 'warning' | 'watch';
@@ -178,11 +178,14 @@ function buildUsagePriorityLink(kind: UsagePriorityKind): string {
   return `/lines?${params.toString()}`;
 }
 
-export function buildHistoryLink(phoneNumber: string, kind: LineEvent['kind']): string {
+export function buildHistoryLink(phoneNumber: string, kind?: LineEvent['kind']): string {
+  const normalizedPhoneNumber = normalizePhoneNumber(phoneNumber);
   const params = new URLSearchParams({
-    quickActivity: phoneNumber,
-    historyIntent: kind,
+    quickActivity: normalizedPhoneNumber || phoneNumber,
   });
+  if (kind) {
+    params.set('historyIntent', kind);
+  }
 
   return `/lines/history?${params.toString()}`;
 }

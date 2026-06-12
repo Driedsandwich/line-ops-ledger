@@ -1,5 +1,30 @@
 # AI Log
 
+## 2026-06-10
+- `@playwright/test` を devDependencies に追加
+- `test:sidepanel` を追加し、`playwright.config.ts` 追加含め 7 ケースを 1 回実施
+- `tests/sidepanel-check.spec.ts` を 29 ケース常設化し、`quickActivity` と `historyIntent` の受け口回帰を標準化
+- `HistoryPage` の `quickActivity` 受け口を追加修正し、整形あり/なしの電話番号一致に対応
+- `docs/07_design.md` / `docs/08_testing.md` / `docs/09_release.md` を実装実態ベースに更新
+- `.github/workflows/sanity.yml` のチェック対象を AGENTS/CLAUDE/docs/promptsまで拡張し、`CHANGELOG.md` を更新
+- 運用台帳として `docs/02_runbook.md` / `docs/03_status.md` を更新し、今後の導線/回帰観点を明文化
+- `Repo sanity` に tracked `.env` 検知を追加し、`CHANGELOG.md` を更新
+- `tsc --build` / Vite ビルドで発生する生成物を `.gitignore` に追加し、ローカル実行時の意図しない差分を抑制
+- `quickActivity` の電話番号を正規化し、`/lines/history?quickActivity=...` からの導線回帰を抑えるため、`lineEvents` と `HistoryPage` の受け側を合わせて調整
+- `buildHistoryLink` をオプション化し、`LinesPage` と `DashboardPage` の手動 `quickActivity` 遷移を共通ヘルパー経由へ統一
+- `Repo sanity` に `quickActivity` 手動リンク検知チェックを追加し、手動 `?quickActivity=` 生成の回帰を入口で防ぐ
+- 主要導線（行為 / 履歴 / バックアップ）回帰観点を `docs/08_testing.md` に固定し、`Repo sanity` の手動 `historyIntent` リンク検知を追加
+- 主要依存を `patch/minor` 更新（`@types/node` / `@types/react` / `@types/react-dom` / `@vitejs/plugin-react` / `vite` / `react-router-dom`）し、check/build を再実行
+- `npm audit fix` を実施し、`picomatch` / `postcss` の high/moderate 脆弱性を解消
+- 主要導線回帰観点のローカル実機 1 サイクル回帰を実施
+  - `/`, `/lines`, `/lines/history`, `/settings/storage`, `/settings/backup`, `/settings/notifications`, `/settings/activity-types` が 200 応答
+  - `npm audit --audit-level=low` が `found 0 vulnerabilities` を確認
+- サイドパネル（ナビ）を「メイン / 履歴 / 設定」見出し付きの標準構造に再編
+  - アクティブ表現とセクション分けを保持したまま、導線の可読性を向上
+- 低 viewport でのサイドパネル到達性確認をドキュメント運用に固定
+  - `docs/08_testing.md` に 360x812 想定の手順を追加し、`メイン / 履歴 / 設定` へ到達できることを確認条件化
+  - `docs/02_runbook.md` と `.github/PULL_REQUEST_TEMPLATE.md` にサイドパネル検証項目を追加
+
 ## 2026-04-05
 - `docs/00_goal.md` / `docs/01_requirements.md` を現行の line-centric / local-first 方針に合わせて基準固定
 - `docs/02_runbook.md` / `docs/03_status.md` を current state に同期し、将来フェーズの `devices / tasks / secret vault / calendar / ROI` は別扱いとして整理

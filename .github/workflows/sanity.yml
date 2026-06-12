@@ -21,4 +21,39 @@ jobs:
           set -euo pipefail
           test -f README.md
           test -f 00_START_HERE.md
+          test -f AGENTS.md
+          test -f CLAUDE.md
+          test -f docs/02_runbook.md
+          test -f docs/03_status.md
+          test -f docs/04_decisions.md
+          test -f docs/05_ai_log.md
+          test -f docs/07_design.md
+          test -f docs/08_testing.md
+          test -f docs/09_release.md
+          test -f prompts/README.md
+          test -f prompts/40_stop.md
           echo "Repo sanity OK"
+
+      - name: Verify no tracked secret env files
+        shell: bash
+        run: |
+          set -euo pipefail
+          tracked_envs="$(git ls-files | grep -E '^\.env(\..+|$)' || true)"
+          if [ -n "$tracked_envs" ]; then
+            echo "Tracked env files must not exist in repo:"
+            echo "$tracked_envs"
+            exit 1
+          fi
+
+      - name: Verify history links use shared builder helper
+        shell: bash
+        run: |
+          set -euo pipefail
+          violations_quick="$(grep -RIn '/lines/history?quickActivity=' src || true)"
+          violations_intent="$(grep -RIn '/lines/history?historyIntent=' src || true)"
+          violations="$(printf '%s\n%s' "$violations_quick" "$violations_intent" | sed '/^$/d' )"
+          if [ -n "$violations" ]; then
+            echo "Manual /lines/history query links found. Use buildHistoryLink from lib/lineEvents instead."
+            echo "$violations"
+            exit 1
+          fi

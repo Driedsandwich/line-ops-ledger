@@ -1,6 +1,6 @@
 # 回線運用台帳
 
-ローカル優先・暗号化前提の PWA として、回線・期限・証跡・特典を安全に管理するためのリポジトリです。
+ローカル優先の PWA として、回線・期限・証跡・特典をブラウザ内データとして管理するためのリポジトリです。
 
 ## 現在できること
 
@@ -19,7 +19,7 @@
 - `収支サマリー` から、受取済み特典がある回線の一覧と該当回線を `/lines?openDraft=<id>&focusSection=benefits` で直接開く導線を表示
 - 光回線向けの `残債解消予定日 / あとN日 / 概算残債` ダッシュボード補助カードと、該当回線を `/lines?openDraft=<id>&focusSection=fiber` で直接開く導線
 - `利用中` / `解約予定` 回線の `通 / 話 / S` 利用実績不足を巡回できるダッシュボード補助カードと、`/lines?sort=latestActivityAsc&contractActiveOnly=true&usagePriority=<kind>` への導線
-- 左側サイドバーは、項目が増えてもヘッダーを残したまま nav だけ縦スクロール可能
+- 左側サイドパネル（メイン／履歴／設定）は、項目が増えても見出しを維持したままナビを見つけやすい構成
 - 通知方針サマリー・通知対象件数・通知理由別件数
 - 通知対象回線一覧 → `/lines` 理由付き遷移
 
@@ -94,7 +94,7 @@ VITE_DEV_LABEL="DEV / feat/xxx / PR #NNN"
 ## GitHub Actions
 
 - `Repo sanity`: 最低限のファイル存在確認
-- `CI`: `npm ci` → `npm run check` → `npm run build`
+- `CI`: `npm ci` → `npm run check` → `npm run build` → `npm run test:sidepanel`
 - `main` 保護: PR 必須 / approval 任意 / required check `check-and-build`
 
 ## 確認手順
@@ -131,12 +131,13 @@ VITE_DEV_LABEL="DEV / feat/xxx / PR #NNN"
 30. sample data を読み込んだ `/` に光回線向けカードが表示され、`残債解消予定日 / あとN日 / 概算残債` と `該当回線を開く` から `/lines?openDraft=<id>&focusSection=fiber` で開けることを確認
 31. `/` に `利用実績種別の巡回` が表示され、`通 / 話 / S` のどれが不足しているかが確認でき、`通不足で開く` / `話不足で開く` / `S不足で開く` から `/lines?sort=latestActivityAsc&contractActiveOnly=true&usagePriority=<kind>` で開けることを確認
 32. `収支サマリー` に受取済み特典のある回線一覧が表示され、`該当回線を開く` から `/lines?openDraft=<id>&focusSection=benefits` で特典位置まで寄れることを確認
-33. 高さの低い viewport でも、左側サイドバーのタブ群が縦スクロールできることを確認
+33. 高さの低い viewport でも、左側サイドパネルが縦スクロールできることを確認
 34. `npx tsc --noEmit` でビルドエラーがないことを確認
 35. PR では GitHub Actions の `CI` workflow が成功していることを確認
 
 ## 重要方針
 
 - 秘密情報は repo に保存しない
-- 暗号化本体・通知本実装・IndexedDB 本体は段階的に進める
+- バックアップ JSON や localStorage データは個体情報を含みうるため、共有前に内容確認を行う
+- 暗号化本体・高度通知実装・IndexedDB 本体は段階的に進める
 - AI が実装ドライバー、人間がプロダクトオーナー（Issue/PR で自然言語指示）

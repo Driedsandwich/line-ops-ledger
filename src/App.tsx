@@ -1,15 +1,29 @@
 import { NavLink, Outlet } from 'react-router-dom';
 
-type NavItem = { to: string; label: string; end?: boolean; indent?: boolean };
+type NavItem = { to: string; label: string; end?: boolean; };
+type NavSection = { title: string; items: NavItem[] };
 
-const navItems: NavItem[] = [
-  { to: '/', label: 'ダッシュボード', end: true },
-  { to: '/lines', label: '回線一覧', end: true },
-  { to: '/lines/history', label: '履歴・タイムライン', indent: true },
-  { to: '/settings/storage', label: 'ストレージ', indent: true },
-  { to: '/settings/backup', label: 'バックアップ', indent: true },
-  { to: '/settings/notifications', label: '通知設定', indent: true },
-  { to: '/settings/activity-types', label: '活動種別', indent: true },
+const navSections: NavSection[] = [
+  {
+    title: 'メイン',
+    items: [
+      { to: '/', label: 'ダッシュボード', end: true },
+      { to: '/lines', label: '回線一覧', end: true },
+    ],
+  },
+  {
+    title: '履歴',
+    items: [{ to: '/lines/history', label: '履歴・タイムライン', end: true }],
+  },
+  {
+    title: '設定',
+    items: [
+      { to: '/settings/storage', label: 'ストレージ' },
+      { to: '/settings/backup', label: 'バックアップ' },
+      { to: '/settings/notifications', label: '通知設定' },
+      { to: '/settings/activity-types', label: '活動種別' },
+    ],
+  },
 ];
 
 const devLabel = import.meta.env.VITE_DEV_LABEL as string | undefined;
@@ -26,21 +40,32 @@ export function AppLayout(): JSX.Element {
           </p>
           {import.meta.env.DEV && devLabel ? <p className="dev-progress-badge">{devLabel}</p> : null}
         </div>
-        <nav className="nav">
-          <div className="nav__section">設定</div>
-          {navItems.map((item) => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              end={item.end}
-              className={({ isActive }: { isActive: boolean }) => {
-                const base = item.indent ? 'nav__item nav__item--sub' : 'nav__item';
-                return isActive ? `${base} nav__item--active` : base;
-              }}
-            >
-              {item.label}
-            </NavLink>
-          ))}
+        <nav className="nav" aria-label="サイドナビゲーション">
+          {navSections.map((section) => {
+            const sectionId = `side-nav-${section.title}`;
+            return (
+              <section key={section.title} aria-labelledby={sectionId}>
+                <h2 className="nav__section" id={sectionId}>
+                  {section.title}
+                </h2>
+                <ul className="nav__list">
+                  {section.items.map((item) => (
+                    <li key={item.to}>
+                      <NavLink
+                        to={item.to}
+                        end={item.end}
+                        className={({ isActive }: { isActive: boolean }) =>
+                          isActive ? 'nav__item nav__item--active' : 'nav__item'
+                        }
+                      >
+                        {item.label}
+                      </NavLink>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            );
+          })}
         </nav>
       </aside>
       <main className="content">

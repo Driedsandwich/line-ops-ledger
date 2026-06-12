@@ -3,6 +3,7 @@
 ## 現在の前提
 
 - 現行製品は `line-centric / local-first` の command center 型 UI として運用する
+- `Repo sanity` は README / 00_START_HERE / AGENTS / CLAUDE / docs / prompts の存在確認を担保する
 - `/`、`/lines`、`/lines/history`、`/settings/*` は既存の drilldown を維持する
 - 将来フェーズの `devices / tasks / secret vault / calendar / ROI` は分離して扱う
 
@@ -14,10 +15,12 @@
 4. ローカルで `npm install && npm run dev` を実行する
 5. `.env.local` に `VITE_DEV_LABEL="DEV / <ブランチ名> / PR #NNN"` をセットする
 6. `/`、`/lines`、`/lines/history`、`/settings/storage`、`/settings/backup`、`/settings/notifications`、`/settings/activity-types` の表示を確認する
-7. PR では GitHub Actions の `CI` workflow が成功していることを確認する
-8. `main` へは PR 必須 / approval 任意 / required check `check-and-build` の前提で進める
-9. サイドバーの `設定` は見出しで、`ストレージ` / `バックアップ` / `通知設定` / `活動種別` が配下リンクとして表示されることを確認する
-10. ブラウザのキャッシュが古いときは、開発サーバー再起動で最新表示を取り込む
+7. PR では GitHub Actions の `CI` workflow が成功していることを確認する（`npm run test:sidepanel` を含む）
+8. PR 開始時に `Repo sanity` を確認し、`quickActivity` / `historyIntent` の手動 `/lines/history?...` 参照が混入していないことをチェックする
+9. `main` へは PR 必須 / approval 任意 / required check `check-and-build` の前提で進める
+10. サイドバーが `メイン` / `履歴` / `設定` の見出し構造を満たし、各見出し配下リンクが重複なく表示されることを確認する
+11. 低 viewport（スマホ相当）でサイドパネルの縦スクロールと主要リンク到達を確認する（`npm run test:sidepanel`）
+12. ブラウザのキャッシュが古いときは、開発サーバー再起動で最新表示を取り込む
 
 ## 動作確認チェックリスト
 
@@ -52,7 +55,7 @@
 - [ ] sample data を読み込んだ `/` に光回線向けカードが表示され、`残債解消予定日 / あとN日 / 概算残債` と `該当回線を開く` から `/lines?openDraft=<id>&focusSection=fiber` で開ける
 - [ ] `/` に `利用実績種別の巡回` が表示され、`通 / 話 / S` のどれが不足しているか判別でき、`通不足で開く` / `話不足で開く` / `S不足で開く` から `/lines?sort=latestActivityAsc&contractActiveOnly=true&usagePriority=<kind>` で開ける
 - [ ] `収支サマリー` に受取済み特典のある回線一覧が表示され、`該当回線を開く` から `/lines?openDraft=<id>&focusSection=benefits` で特典位置まで寄れる
-- [ ] 高さの低い viewport でも、左側サイドバーのタブ群が縦スクロールできる
+- [ ] 高さの低い viewport でも、左側サイドバー（サイドパネル）が縦スクロールできる
   - [ ] 検索・絞り込み・並び替えが動く
   - [ ] `?sort=latestActivityAsc` などの URL パラメータが反映される
   - [ ] 行の「活動を記録」ボタンが `/lines/history` の履歴フォームをセットする
@@ -65,6 +68,7 @@
   - [ ] `Actionable Alerts` 由来の `historyIntent` / `quickActivity` を受け取ると、開いている文脈カードが表示される
   - [ ] `今後のイベント` が月別の read-only 一覧として表示され、共通イベントフィード由来の各行から既存 drilldown に飛べる
   - [ ] `?quickActivity=<phone>` で履歴フォームが自動セットされる
+  - [ ] `?quickActivity=<phone>&historyIntent=<kind>` の場合も、文脈ラベル（`解約可能推奨日` など）と電話番号自動セットが成立する
   - [ ] 電話番号に一致する `主台帳候補` / `直近履歴候補` が表示され、押すと契約情報が反映される
   - [ ] `活動種別` の直下にクイック選択候補が表示され、押すとそのログの種別に即時反映される
   - [ ] `活動種別` に応じて `この種別でよく使う文言` が切り替わる

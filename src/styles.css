@@ -103,7 +103,7 @@ textarea {
 }
 
 .nav__section {
-  margin: 12px 0 2px;
+  margin: 0 0 6px;
   padding: 0 4px;
   color: #64748b;
   font-size: 0.75rem;
@@ -112,11 +112,24 @@ textarea {
   text-transform: uppercase;
 }
 
+.nav section:first-of-type .nav__section {
+  margin-top: 0;
+}
+
+.nav__list {
+  list-style: none;
+  margin: 0 0 2px;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+
 .nav__item {
   border: 1px solid transparent;
   border-radius: 14px;
   padding: 12px 14px;
   color: #cbd5e1;
+  display: block;
 }
 
 .nav__item:hover,
@@ -125,10 +138,9 @@ textarea {
   background: rgba(30, 41, 59, 0.9);
 }
 
-.nav__item--sub {
-  padding-left: 28px;
-  font-size: 0.875rem;
-  color: #94a3b8;
+.nav__item:focus-visible {
+  outline: 2px solid rgba(147, 197, 253, 0.8);
+  outline-offset: 2px;
 }
 
 .content {
