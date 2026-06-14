@@ -1,12 +1,12 @@
 # Status
 
-## 現在地（2026-06-10）
+## 現在地（2026-06-15）
 
 - Bootstrap Issue: #1（永続 open）
 - Context Hub Issue: #2（永続 open）
-- 現在地: 共通イベントフィードと command center 化を main に反映。`HistoryPage` の月別 read-only 一覧を維持し、今回の作業で `quickActivity` 導線を `buildHistoryLink` / 受け側正規化へ寄せ、サイドパネル標準（`メイン` / `履歴` / `設定`）の低 viewport 到達性を docs と Playwright 回帰に固定する
+- 現在地: 共通イベントフィードと command center 化を main に反映。PR #217 で `quickActivity` 導線とサイドパネル回帰を Playwright 常設化し、PR #218 で `@types/node` patch を吸収。PR #219 で Vite 8 / plugin-react 6 へ更新し、`npm audit --audit-level=low` は脆弱性なしの状態に戻した。
 - 運用前提: PR 必須 / approval 任意 / required check `check-and-build`
-- 直近の作業: `HistoryPage` の `quickActivity` 受け口を正規化ベースへ更新し、未整形保存番号との一致を吸収。加えて `tests/sidepanel-check.spec.ts` 常設 29 ケース（7ルート到達性＋`quickActivity` 3件＋`historyIntent` 10件＋未一致 `quickActivity` + `historyIntent` 1件＋無効 `historyIntent` 1件＋`quickActivity` 未一致のみ 1件＋無効 `historyIntent` + unknown `quickActivity` 1件＋`historyIntent` 単体 1件＋`quickActivity` 異常値 + `historyIntent` 1件＋`quickActivity` 異常値のみ 1件＋`/lines/history` 非指定 2件）を通過。サイドパネル用回帰テストを `tests/sidepanel-check.spec.ts` として常設。
+- 直近の作業: Vite 8 更新に合わせて CI Node.js を 22 に固定し、`tsconfig.node.json` の Vite config 解決を `Bundler` に更新。React Router v7 移行前の `v7_startTransition` future flag を opt-in し、E2Eログの future warning を抑制した。ローカルと CI で `check` / `build` / `test:e2e` / `audit` は通過済み。
 - 追加確認: Playwright MCP はローカル `cwd` で起動でき、`/lines/history` の実画面確認が可能
 
 ## 実装済み主要機能
@@ -81,11 +81,11 @@
 - PWA（manifest / SW）/ SW は開発環境で無効 / ビルド時キャッシュバスト
 - `.env.local` の `VITE_DEV_LABEL` でサイドバーにブランチバッジ表示（`PR #NNN` 運用）
 - 左側サイドパネル（サイドバー）はヘッダーを残したまま nav だけ縦スクロール可能
-- GitHub Actions: `Repo sanity` に加えて `CI` workflow で `npm run check` / `npm run build` を実行
+- GitHub Actions: `Repo sanity` に加えて `CI` workflow で Node.js 22 / `npm run check` / `npm run build` / Playwright side panel regression を実行
 - `main` 保護: PR 必須 / approval 任意 / required check `check-and-build`
 
 ## 次の候補
 
-1. `npm audit` を同条件で運用監視し、再発時のみ新規 PR で更新を実施する
-2. CI/ローカルで `npm outdated --depth=0` を 2 週間周期で実行し、patch/minor の更新候補を順に吸収する
-3. 低 viewport 時のサイドパネル到達性を再現環境で再確認し、`メイン / 履歴 / 設定` の各主要リンク到達を複数端末で確認する
+1. React Router 7 移行調査を行い、現行 `createBrowserRouter` / `RouterProvider` / deep link への影響を確認する
+2. React 19 と TypeScript 6 は React Router 7 とは分離し、それぞれ独立した移行調査/更新 PR として扱う
+3. `npm audit --audit-level=low` と `npm outdated --depth=0` を継続監視し、patch/minor は小さく吸収、major は混ぜずに計画化する
