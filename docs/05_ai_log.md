@@ -1,5 +1,16 @@
 # AI Log
 
+## 2026-06-15
+- PR #217: サイドパネル標準化、`quickActivity` / `historyIntent` 回帰、Playwright E2E 常設化を main に反映
+  - `tests/sidepanel-check.spec.ts` と `tests/e2e-core-flow.spec.ts` を追加し、33件の E2E を標準検証にした
+  - CI に Playwright side panel regression を追加
+- PR #218: `@types/node` を patch 更新し、依存監視で残っていた Wanted 差分を吸収
+- PR #219: `npm audit` high severity 対応として `vite@8.0.16` / `@vitejs/plugin-react@6.0.2` へ更新
+  - Vite 8 の engine 条件に合わせて CI Node.js を 22 に固定
+  - Vite config の型解決を `moduleResolution: Bundler` に更新
+  - React Router の `v7_startTransition` future flag を opt-in し、E2E 実行時の future warning を抑制
+  - `npm run check` / `npm run build` / `npm run test:e2e` / `npm audit --audit-level=low` を通過
+
 ## 2026-06-10
 - `@playwright/test` を devDependencies に追加
 - `test:sidepanel` を追加し、`playwright.config.ts` 追加含め 7 ケースを 1 回実施
