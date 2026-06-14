@@ -53,6 +53,7 @@
     - `?quickActivity=<phone>` を手入力した場合でも、履歴フォームの電話番号が受け側で正規化前提に沿って補完される。
     - 履歴編集後に reload しても、更新済みの活動メモがタイムラインへ保持される。
     - 未保存の履歴入力フォームを reload すると下書きが復元され、`破棄して新規入力` 後は再 reload しても下書きが戻らない。
+    - 未保存の履歴入力フォームを `入力をリセット` すると下書きが消え、履歴保存後も下書きだけが残らない。
   - 主台帳 URL 導線
     - サンプルデータ投入後、`Hopping Health` の `利用実績を確認` から `/lines?sort=latestActivityAsc&contractActiveOnly=true` に遷移し、契約中のみ filter が有効になる。
     - `/lines?openDraft=<id>&focusSection=benefits` と `/lines?openDraft=<id>&focusSection=fiber` で対象回線が展開され、該当セクションが表示される。

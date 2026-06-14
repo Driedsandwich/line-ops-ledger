@@ -161,6 +161,57 @@ for (const viewport of viewports) {
       expect(afterReloadDraft).toBeNull();
     });
 
+    test('history draft reset and save cleanup path', async ({ page }) => {
+      await page.goto('/');
+      await clearAllStorage(page);
+
+      const resetMemo = `リセット前下書き-${viewport.name}-${Date.now().toString().slice(-5)}`;
+      const savedMemo = `保存後下書き削除-${viewport.name}-${Date.now().toString().slice(-5)}`;
+
+      await page.goto('/lines/history');
+      await page.getByLabel('電話番号 *').fill('09055556666');
+      await page.getByLabel('キャリア *').fill('NTTドコモ');
+      await page.getByLabel('契約開始日 *').fill('2025-03-01');
+      await page.locator('article#history-form label:has-text("活動種別") select').selectOption('利用実績確認');
+      await page.locator('article#history-form label:has-text("活動日") input').fill('2026-06-12');
+      await page.locator('article#history-form label:has-text("活動メモ") textarea').fill(resetMemo);
+      await page.waitForFunction(
+        ({ key, memo }) => window.localStorage.getItem(key)?.includes(memo) === true,
+        { key: historyFormDraftStorageKey, memo: resetMemo },
+      );
+
+      await page.getByRole('button', { name: '入力をリセット' }).click();
+      await expect(page.locator('article#history-form label:has-text("活動メモ") textarea')).toHaveValue('');
+      await expect
+        .poll(() => page.evaluate((key) => window.localStorage.getItem(key), historyFormDraftStorageKey))
+        .toBeNull();
+      await page.reload();
+      await expect(page.getByText('前回の履歴入力下書きを復元しました。')).toHaveCount(0);
+      await expect(page.locator('article#history-form label:has-text("活動メモ") textarea')).toHaveValue('');
+
+      await page.getByLabel('電話番号 *').fill('09055556666');
+      await page.getByLabel('キャリア *').fill('NTTドコモ');
+      await page.getByLabel('契約開始日 *').fill('2025-03-01');
+      await page.locator('article#history-form label:has-text("活動種別") select').selectOption('利用実績確認');
+      await page.locator('article#history-form label:has-text("活動日") input').fill('2026-06-12');
+      await page.locator('article#history-form label:has-text("活動メモ") textarea').fill(savedMemo);
+      await page.waitForFunction(
+        ({ key, memo }) => window.localStorage.getItem(key)?.includes(memo) === true,
+        { key: historyFormDraftStorageKey, memo: savedMemo },
+      );
+
+      await page.getByRole('button', { name: '履歴を保存する' }).click();
+      await expect(page.getByText('契約履歴を保存しました。')).toBeVisible();
+      await expect(page.locator('article#history-timeline')).toContainText(savedMemo);
+      await expect
+        .poll(() => page.evaluate((key) => window.localStorage.getItem(key), historyFormDraftStorageKey))
+        .toBeNull();
+
+      await page.reload();
+      await expect(page.getByText('前回の履歴入力下書きを復元しました。')).toHaveCount(0);
+      await expect(page.locator('article#history-timeline')).toContainText(savedMemo);
+    });
+
     test('settings flows', async ({ page }) => {
       await page.goto('/');
       await clearAllStorage(page);

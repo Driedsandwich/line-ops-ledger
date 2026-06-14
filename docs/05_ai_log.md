@@ -301,3 +301,6 @@
 - 履歴下書き破棄後の persistence E2E を追加
   - 未保存の履歴入力フォームを reload 後に自動復元し、`前回の履歴入力下書きを復元しました。` が表示されることを確認する
   - `破棄して新規入力` 後に localStorage の履歴下書きが消え、再 reload しても復元通知と活動メモが戻らないことを mobile / desktop の両 viewport で固定する
+- 履歴下書き reset / save cleanup E2E を追加
+  - 未保存の履歴入力フォームを作成し、`入力をリセット` 後に localStorage の履歴下書きが消えることを確認する
+  - 別の履歴下書きを保存した後も localStorage の履歴下書きが消え、reload 後に復元通知が戻らず、保存済み履歴だけがタイムラインへ残ることを mobile / desktop の両 viewport で固定する
