@@ -45,6 +45,7 @@
     - `/lines` の行一覧で `活動を記録` を押し、`/lines/history` へ遷移する。
     - 遷移先フォームに、対象回線の番号が正規化済み値で先頭に入る（`-` や空白があっても問題ない）。
     - 保存済み回線を選択して一括ステータス変更し、`操作を戻す` で元の契約状態へ戻る。
+    - 保存済み回線を選択して一括削除し、`操作を戻す` で一覧へ復元される。
   - 履歴導線
     - 空状態から確認用サンプルデータを投入し、`Summary KPI` / `Hopping Health` / `Actionable Alerts` が表示される。
     - `DashboardPage` の `Actionable Alerts` から `履歴で記録` を押し、`historyIntent` が付いた `?quickActivity=` 遷移が成立する。
