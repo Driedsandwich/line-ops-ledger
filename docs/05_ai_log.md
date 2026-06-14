@@ -270,3 +270,9 @@
   - `lineEvents.ts` に実日付と月別グルーピング helper を追加し、calendar 前段として扱える read-only な一覧を組み立てた
   - `HistoryPage` に `今後のイベント` を追加し、共通イベントフィードを月単位で俯瞰できるようにした
   - `check` / `build` を通し、`http://127.0.0.1:4173/` と `/lines/history` の応答を確認した
+
+## 2026-06-15
+- サンプルデータ投入後の dashboard E2E を追加
+  - 空状態から `確認用サンプルデータを読み込む` を実行し、読み込み完了 notice を確認する
+  - `Summary KPI` / `Hopping Health` / `Actionable Alerts` の command center 表示を mobile / desktop の両 viewport で確認する
+  - `Actionable Alerts` の `履歴で記録` から `historyIntent` 付きで `/lines/history` へ遷移し、`開いている文脈` が表示されることを固定する

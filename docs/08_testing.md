@@ -15,6 +15,7 @@
   3. localStorage クリアで空状態ガイドが表示されることを確認
   4. 回線追加、履歴入力、`/lines?sort=latestActivityAsc` など URL ドリルダウンが動くことを確認
   5. バックアップエクスポート→再インポートで主要データ（台帳/履歴/設定）が復元されることを確認
+  6. 空状態から確認用サンプルデータを読み込み、dashboard の主要カードと `Actionable Alerts` からの `履歴で記録` 導線が動くことを確認
 - 期待する結果:
   - 主要ルートが読み込みエラーなく表示され、エラーメッセージや空白画面が出ない
   - 低 viewport でもサイドパネル確認が再現すること（例: 360x812）:
@@ -44,6 +45,7 @@
     - `/lines` の行一覧で `活動を記録` を押し、`/lines/history` へ遷移する。
     - 遷移先フォームに、対象回線の番号が正規化済み値で先頭に入る（`-` や空白があっても問題ない）。
   - 履歴導線
+    - 空状態から確認用サンプルデータを投入し、`Summary KPI` / `Hopping Health` / `Actionable Alerts` が表示される。
     - `DashboardPage` の `Actionable Alerts` から `履歴で記録` を押し、`historyIntent` が付いた `?quickActivity=` 遷移が成立する。
     - `HistoryPage` の「開いている文脈」帯で意図ラベルが見えること。
     - `?quickActivity=<phone>` を手入力した場合でも、履歴フォームの電話番号が受け側で正規化前提に沿って補完される。
