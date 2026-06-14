@@ -4,9 +4,9 @@
 
 - Bootstrap Issue: #1（永続 open）
 - Context Hub Issue: #2（永続 open）
-- 現在地: 共通イベントフィードと command center 化を main に反映。PR #217 で `quickActivity` 導線とサイドパネル回帰を Playwright 常設化し、PR #218 で `@types/node` patch を吸収。PR #219 で Vite 8 / plugin-react 6 へ更新し、PR #221 で React Router 7 移行調査を完了。PR #222 で React Router 7 への単独更新を main に反映し、PR #224 で React 19 単独更新、PR #225 で TypeScript 6 単独更新、PR #226 で統合バックアップ復元 E2E 拡張を main に反映。続いて設定永続化の E2E を拡張した。
+- 現在地: 共通イベントフィードと command center 化を main に反映。PR #217 で `quickActivity` 導線とサイドパネル回帰を Playwright 常設化し、PR #218 で `@types/node` patch を吸収。PR #219 で Vite 8 / plugin-react 6 へ更新し、PR #221 で React Router 7 移行調査を完了。PR #222 で React Router 7 への単独更新を main に反映し、PR #224 で React 19 単独更新、PR #225 で TypeScript 6 単独更新、PR #226 で統合バックアップ復元 E2E 拡張、PR #227 で設定永続化 E2E 拡張を main に反映。続いてバックアップ import 失敗表示の E2E を追加した。
 - 運用前提: PR 必須 / approval 任意 / required check `check-and-build`
-- 直近の作業: `settings flows` E2E でカスタム活動種別と通知設定が reload 後も localStorage から復元されることを確認するよう拡張した。既存の設定入力確認に加えて、再読み込み後の値保持を mobile / desktop の両 viewport で検証する。
+- 直近の作業: `settings flows` E2E で不正なバックアップ JSON を復元しようとしたときに、`JSON バックアップの形式が不正です。` の notice が表示されることを確認するよう拡張した。成功系の統合バックアップ復元確認と同じ mobile / desktop の両 viewport で検証する。
 - 追加確認: Playwright MCP はローカル `cwd` で起動でき、`/lines/history` の実画面確認が可能
 
 ## 実装済み主要機能
@@ -86,6 +86,6 @@
 
 ## 次の候補
 
-1. 設定永続化 E2E 拡張 PR の `check` / `build` / `test:e2e` / `audit` と GitHub Actions を通し、reload 後の設定復元に回帰がないことを確認する
+1. バックアップ import 失敗表示 E2E PR の `check` / `build` / `test:e2e` / `audit` と GitHub Actions を通し、不正 JSON 時の notice 表示に回帰がないことを確認する
 2. `npm audit --audit-level=low` と `npm outdated --depth=0` を継続監視する
-3. 次の品質改善は、サンプルデータ投入後の主要カード表示や import 失敗時のエラー表示など、未自動化のユーザー導線を小さく追加する
+3. 次の品質改善は、サンプルデータ投入後の主要カード表示や主要カードからの drilldown など、未自動化のユーザー導線を小さく追加する

@@ -99,6 +99,7 @@ for (const viewport of viewports) {
       const historyMemo = `バックアップ復元確認-${Date.now().toString().slice(-5)}`;
       const backupDir = '/tmp/line-ops-ledger-e2e';
       const backupPath = path.join(backupDir, `backup-${viewport.name}-${Date.now()}.json`);
+      const invalidBackupPath = path.join(backupDir, `invalid-backup-${viewport.name}-${Date.now()}.json`);
 
       await createDraft(page, lineName, phoneNumber);
       await createHistoryEntry(page, lineName, phoneNumber, historyMemo);
@@ -140,6 +141,11 @@ for (const viewport of viewports) {
       await download.saveAs(backupPath);
       expect(fs.existsSync(backupPath)).toBe(true);
       expect(fs.statSync(backupPath).size).toBeGreaterThan(20);
+
+      fs.writeFileSync(invalidBackupPath, '{}', 'utf8');
+      await page.getByRole('button', { name: 'バックアップを復元' }).click();
+      await page.locator('input.hidden-file-input').setInputFiles(invalidBackupPath);
+      await expect(page.getByText('JSON バックアップの形式が不正です。')).toBeVisible();
 
       await clearAllStorage(page);
       await page.getByRole('button', { name: 'バックアップを復元' }).click();

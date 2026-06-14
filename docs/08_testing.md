@@ -52,6 +52,7 @@
     - 主台帳/履歴を初期化後、同じ JSON で復元し、主台帳件数と履歴件数が一致することを確認。
     - 復元後、`/lines` と `/lines/history` に戻って追加・保存・空状態導線が壊れていないことを確認。
     - E2E では履歴メモとマスク済み電話番号が `/lines/history` のタイムラインに戻ることまで確認する。
+    - 不正な JSON バックアップを読み込んだ場合、形式不正 notice が表示されることを確認する。
 
 - これらが成立しない場合:
   - `buildHistoryLink` 利用有無と `normalizePhoneNumber` 周辺（`lineEvents.ts` / `HistoryPage.tsx`）の受け口を優先で確認する。
