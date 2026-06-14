@@ -187,5 +187,29 @@ for (const viewport of viewports) {
       await page.locator('li', { hasText: lineName }).first().getByRole('button', { name: '削除する' }).click();
       await expect(page.locator('li', { hasText: lineName })).toHaveCount(0);
     });
+
+    test('sample data dashboard path', async ({ page }) => {
+      await page.goto('/');
+      await clearAllStorage(page);
+      await page.reload();
+
+      await expect(page.getByText('最初の1件を登録する')).toBeVisible();
+      await page.getByRole('button', { name: '確認用サンプルデータを読み込む' }).click();
+      await expect(page.getByText(/確認用サンプルデータを読み込みました/)).toBeVisible();
+
+      const summaryKpi = page.locator('section[aria-label="Summary KPI"]');
+      const hoppingHealth = page.locator('section[aria-label="Hopping Health"]');
+      const actionableAlerts = page.locator('section[aria-label="Actionable Alerts"]');
+
+      await expect(summaryKpi).toBeVisible();
+      await expect(hoppingHealth).toBeVisible();
+      await expect(actionableAlerts).toBeVisible();
+      await expect(summaryKpi.locator('.dashboard-kpi-card__label', { hasText: 'Danger Alerts' })).toBeVisible();
+      await expect(actionableAlerts.locator('.badge--danger', { hasText: 'Critical' }).first()).toBeVisible();
+
+      await actionableAlerts.locator('a', { hasText: '履歴で記録' }).first().click();
+      await expect(page).toHaveURL(/\/lines\/history\?.*historyIntent=/);
+      await expect(page.locator('h3:has-text("開いている文脈")')).toBeVisible();
+    });
   });
 }
