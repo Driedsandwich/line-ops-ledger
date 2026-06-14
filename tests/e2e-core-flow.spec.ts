@@ -53,6 +53,16 @@ async function createHistoryEntry(page: Page, lineName: string, phoneNumber: str
   await expect(page.locator('article#history-timeline')).toContainText(memo);
 }
 
+async function loadSampleDataFromEmptyDashboard(page: Page): Promise<void> {
+  await page.goto('/');
+  await clearAllStorage(page);
+  await page.reload();
+
+  await expect(page.getByText('最初の1件を登録する')).toBeVisible();
+  await page.getByRole('button', { name: '確認用サンプルデータを読み込む' }).click();
+  await expect(page.getByText(/確認用サンプルデータを読み込みました/)).toBeVisible();
+}
+
 for (const viewport of viewports) {
   test.describe(`core flow (${viewport.name})`, () => {
     test.use({ viewport: { width: viewport.width, height: viewport.height } });
@@ -189,13 +199,7 @@ for (const viewport of viewports) {
     });
 
     test('sample data dashboard path', async ({ page }) => {
-      await page.goto('/');
-      await clearAllStorage(page);
-      await page.reload();
-
-      await expect(page.getByText('最初の1件を登録する')).toBeVisible();
-      await page.getByRole('button', { name: '確認用サンプルデータを読み込む' }).click();
-      await expect(page.getByText(/確認用サンプルデータを読み込みました/)).toBeVisible();
+      await loadSampleDataFromEmptyDashboard(page);
 
       const summaryKpi = page.locator('section[aria-label="Summary KPI"]');
       const hoppingHealth = page.locator('section[aria-label="Hopping Health"]');
@@ -210,6 +214,28 @@ for (const viewport of viewports) {
       await actionableAlerts.locator('a', { hasText: '履歴で記録' }).first().click();
       await expect(page).toHaveURL(/\/lines\/history\?.*historyIntent=/);
       await expect(page.locator('h3:has-text("開いている文脈")')).toBeVisible();
+    });
+
+    test('sample data lines drilldown path', async ({ page }) => {
+      await loadSampleDataFromEmptyDashboard(page);
+
+      await page.getByRole('link', { name: '利用実績を確認' }).click();
+      await expect(page).toHaveURL(/\/lines\?.*sort=latestActivityAsc.*contractActiveOnly=true/);
+      await expect(page.getByRole('button', { name: '契約中のみ: ON' })).toBeVisible();
+
+      await page.goto('/lines?openDraft=d-003&focusSection=benefits');
+      await expect(page.locator('#draft-d-003-benefits')).toBeVisible();
+      await expect(page.locator('#draft-d-003-benefits').getByRole('heading', { name: '特典 / キャッシュバック' })).toBeVisible();
+
+      await page.goto('/lines?openDraft=d-005&focusSection=fiber');
+      await expect(page.locator('#draft-d-005-fiber')).toBeVisible();
+      await expect(page.getByText('光回線の移行種別')).toBeVisible();
+
+      await page.goto('/lines?sort=latestActivityAsc&contractActiveOnly=true&usagePriority=sms');
+      await expect(page).toHaveURL(/\/lines\?.*contractActiveOnly=true.*usagePriority=sms/);
+      await expect(page.getByRole('button', { name: '契約中のみ: ON' })).toBeVisible();
+      await expect(page.getByRole('button', { name: 'S不足優先: ON' })).toBeVisible();
+      await expect(page.locator('.list__item--priority .badge--info').first()).toBeVisible();
     });
   });
 }
