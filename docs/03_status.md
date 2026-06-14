@@ -6,7 +6,7 @@
 - Context Hub Issue: #2（永続 open）
 - 現在地: 共通イベントフィードと command center 化を main に反映。PR #217 で `quickActivity` 導線とサイドパネル回帰を Playwright 常設化し、PR #218 で `@types/node` patch を吸収。PR #219 で Vite 8 / plugin-react 6 へ更新し、`npm audit --audit-level=low` は脆弱性なしの状態に戻した。
 - 運用前提: PR 必須 / approval 任意 / required check `check-and-build`
-- 直近の作業: Vite 8 更新に合わせて CI Node.js を 22 に固定し、`tsconfig.node.json` の Vite config 解決を `Bundler` に更新。React Router v7 移行前の `v7_startTransition` future flag を opt-in し、E2Eログの future warning を抑制した。ローカルと CI で `check` / `build` / `test:e2e` / `audit` は通過済み。
+- 直近の作業: Vite 8 更新に合わせて CI Node.js を 22 に固定し、`tsconfig.node.json` の Vite config 解決を `Bundler` に更新。React Router v7 移行前の `v7_startTransition` future flag を opt-in し、E2Eログの future warning を抑制した。続いて React Router 7 移行調査を行い、現行コードでは追加の事前実装変更が不要で、次は React Router 7 単独更新 PR に進める状態と判断した。
 - 追加確認: Playwright MCP はローカル `cwd` で起動でき、`/lines/history` の実画面確認が可能
 
 ## 実装済み主要機能
@@ -86,6 +86,6 @@
 
 ## 次の候補
 
-1. React Router 7 移行調査を行い、現行 `createBrowserRouter` / `RouterProvider` / deep link への影響を確認する
-2. React 19 と TypeScript 6 は React Router 7 とは分離し、それぞれ独立した移行調査/更新 PR として扱う
+1. React Router 7 単独更新 PR を作り、`react-router-dom` から `react-router` への依存/import 変更と主要ルート・deep link・サイドパネル・バックアップ復元後遷移を確認する
+2. React 19 と TypeScript 6 は React Router 7 更新後に分離し、それぞれ独立した移行調査/更新 PR として扱う
 3. `npm audit --audit-level=low` と `npm outdated --depth=0` を継続監視し、patch/minor は小さく吸収、major は混ぜずに計画化する

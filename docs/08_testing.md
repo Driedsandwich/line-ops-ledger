@@ -53,6 +53,33 @@
   - `buildHistoryLink` 利用有無と `normalizePhoneNumber` 周辺（`lineEvents.ts` / `HistoryPage.tsx`）の受け口を優先で確認する。
   - まず `main` の最小導線が機能しているかを優先復旧し、次にデータ量を増やして再実行する。
 
+## React Router 7 移行時の重点確認
+
+- 実行条件:
+  - React Router 7 更新 PR は React 19 / TypeScript 6 と分離する。
+  - `npm run check` / `npm run build` / `npm run test:e2e` / `npm audit --audit-level=low` を必須にする。
+  - CI の `Repo sanity` と `CI / check-and-build` が通過してから merge 判断する。
+
+- ルーティング確認:
+  - `/`, `/lines`, `/lines/history`, `/settings/storage`, `/settings/backup`, `/settings/notifications`, `/settings/activity-types` が直接 URL 入力でも表示される。
+  - `/settings` が `/settings/storage` へ replace 遷移する。
+  - サイドパネルの `メイン` / `履歴` / `設定` セクションと active state が崩れない。
+
+- deep link 確認:
+  - `/lines/history?quickActivity=<phone>` で履歴フォームの電話番号が補完される。
+  - Dashboard から `historyIntent` 付きで `/lines/history` へ遷移し、文脈カードが表示される。
+  - `/lines?openDraft=<id>&focusSection=benefits` と `/lines?openDraft=<id>&focusSection=fiber` のスクロール導線が維持される。
+  - `/lines?sort=latestActivityAsc&contractActiveOnly=true&usagePriority=<kind>` の初期フィルタと強調表示が維持される。
+
+- バックアップ復元後確認:
+  - `/settings/backup` で統合バックアップを復元した後、`/lines` と `/lines/history` へ遷移して主台帳件数と履歴件数が表示される。
+  - 復元後も `活動を記録` と `履歴で記録` の導線が成立する。
+
+- 事前に再確認するコード条件:
+  - multi-segment splat route が追加されていない。
+  - `useFetcher` / `useFetchers` / Router `loader` / Router `action` / `React.lazy` / SSR hydration / `fallbackElement` が追加されていない。
+  - `RouterProvider` の import は React Router 7 の DOM deep import 要件に合わせている。
+
 ## リリース前チェック（必要な場合）
 - [ ] 受け入れ条件を満たす
 - [ ] セキュリティ観点で問題がない

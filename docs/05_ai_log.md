@@ -10,6 +10,10 @@
   - Vite config の型解決を `moduleResolution: Bundler` に更新
   - React Router の `v7_startTransition` future flag を opt-in し、E2E 実行時の future warning を抑制
   - `npm run check` / `npm run build` / `npm run test:e2e` / `npm audit --audit-level=low` を通過
+- React Router 7 移行調査を実施
+  - 公式移行手順と現行コードを照合し、React Router 7 は React 19 / TypeScript 6 と分離して単独 PR で扱う判断を記録
+  - 現行コードでは splat route / fetcher / loader / action / route lazy / SSR hydration が見つからず、主な変更点は `react-router-dom` から `react-router` への依存/import 変更と判断
+  - React Router 7 更新 PR の重点確認として、主要ルート、`quickActivity` / `historyIntent` deep link、サイドパネル active state、バックアップ復元後遷移を `docs/08_testing.md` に固定
 
 ## 2026-06-10
 - `@playwright/test` を devDependencies に追加
