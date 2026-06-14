@@ -5,6 +5,8 @@ import { expect, test, type Page } from '@playwright/test';
 const lineDraftStorageKey = 'line-ops-ledger.line-drafts';
 const historyFormDraftStorageKey = 'line-ops-ledger.history-form-draft';
 const customActivityMemoTemplatesStorageKey = 'line-ops-ledger.custom-activity-memo-templates';
+const pinnedActivityMemoTemplatesStorageKey = 'line-ops-ledger.pinned-activity-memo-templates';
+const hiddenActivityMemoTemplatesStorageKey = 'line-ops-ledger.hidden-activity-memo-templates';
 
 const viewports = [
   { name: 'mobile', width: 360, height: 812 },
@@ -241,6 +243,59 @@ for (const viewport of viewports) {
       await expect(historyForm.getByRole('button', { name: customMemoTemplate })).toBeVisible();
       const storedTemplates = await page.evaluate((key) => window.localStorage.getItem(key), customActivityMemoTemplatesStorageKey);
       expect(storedTemplates).toContain(customMemoTemplate);
+    });
+
+    test('activity memo template pin and hide persistence path', async ({ page }) => {
+      await page.goto('/');
+      await clearAllStorage(page);
+
+      const customMemoTemplate = `候補管理-${viewport.name}-${Date.now().toString().slice(-5)}`;
+      const historyForm = page.locator('article#history-form');
+
+      await page.goto('/lines/history');
+      await historyForm.locator('label:has-text("活動メモ") textarea').fill(customMemoTemplate);
+      await historyForm.getByRole('button', { name: 'この文言を候補に追加' }).click();
+      await expect(page.getByText(`活動メモ候補「${customMemoTemplate}」を追加しました。`)).toBeVisible();
+      await historyForm
+        .locator('.button-row.button-row--tight', { has: page.getByRole('button', { name: customMemoTemplate }) })
+        .getByRole('button', { name: '固定' })
+        .click();
+      await expect(page.getByText(`活動メモ候補「${customMemoTemplate}」を固定しました。`)).toBeVisible();
+      await page.waitForFunction(
+        ({ key, memo }) => window.localStorage.getItem(key)?.includes(memo) === true,
+        { key: pinnedActivityMemoTemplatesStorageKey, memo: customMemoTemplate },
+      );
+
+      await page.reload();
+      await expect(historyForm.getByText('固定候補（1件）')).toBeVisible();
+      await expect(historyForm.getByRole('button', { name: customMemoTemplate })).toBeVisible();
+      await historyForm
+        .locator('.button-row.button-row--tight', { has: page.getByRole('button', { name: customMemoTemplate }) })
+        .getByRole('button', { name: '非表示' })
+        .first()
+        .click();
+      await expect(page.getByText(`活動メモ候補「${customMemoTemplate}」を非表示にしました。`)).toBeVisible();
+      await page.waitForFunction(
+        ({ key, memo }) => window.localStorage.getItem(key)?.includes(memo) === true,
+        { key: hiddenActivityMemoTemplatesStorageKey, memo: customMemoTemplate },
+      );
+
+      await page.reload();
+      await expect(historyForm.getByText('非表示候補（1件）')).toBeVisible();
+      await expect(historyForm.locator('.badge', { hasText: customMemoTemplate })).toBeVisible();
+      await historyForm
+        .locator('.button-row.button-row--tight', { hasText: customMemoTemplate })
+        .getByRole('button', { name: '戻す' })
+        .click();
+      await expect(page.getByText(`活動メモ候補「${customMemoTemplate}」を表示に戻しました。`)).toBeVisible();
+      await expect
+        .poll(() => page.evaluate((key) => window.localStorage.getItem(key), hiddenActivityMemoTemplatesStorageKey))
+        .toBe('[]');
+
+      await page.reload();
+      await expect(historyForm.getByText('非表示候補（1件）')).toHaveCount(0);
+      await expect(historyForm.getByText('固定候補（1件）')).toBeVisible();
+      await expect(historyForm.getByRole('button', { name: customMemoTemplate })).toBeVisible();
     });
 
     test('settings flows', async ({ page }) => {
