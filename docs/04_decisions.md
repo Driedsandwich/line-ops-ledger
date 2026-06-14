@@ -90,3 +90,9 @@
 - 理由: 現行コード検索では、React Router 利用は `Link` / `NavLink` / `Navigate` / `Outlet` / `useNavigate` / `useSearchParams` / `createBrowserRouter` / `RouterProvider` に限られる。`v7_startTransition` はすでに opt-in 済みで、multi-segment splat route、`useFetcher` / `useFetchers`、Router の `loader` / `action`、`React.lazy`、SSR hydration、`fallbackElement` は見つからなかったため、残る影響は主にパッケージ名と import 変更に限定される見込み
 - 代替案: v6 の全 future flag を追加で opt-in してから依存更新する案
 - 影響: `createBrowserRouter` の future flag 追加は現行機能に対する実益が薄いため保留する。React Router 7 更新 PR ではコード検索と E2E でこの前提を再確認する
+
+- 日付: 2026-06-15
+- 判断: React 19 は単独 PR で更新し、TypeScript 6 は同じ PR に混ぜない
+- 理由: React 19 公式 upgrade guide では React 18.3 経由で警告を確認してから 19 へ進む流れが示されている。現行はすでに React 18.3.1 で、コード検索でも `ReactDOM.render` / `findDOMNode` / `defaultProps` / `propTypes` / 引数なし `useRef()` は見つからなかった。一方、React 19 型定義では global `JSX` namespace 依存が崩れるため、型注釈の修正は React 19 PR 内で扱う
+- 代替案: React 19 と TypeScript 6 をまとめて更新する案
+- 影響: React 19 固有の runtime/型変更と TypeScript 6 固有の compiler 変更を分離できる。次の major 更新は TypeScript 6 単独調査/更新 PR とする

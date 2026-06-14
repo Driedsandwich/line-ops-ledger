@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type ReactElement } from 'react';
 import { Link } from 'react-router';
 import { lineDraftStore, type BenefitRecord, type LineDraft } from '../lib/lineDrafts';
 import { lineHistoryStore, type LineHistoryEntry } from '../lib/lineHistory';
@@ -946,7 +946,7 @@ function buildActionGroups(eventGroups: LineEventGroup[]): ActionGroupViewModel[
   ];
 }
 
-function renderEventMetaTags(event: LineEvent): JSX.Element | null {
+function renderEventMetaTags(event: LineEvent): ReactElement | null {
   const metaTags = Array.from(new Set([event.carrier, event.status, ...getUniqueEventMetaTags(event)].filter(Boolean)));
   if (metaTags.length === 0) {
     return null;
@@ -972,7 +972,7 @@ function getEventOriginLabel(origin: LineEventOrigin): string {
   return origin === 'history' ? '履歴由来' : '回線由来';
 }
 
-function renderActionEventRow(event: LineEvent): JSX.Element {
+function renderActionEventRow(event: LineEvent): ReactElement {
   const showHistoryLink = Boolean(event.phoneNumber) && !event.to.startsWith('/lines/history');
 
   return (
@@ -1003,7 +1003,7 @@ function renderActionEventRow(event: LineEvent): JSX.Element {
   );
 }
 
-function renderActionGroupCard(group: ActionGroupViewModel): JSX.Element {
+function renderActionGroupCard(group: ActionGroupViewModel): ReactElement {
   return (
     <details
       key={group.id}
@@ -1033,7 +1033,7 @@ function renderActionGroupCard(group: ActionGroupViewModel): JSX.Element {
   );
 }
 
-function renderRingGauge(ring: HealthRingViewModel): JSX.Element {
+function renderRingGauge(ring: HealthRingViewModel): ReactElement {
   const radius = 54;
   const circumference = 2 * Math.PI * radius;
   const dashOffset = circumference * (1 - ring.ratio);
@@ -1072,7 +1072,7 @@ function renderRingGauge(ring: HealthRingViewModel): JSX.Element {
   );
 }
 
-function renderCriticalPanels(summary: DashboardSummary): JSX.Element {
+function renderCriticalPanels(summary: DashboardSummary): ReactElement {
   return (
     <div className="card-grid">
       <article className="card">
@@ -1171,7 +1171,7 @@ function renderCriticalPanels(summary: DashboardSummary): JSX.Element {
   );
 }
 
-function renderWarningPanels(summary: DashboardSummary): JSX.Element {
+function renderWarningPanels(summary: DashboardSummary): ReactElement {
   return (
     <div className="card-grid">
       <article className="card">
@@ -1305,7 +1305,7 @@ function renderWatchPanels(
   summary: DashboardSummary,
   drafts: LineDraft[],
   notificationSettings: ReturnType<typeof loadNotificationSettings>,
-): JSX.Element {
+): ReactElement {
   return (
     <div className="card-grid">
       <article className="card">
@@ -1532,7 +1532,7 @@ function renderWatchPanels(
   );
 }
 
-export function DashboardPage(): JSX.Element {
+export function DashboardPage(): ReactElement {
   const [drafts, setDrafts] = useState<LineDraft[]>(() => lineDraftStore.load());
   const [historyEntries, setHistoryEntries] = useState<LineHistoryEntry[]>(() => lineHistoryStore.load());
   const [errorMessage, setErrorMessage] = useState<string | null>(null);

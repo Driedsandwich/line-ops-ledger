@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
+import { Fragment, useEffect, useMemo, useRef, useState, type ReactElement } from 'react';
 import { Link, useSearchParams } from 'react-router';
 import { lineDraftStore, normalizePhoneNumber, type LineDraft } from '../lib/lineDrafts';
 import { buildLineEventFeed, groupLineEventsByMonth, type LineEvent, type LineEventMonthGroup } from '../lib/lineEvents';
@@ -724,7 +724,7 @@ function isLineHistoryFormEmpty(form: LineHistoryFormState): boolean {
 // Component
 // ---------------------------------------------------------------------------
 
-export function HistoryPage(): JSX.Element {
+export function HistoryPage(): ReactElement {
   const restoredHistoryFormDraft = useMemo(() => loadHistoryFormDraft(), []);
   const [searchParams] = useSearchParams();
   const [drafts, setDrafts] = useState<LineDraft[]>(() => lineDraftStore.load());
@@ -829,7 +829,7 @@ export function HistoryPage(): JSX.Element {
     quickPicks: string[],
     pinAction: 'pin' | 'unpin',
     sectionKey: string,
-  ): JSX.Element | null {
+  ): ReactElement | null {
     if (quickPicks.length === 0) {
       return null;
     }
@@ -921,7 +921,7 @@ export function HistoryPage(): JSX.Element {
     );
   }
 
-  function renderHiddenActivityMemoQuickPickSection(quickPicks: string[]): JSX.Element | null {
+  function renderHiddenActivityMemoQuickPickSection(quickPicks: string[]): ReactElement | null {
     if (quickPicks.length === 0) {
       return null;
     }

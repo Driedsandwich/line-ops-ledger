@@ -1,3 +1,4 @@
+import type { ReactElement } from 'react';
 import { NavLink, Outlet } from 'react-router';
 
 type NavItem = { to: string; label: string; end?: boolean; };
@@ -28,7 +29,7 @@ const navSections: NavSection[] = [
 
 const devLabel = import.meta.env.VITE_DEV_LABEL as string | undefined;
 
-export function AppLayout(): JSX.Element {
+export function AppLayout(): ReactElement {
   return (
     <div className="app-shell">
       <aside className="sidebar">
