@@ -189,6 +189,14 @@ for (const viewport of viewports) {
 
       await page.goto('/lines');
       await expect(page.getByText(lineName)).toBeVisible();
+      const restoredMemo = `復元後編集-${Date.now().toString().slice(-5)}`;
+      await page.locator('li', { hasText: lineName }).first().getByRole('button', { name: '編集する' }).click();
+      await page.locator('form label:has-text("メモ") textarea').fill(restoredMemo);
+      await page.getByRole('button', { name: '更新する' }).click();
+      await expect(page.getByText('回線を更新しました。')).toBeVisible();
+      await page.reload();
+      await page.locator('li', { hasText: lineName }).first().getByRole('button', { name: '詳細を開く' }).click();
+      await expect(page.locator('li', { hasText: lineName })).toContainText(restoredMemo);
       await page.goto('/lines/history');
       await expect(page.locator('article#history-timeline')).toContainText(historyMemo);
       await expect(page.locator('article#history-timeline')).toContainText('090-****-8888');
