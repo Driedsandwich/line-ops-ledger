@@ -96,3 +96,9 @@
 - 理由: React 19 公式 upgrade guide では React 18.3 経由で警告を確認してから 19 へ進む流れが示されている。現行はすでに React 18.3.1 で、コード検索でも `ReactDOM.render` / `findDOMNode` / `defaultProps` / `propTypes` / 引数なし `useRef()` は見つからなかった。一方、React 19 型定義では global `JSX` namespace 依存が崩れるため、型注釈の修正は React 19 PR 内で扱う
 - 代替案: React 19 と TypeScript 6 をまとめて更新する案
 - 影響: React 19 固有の runtime/型変更と TypeScript 6 固有の compiler 変更を分離できる。次の major 更新は TypeScript 6 単独調査/更新 PR とする
+
+- 日付: 2026-06-15
+- 判断: TypeScript 6 は単独 PR で更新し、追加の機能変更は混ぜない
+- 理由: React 19 と React Router 7 の更新が分離済みで、残る major は TypeScript のみだったため、compiler 更新だけを切り出すと原因切り分けが容易になる。`tsc --noEmit` と Vite build は追加修正なしで通過した
+- 代替案: TypeScript 6 更新とあわせて型リファクタやテスト追加を行う案
+- 影響: 依存 major 更新フェーズを小さく閉じられる。次の改善は依存更新ではなく、E2E カバレッジや運用導線の強化として別 PR で扱う
