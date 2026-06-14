@@ -4,9 +4,9 @@
 
 - Bootstrap Issue: #1（永続 open）
 - Context Hub Issue: #2（永続 open）
-- 現在地: 共通イベントフィードと command center 化を main に反映。PR #217 で `quickActivity` 導線とサイドパネル回帰を Playwright 常設化し、PR #218 で `@types/node` patch を吸収。PR #219 で Vite 8 / plugin-react 6 へ更新し、PR #221 で React Router 7 移行調査を完了。PR #222 で React Router 7 への単独更新を main に反映し、PR #224 で React 19 単独更新、PR #225 で TypeScript 6 単独更新、PR #226 で統合バックアップ復元 E2E 拡張、PR #227 で設定永続化 E2E 拡張、PR #228 でバックアップ import 失敗表示 E2E 拡張、PR #229 でサンプルデータ投入後の dashboard / history drilldown E2E、PR #230 で `/lines` URL drilldown E2E、PR #231 でバックアップ復元後の編集保存 E2E、PR #232 で通知対象フィルタ E2E、PR #233 で履歴編集後の reload persistence E2E、PR #234 で一括ステータス変更後の undo E2E、PR #235 で一括削除後の undo E2E、PR #236 でバックアップ復元後の履歴編集 E2E を main に反映。続いて履歴下書き破棄後の persistence E2E を追加している。
+- 現在地: 共通イベントフィードと command center 化を main に反映。PR #217 で `quickActivity` 導線とサイドパネル回帰を Playwright 常設化し、PR #218 で `@types/node` patch を吸収。PR #219 で Vite 8 / plugin-react 6 へ更新し、PR #221 で React Router 7 移行調査を完了。PR #222 で React Router 7 への単独更新を main に反映し、PR #224 で React 19 単独更新、PR #225 で TypeScript 6 単独更新、PR #226 で統合バックアップ復元 E2E 拡張、PR #227 で設定永続化 E2E 拡張、PR #228 でバックアップ import 失敗表示 E2E 拡張、PR #229 でサンプルデータ投入後の dashboard / history drilldown E2E、PR #230 で `/lines` URL drilldown E2E、PR #231 でバックアップ復元後の編集保存 E2E、PR #232 で通知対象フィルタ E2E、PR #233 で履歴編集後の reload persistence E2E、PR #234 で一括ステータス変更後の undo E2E、PR #235 で一括削除後の undo E2E、PR #236 でバックアップ復元後の履歴編集 E2E、PR #237 で履歴下書き破棄後の persistence E2E を main に反映。続いて履歴下書きの reset / save cleanup E2E を追加している。
 - 運用前提: PR 必須 / approval 任意 / required check `check-and-build`
-- 直近の作業: `history draft discard persistence path` E2E を追加し、未保存の履歴入力下書きが reload 後に復元され、`破棄して新規入力` 後は localStorage から消え、再 reload しても復元されないことを mobile / desktop の両 viewport で確認する。
+- 直近の作業: `history draft reset and save cleanup path` E2E を追加し、`入力をリセット` と `履歴を保存する` のどちらでも localStorage の履歴下書きが消え、再 reload しても復元されないことを mobile / desktop の両 viewport で確認する。
 - 追加確認: Playwright MCP はローカル `cwd` で起動でき、`/lines/history` の実画面確認が可能
 
 ## 実装済み主要機能
@@ -86,6 +86,6 @@
 
 ## 次の候補
 
-1. 履歴下書き破棄後 persistence E2E PR の `check` / `build` / `test:e2e` / `audit` と GitHub Actions を通し、復元下書きの破棄導線に回帰がないことを確認する
+1. 履歴下書き reset / save cleanup E2E PR の `check` / `build` / `test:e2e` / `audit` と GitHub Actions を通し、下書き削除導線に回帰がないことを確認する
 2. `npm audit --audit-level=low` と `npm outdated --depth=0` を継続監視する
-3. 次の品質改善は、複数選択一括操作の追加パターンや履歴フォーム reset/save 後の下書き削除など、未自動化のユーザー導線を小さく追加する
+3. 次の品質改善は、複数選択一括操作の追加パターンや活動メモ候補管理の persistence など、未自動化のユーザー導線を小さく追加する
