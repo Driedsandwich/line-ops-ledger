@@ -295,3 +295,6 @@
 - 一括削除後の undo E2E を追加
   - `line + history CRUD path` で保存済み回線を選択し、`選択中を削除` で一覧から消えることを確認する
   - `操作を戻す` で `一括削除` が undo され、回線が一覧へ戻ることを mobile / desktop の両 viewport で固定する
+- バックアップ復元後の履歴編集 E2E を追加
+  - 統合バックアップ復元後、`/lines/history` のタイムラインから復元済み履歴を編集し、履歴メモを更新できることを確認する
+  - reload 後も更新済み履歴メモが保持されることを mobile / desktop の両 viewport で固定する
