@@ -34,6 +34,10 @@
   - `settings flows` でカスタム活動種別を追加後に reload し、localStorage から再表示されることを確認
   - 通知設定を変更後に reload し、有効/期限/再通知/確認日数が保持されることを確認
   - 既存の backup restore E2E と同じ mobile / desktop 2 viewport で確認
+- バックアップ import 失敗表示 E2E を追加
+  - `settings flows` で不正な JSON バックアップを読み込み、形式不正 notice が表示されることを確認
+  - 成功系の統合バックアップ復元前に失敗系を通し、同じ input で再試行できることも確認
+  - mobile / desktop 2 viewport で確認
 
 ## 2026-06-10
 - `@playwright/test` を devDependencies に追加
