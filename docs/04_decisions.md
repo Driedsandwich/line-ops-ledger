@@ -77,3 +77,16 @@
 - 理由: 回帰テストを実行コマンド一本で実施可能にし、確認抜けと再現差を減らすため
 - 代替案: `docs` の手順のみを維持し、毎回ローカル手検証に依存
 - 影響: Playwright 実行成果物の除外（`.gitignore`）が必要。テスト環境に `chromium` の初回インストールが必要
+
+## 2026-06-15
+- 日付: 2026-06-15
+- 判断: React Router 7 は単独 PR で更新する。React 19 / TypeScript 6 は同じ PR に混ぜない
+- 理由: 公式移行手順では React Router 7 が Node 20 / React 18 / React DOM 18 以上を要求し、future flag を段階適用してから v7 へ進むことを推奨している。現行環境は CI Node.js 22、React 18.3.1、React DOM 18.3.1 で前提を満たすが、v7 では `react-router-dom` から `react-router` への依存整理と `RouterProvider` の `react-router/dom` deep import が必要になるため、依存更新 PR として分離する
+- 代替案: React Router 7 / React 19 / TypeScript 6 をまとめて更新する案
+- 影響: 破壊的変更の原因を PR 単位で切り分けられる。次 PR では `react-router-dom@6.30.4` から React Router 7 へ移行し、import 差し替え、ルーティング、deep link、サイドパネル、バックアップ復元後遷移を重点確認する
+
+- 日付: 2026-06-15
+- 判断: React Router 7 移行前の追加実装変更は不要とする
+- 理由: 現行コード検索では、React Router 利用は `Link` / `NavLink` / `Navigate` / `Outlet` / `useNavigate` / `useSearchParams` / `createBrowserRouter` / `RouterProvider` に限られる。`v7_startTransition` はすでに opt-in 済みで、multi-segment splat route、`useFetcher` / `useFetchers`、Router の `loader` / `action`、`React.lazy`、SSR hydration、`fallbackElement` は見つからなかったため、残る影響は主にパッケージ名と import 変更に限定される見込み
+- 代替案: v6 の全 future flag を追加で opt-in してから依存更新する案
+- 影響: `createBrowserRouter` の future flag 追加は現行機能に対する実益が薄いため保留する。React Router 7 更新 PR ではコード検索と E2E でこの前提を再確認する
