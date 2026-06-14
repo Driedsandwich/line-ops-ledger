@@ -280,3 +280,6 @@
   - `Hopping Health` の `利用実績を確認` から `/lines?sort=latestActivityAsc&contractActiveOnly=true` へ遷移し、契約中のみ filter が有効になることを確認する
   - `openDraft=d-003&focusSection=benefits` で特典詳細、`openDraft=d-005&focusSection=fiber` で光回線詳細が展開表示されることを確認する
   - `usagePriority=sms` で `S不足優先: ON` と優先対象行の強調が表示されることを mobile / desktop の両 viewport で固定する
+- バックアップ復元後の編集保存 E2E を追加
+  - 統合バックアップを復元した後、復元された主台帳行を `/lines` で編集し、メモ更新を保存できることを確認する
+  - reload 後に詳細を開き、更新したメモが保持されていることを mobile / desktop の両 viewport で固定する
