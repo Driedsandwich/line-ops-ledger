@@ -22,6 +22,10 @@
   - `react@19.2.7` / `react-dom@19.2.7` / `@types/react@19.2.17` / `@types/react-dom@19.2.3` へ切り替え
   - React 19 型定義に合わせ、明示 return type の `JSX.Element` を `ReactElement` へ更新
   - TypeScript 6 は混ぜず、次 PR の候補として分離
+- TypeScript 6 単独更新を実施
+  - `typescript@6.0.3` へ切り替え
+  - React 19 / React Router 7 / Vite 8 / Playwright との組み合わせで `check` と `build` は追加修正なしで通過
+  - 依存 major 更新残の確認を次アクションに固定
 
 ## 2026-06-10
 - `@playwright/test` を devDependencies に追加
