@@ -304,3 +304,6 @@
 - 履歴下書き reset / save cleanup E2E を追加
   - 未保存の履歴入力フォームを作成し、`入力をリセット` 後に localStorage の履歴下書きが消えることを確認する
   - 別の履歴下書きを保存した後も localStorage の履歴下書きが消え、reload 後に復元通知が戻らず、保存済み履歴だけがタイムラインへ残ることを mobile / desktop の両 viewport で固定する
+- 活動メモ custom 候補の persistence E2E を追加
+  - 活動メモ欄から `この文言を候補に追加` を実行し、custom 候補が localStorage に保存されることを確認する
+  - `入力をリセット` と reload 後も履歴入力下書きは戻らず、追加した custom 候補だけが `追加した候補` として残ることを mobile / desktop の両 viewport で固定する

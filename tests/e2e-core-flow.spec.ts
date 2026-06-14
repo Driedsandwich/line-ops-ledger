@@ -4,6 +4,7 @@ import { expect, test, type Page } from '@playwright/test';
 
 const lineDraftStorageKey = 'line-ops-ledger.line-drafts';
 const historyFormDraftStorageKey = 'line-ops-ledger.history-form-draft';
+const customActivityMemoTemplatesStorageKey = 'line-ops-ledger.custom-activity-memo-templates';
 
 const viewports = [
   { name: 'mobile', width: 360, height: 812 },
@@ -210,6 +211,36 @@ for (const viewport of viewports) {
       await page.reload();
       await expect(page.getByText('前回の履歴入力下書きを復元しました。')).toHaveCount(0);
       await expect(page.locator('article#history-timeline')).toContainText(savedMemo);
+    });
+
+    test('custom activity memo template persistence path', async ({ page }) => {
+      await page.goto('/');
+      await clearAllStorage(page);
+
+      const customMemoTemplate = `追加候補-${viewport.name}-${Date.now().toString().slice(-5)}`;
+      const historyForm = page.locator('article#history-form');
+
+      await page.goto('/lines/history');
+      await historyForm.locator('label:has-text("活動メモ") textarea').fill(customMemoTemplate);
+      await historyForm.getByRole('button', { name: 'この文言を候補に追加' }).click();
+      await expect(page.getByText(`活動メモ候補「${customMemoTemplate}」を追加しました。`)).toBeVisible();
+      await page.waitForFunction(
+        ({ key, memo }) => window.localStorage.getItem(key)?.includes(memo) === true,
+        { key: customActivityMemoTemplatesStorageKey, memo: customMemoTemplate },
+      );
+
+      await page.getByRole('button', { name: '入力をリセット' }).click();
+      await expect(historyForm.locator('label:has-text("活動メモ") textarea')).toHaveValue('');
+      await expect
+        .poll(() => page.evaluate((key) => window.localStorage.getItem(key), historyFormDraftStorageKey))
+        .toBeNull();
+
+      await page.reload();
+      await expect(page.getByText('前回の履歴入力下書きを復元しました。')).toHaveCount(0);
+      await expect(historyForm.getByText('追加した候補（1件）')).toBeVisible();
+      await expect(historyForm.getByRole('button', { name: customMemoTemplate })).toBeVisible();
+      const storedTemplates = await page.evaluate((key) => window.localStorage.getItem(key), customActivityMemoTemplatesStorageKey);
+      expect(storedTemplates).toContain(customMemoTemplate);
     });
 
     test('settings flows', async ({ page }) => {
