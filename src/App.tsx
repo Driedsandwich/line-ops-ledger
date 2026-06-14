@@ -1,4 +1,4 @@
-import { NavLink, Outlet } from 'react-router-dom';
+import { NavLink, Outlet } from 'react-router';
 
 type NavItem = { to: string; label: string; end?: boolean; };
 type NavSection = { title: string; items: NavItem[] };
