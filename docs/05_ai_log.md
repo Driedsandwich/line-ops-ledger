@@ -307,3 +307,6 @@
 - 活動メモ custom 候補の persistence E2E を追加
   - 活動メモ欄から `この文言を候補に追加` を実行し、custom 候補が localStorage に保存されることを確認する
   - `入力をリセット` と reload 後も履歴入力下書きは戻らず、追加した custom 候補だけが `追加した候補` として残ることを mobile / desktop の両 viewport で固定する
+- 活動メモ候補の固定 / 非表示 / 復帰 persistence E2E を追加
+  - custom 活動メモ候補を `固定` し、reload 後も `固定候補` として残ることを確認する
+  - 固定候補を `非表示` にして reload 後に `非表示候補` へ残し、`戻す` 後の reload で通常表示へ復帰することを mobile / desktop の両 viewport で固定する
