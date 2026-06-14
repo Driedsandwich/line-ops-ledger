@@ -292,3 +292,6 @@
 - 一括ステータス変更後の undo E2E を追加
   - `line + history CRUD path` で保存済み回線を選択し、`選択中を解約予定へ` で一括変更できることを確認する
   - `操作を戻す` で `一括ステータス変更` が undo され、回線状態が `利用中` に戻ることを mobile / desktop の両 viewport で固定する
+- 一括削除後の undo E2E を追加
+  - `line + history CRUD path` で保存済み回線を選択し、`選択中を削除` で一覧から消えることを確認する
+  - `操作を戻す` で `一括削除` が undo され、回線が一覧へ戻ることを mobile / desktop の両 viewport で固定する

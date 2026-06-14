@@ -114,6 +114,13 @@ for (const viewport of viewports) {
       await page.getByRole('button', { name: '操作を戻す' }).click();
       await expect(page.getByText('直前の操作（一括ステータス変更）を元に戻しました。')).toBeVisible();
       await expect(lineItem.locator('.list__row')).toContainText('利用中');
+      await page.locator('li', { hasText: lineName }).first().locator('input[type="checkbox"]').check();
+      await page.getByRole('button', { name: '選択中を削除' }).click();
+      await expect(page.getByText('1件の回線を削除しました。')).toBeVisible();
+      await expect(page.locator('li', { hasText: lineName })).toHaveCount(0);
+      await page.getByRole('button', { name: '操作を戻す' }).click();
+      await expect(page.getByText('直前の操作（一括削除）を元に戻しました。')).toBeVisible();
+      await expect(page.locator('li', { hasText: lineName })).toBeVisible();
       await page.locator('li', { hasText: lineName }).first().getByRole('button', { name: '削除する' }).click();
       await expect(page.locator('li', { hasText: lineName })).toHaveCount(0);
     });
