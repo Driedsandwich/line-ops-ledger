@@ -3,6 +3,7 @@ import path from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
 
 const lineDraftStorageKey = 'line-ops-ledger.line-drafts';
+const historyFormDraftStorageKey = 'line-ops-ledger.history-form-draft';
 
 const viewports = [
   { name: 'mobile', width: 360, height: 812 },
@@ -123,6 +124,41 @@ for (const viewport of viewports) {
       await expect(page.locator('li', { hasText: lineName })).toBeVisible();
       await page.locator('li', { hasText: lineName }).first().getByRole('button', { name: '削除する' }).click();
       await expect(page.locator('li', { hasText: lineName })).toHaveCount(0);
+    });
+
+    test('history draft discard persistence path', async ({ page }) => {
+      await page.goto('/');
+      await clearAllStorage(page);
+
+      const draftMemo = `未保存履歴下書き-${viewport.name}-${Date.now().toString().slice(-5)}`;
+
+      await page.goto('/lines/history');
+      await page.getByLabel('電話番号 *').fill('09033334444');
+      await page.getByLabel('契約開始日 *').fill('2025-02-01');
+      await page.locator('article#history-form label:has-text("活動種別") select').selectOption('利用実績確認');
+      await page.locator('article#history-form label:has-text("活動日") input').fill('2026-06-11');
+      await page.locator('article#history-form label:has-text("活動メモ") textarea').fill(draftMemo);
+      await page.waitForFunction(
+        ({ key, memo }) => window.localStorage.getItem(key)?.includes(memo) === true,
+        { key: historyFormDraftStorageKey, memo: draftMemo },
+      );
+
+      await page.reload();
+      await expect(page.getByText('前回の履歴入力下書きを復元しました。')).toBeVisible();
+      await expect(page.locator('article#history-form label:has-text("活動メモ") textarea')).toHaveValue(draftMemo);
+
+      await page.getByRole('button', { name: '破棄して新規入力' }).click();
+      await expect(page.getByText('復元した履歴入力下書きを破棄し、新規入力に戻しました。')).toBeVisible();
+      await expect(page.locator('article#history-form label:has-text("活動メモ") textarea')).toHaveValue('');
+      await expect
+        .poll(() => page.evaluate((key) => window.localStorage.getItem(key), historyFormDraftStorageKey))
+        .toBeNull();
+
+      await page.reload();
+      await expect(page.getByText('前回の履歴入力下書きを復元しました。')).toHaveCount(0);
+      await expect(page.locator('article#history-form label:has-text("活動メモ") textarea')).toHaveValue('');
+      const afterReloadDraft = await page.evaluate((key) => window.localStorage.getItem(key), historyFormDraftStorageKey);
+      expect(afterReloadDraft).toBeNull();
     });
 
     test('settings flows', async ({ page }) => {
