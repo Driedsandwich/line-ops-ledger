@@ -49,6 +49,10 @@
     - `DashboardPage` の `Actionable Alerts` から `履歴で記録` を押し、`historyIntent` が付いた `?quickActivity=` 遷移が成立する。
     - `HistoryPage` の「開いている文脈」帯で意図ラベルが見えること。
     - `?quickActivity=<phone>` を手入力した場合でも、履歴フォームの電話番号が受け側で正規化前提に沿って補完される。
+  - 主台帳 URL 導線
+    - サンプルデータ投入後、`Hopping Health` の `利用実績を確認` から `/lines?sort=latestActivityAsc&contractActiveOnly=true` に遷移し、契約中のみ filter が有効になる。
+    - `/lines?openDraft=<id>&focusSection=benefits` と `/lines?openDraft=<id>&focusSection=fiber` で対象回線が展開され、該当セクションが表示される。
+    - `/lines?sort=latestActivityAsc&contractActiveOnly=true&usagePriority=<kind>` で不足種別の優先 filter と対象行の強調が表示される。
   - バックアップ導線
     - `/settings/backup` で「統合バックアップをエクスポート」→ 生成 JSON をローカルで保存。
     - 主台帳/履歴を初期化後、同じ JSON で復元し、主台帳件数と履歴件数が一致することを確認。
