@@ -222,6 +222,13 @@ for (const viewport of viewports) {
       await page.goto('/lines/history');
       await expect(page.locator('article#history-timeline')).toContainText(historyMemo);
       await expect(page.locator('article#history-timeline')).toContainText('090-****-8888');
+      const restoredHistoryMemo = `${historyMemo}-restored-edit`;
+      await page.locator('article#history-timeline .button-row.button-row--tight button', { hasText: '編集する' }).first().click();
+      await page.locator('article#history-form label:has-text("活動メモ") textarea').fill(restoredHistoryMemo);
+      await page.getByRole('button', { name: '履歴を更新する' }).click();
+      await expect(page.getByText('契約履歴を更新しました。')).toBeVisible();
+      await page.reload();
+      await expect(page.locator('article#history-timeline')).toContainText(restoredHistoryMemo);
 
       await page.goto('/lines');
       await page.locator('li', { hasText: lineName }).first().getByRole('button', { name: '削除する' }).click();
