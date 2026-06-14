@@ -283,3 +283,6 @@
 - バックアップ復元後の編集保存 E2E を追加
   - 統合バックアップを復元した後、復元された主台帳行を `/lines` で編集し、メモ更新を保存できることを確認する
   - reload 後に詳細を開き、更新したメモが保持されていることを mobile / desktop の両 viewport で固定する
+- 通知対象フィルタ E2E を追加
+  - サンプルデータ投入後に通知設定を有効化し、`/lines?notificationTargetOnly=true&notificationReason=overdue` を直接開けることを確認する
+  - `通知対象のみ: ON`、期限超過 filter の active state、`通知理由: 期限超過` の対象行表示を mobile / desktop の両 viewport で固定する
