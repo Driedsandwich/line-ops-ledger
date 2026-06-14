@@ -37,6 +37,22 @@ async function createDraft(page: Page, lineName: string, phoneNumber: string): P
   await expect(page.locator('li', { hasText: lineName })).toBeVisible();
 }
 
+async function createHistoryEntry(page: Page, lineName: string, phoneNumber: string, memo: string): Promise<void> {
+  const draftRow = page.locator('li', { hasText: lineName }).first();
+  await draftRow.getByRole('button', { name: '活動を記録' }).click();
+
+  await expect(page).toHaveURL(/\/lines\/history\?quickActivity=/);
+  await expect(page.getByLabel('電話番号 *')).toHaveValue(phoneNumber);
+  await page.getByLabel('契約開始日 *').fill('2025-01-01');
+  await page.locator('article#history-form label:has-text("活動種別") select').selectOption('利用実績確認');
+  await page.locator('article#history-form label:has-text("活動日") input').fill('2026-06-10');
+  await page.locator('article#history-form label:has-text("活動メモ") textarea').fill(memo);
+
+  await page.getByRole('button', { name: '履歴を保存する' }).click();
+  await expect(page.getByText('契約履歴を保存しました。')).toBeVisible();
+  await expect(page.locator('article#history-timeline')).toContainText(memo);
+}
+
 for (const viewport of viewports) {
   test.describe(`core flow (${viewport.name})`, () => {
     test.use({ viewport: { width: viewport.width, height: viewport.height } });
@@ -51,19 +67,7 @@ for (const viewport of viewports) {
 
       await createDraft(page, lineName, phoneNumber);
 
-      const draftRow = page.locator('li', { hasText: lineName }).first();
-      await draftRow.getByRole('button', { name: '活動を記録' }).click();
-
-      await expect(page).toHaveURL(/\/lines\/history\?quickActivity=/);
-      await expect(page.getByLabel('電話番号 *')).toHaveValue(phoneNumber);
-      await page.getByLabel('契約開始日 *').fill('2025-01-01');
-      await page.locator('article#history-form label:has-text("活動種別") select').selectOption('利用実績確認');
-      await page.locator('article#history-form label:has-text("活動日") input').fill('2026-06-10');
-      await page.locator('article#history-form label:has-text("活動メモ") textarea').fill(historyMemo);
-
-      await page.getByRole('button', { name: '履歴を保存する' }).click();
-      await expect(page.getByText('契約履歴を保存しました。')).toBeVisible();
-      await expect(page.locator('article#history-timeline')).toContainText(historyMemo);
+      await createHistoryEntry(page, lineName, phoneNumber, historyMemo);
 
       const timelineCard = page.locator('article#history-timeline .button-row.button-row--tight button', { hasText: '編集する' }).first();
       await timelineCard.click();
@@ -92,10 +96,12 @@ for (const viewport of viewports) {
 
       const lineName = `E2E-${viewport.name}-SET-${Date.now().toString().slice(-5)}`;
       const phoneNumber = '09099998888';
+      const historyMemo = `バックアップ復元確認-${Date.now().toString().slice(-5)}`;
       const backupDir = '/tmp/line-ops-ledger-e2e';
       const backupPath = path.join(backupDir, `backup-${viewport.name}-${Date.now()}.json`);
 
       await createDraft(page, lineName, phoneNumber);
+      await createHistoryEntry(page, lineName, phoneNumber, historyMemo);
 
       await page.goto('/settings/activity-types');
       const customType = `カスタム-${Date.now().toString().slice(-5)}`;
@@ -131,6 +137,7 @@ for (const viewport of viewports) {
       await clearAllStorage(page);
       await page.getByRole('button', { name: 'バックアップを復元' }).click();
       await page.locator('input.hidden-file-input').setInputFiles(backupPath);
+      await expect(page.getByText('統合バックアップを復元しました（主台帳 1 件 / 履歴 1 件）。')).toBeVisible();
       await page.waitForFunction(
         ({ key, name }) => {
           const raw = window.localStorage.getItem(key);
@@ -159,7 +166,11 @@ for (const viewport of viewports) {
 
       await page.goto('/lines');
       await expect(page.getByText(lineName)).toBeVisible();
+      await page.goto('/lines/history');
+      await expect(page.locator('article#history-timeline')).toContainText(historyMemo);
+      await expect(page.locator('article#history-timeline')).toContainText('090-****-8888');
 
+      await page.goto('/lines');
       await page.locator('li', { hasText: lineName }).first().getByRole('button', { name: '削除する' }).click();
       await expect(page.locator('li', { hasText: lineName })).toHaveCount(0);
     });

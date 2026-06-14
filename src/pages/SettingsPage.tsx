@@ -391,6 +391,8 @@ export function SettingsPage({ section }: { section: SettingsSectionKey }): Reac
               バックアップを復元
             </button>
           </div>
+
+          {actionMessage ? <p className="notice">{actionMessage}</p> : null}
         </article>
         ) : null}
 

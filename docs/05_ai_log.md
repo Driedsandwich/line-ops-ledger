@@ -26,6 +26,10 @@
   - `typescript@6.0.3` へ切り替え
   - React 19 / React Router 7 / Vite 8 / Playwright との組み合わせで `check` と `build` は追加修正なしで通過
   - 依存 major 更新残の確認を次アクションに固定
+- 統合バックアップ復元 E2E を履歴まで拡張
+  - `settings flows` で履歴付きバックアップを export/import し、復元後の `/lines/history` タイムラインを確認
+  - バックアップ画面に export/import 結果の notice を表示するように修正
+  - 電話番号は UI 仕様に合わせてマスク済み表示を検証
 
 ## 2026-06-10
 - `@playwright/test` を devDependencies に追加
