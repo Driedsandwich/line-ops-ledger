@@ -63,6 +63,14 @@ async function loadSampleDataFromEmptyDashboard(page: Page): Promise<void> {
   await expect(page.getByText(/確認用サンプルデータを読み込みました/)).toBeVisible();
 }
 
+async function enableNotificationSettings(page: Page): Promise<void> {
+  await page.goto('/settings/notifications');
+  await page.getByLabel('通知を使うか').selectOption('enabled');
+  await page.getByLabel('通知対象の期限').selectOption('within-7-days');
+  await page.getByLabel('再通知の扱い').selectOption('on-app-launch');
+  await page.getByLabel('活動後の次回確認日サジェスト（日数）').fill('21');
+}
+
 for (const viewport of viewports) {
   test.describe(`core flow (${viewport.name})`, () => {
     test.use({ viewport: { width: viewport.width, height: viewport.height } });
@@ -125,10 +133,7 @@ for (const viewport of viewports) {
       await expect(page.getByText(customType)).toHaveCount(0);
 
       await page.goto('/settings/notifications');
-      await page.getByLabel('通知を使うか').selectOption('enabled');
-      await page.getByLabel('通知対象の期限').selectOption('within-7-days');
-      await page.getByLabel('再通知の扱い').selectOption('on-app-launch');
-      await page.getByLabel('活動後の次回確認日サジェスト（日数）').fill('21');
+      await enableNotificationSettings(page);
 
       await expect(page.getByLabel('通知を使うか')).toHaveValue('enabled');
       await expect(page.getByLabel('通知対象の期限')).toHaveValue('within-7-days');
@@ -244,6 +249,17 @@ for (const viewport of viewports) {
       await expect(page.getByRole('button', { name: '契約中のみ: ON' })).toBeVisible();
       await expect(page.getByRole('button', { name: 'S不足優先: ON' })).toBeVisible();
       await expect(page.locator('.list__item--priority .badge--info').first()).toBeVisible();
+    });
+
+    test('sample data notification filter path', async ({ page }) => {
+      await loadSampleDataFromEmptyDashboard(page);
+      await enableNotificationSettings(page);
+
+      await page.goto('/lines?notificationTargetOnly=true&notificationReason=overdue');
+      await expect(page).toHaveURL(/\/lines\?.*notificationTargetOnly=true.*notificationReason=overdue/);
+      await expect(page.getByRole('button', { name: '通知対象のみ: ON' })).toBeVisible();
+      await expect(page.getByRole('button', { name: /期限超過 \d+/ })).toHaveClass(/button--primary/);
+      await expect(page.locator('li', { hasText: '通知理由: 期限超過' }).first()).toBeVisible();
     });
   });
 }
