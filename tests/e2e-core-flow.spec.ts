@@ -106,6 +106,14 @@ for (const viewport of viewports) {
 
       await page.goto('/lines');
       await expect(page.locator('li', { hasText: lineName })).toBeVisible();
+      const lineItem = page.locator('li', { hasText: lineName }).first();
+      await lineItem.locator('input[type="checkbox"]').check();
+      await page.getByRole('button', { name: '選択中を解約予定へ' }).click();
+      await expect(page.getByText('1件の契約状態を更新しました。')).toBeVisible();
+      await expect(lineItem.locator('.list__row')).toContainText('解約予定');
+      await page.getByRole('button', { name: '操作を戻す' }).click();
+      await expect(page.getByText('直前の操作（一括ステータス変更）を元に戻しました。')).toBeVisible();
+      await expect(lineItem.locator('.list__row')).toContainText('利用中');
       await page.locator('li', { hasText: lineName }).first().getByRole('button', { name: '削除する' }).click();
       await expect(page.locator('li', { hasText: lineName })).toHaveCount(0);
     });
