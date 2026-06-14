@@ -4,9 +4,9 @@
 
 - Bootstrap Issue: #1（永続 open）
 - Context Hub Issue: #2（永続 open）
-- 現在地: 共通イベントフィードと command center 化を main に反映。PR #217 で `quickActivity` 導線とサイドパネル回帰を Playwright 常設化し、PR #218 で `@types/node` patch を吸収。PR #219 で Vite 8 / plugin-react 6 へ更新し、PR #221 で React Router 7 移行調査を完了。PR #222 で React Router 7 への単独更新を main に反映し、PR #224 で React 19 単独更新を main に反映。続いて TypeScript 6 単独更新を実施した。
+- 現在地: 共通イベントフィードと command center 化を main に反映。PR #217 で `quickActivity` 導線とサイドパネル回帰を Playwright 常設化し、PR #218 で `@types/node` patch を吸収。PR #219 で Vite 8 / plugin-react 6 へ更新し、PR #221 で React Router 7 移行調査を完了。PR #222 で React Router 7 への単独更新を main に反映し、PR #224 で React 19 単独更新、PR #225 で TypeScript 6 単独更新を main に反映。続いて統合バックアップ復元の E2E を履歴まで拡張した。
 - 運用前提: PR 必須 / approval 任意 / required check `check-and-build`
-- 直近の作業: TypeScript 6 単独更新として `typescript@6.0.3` へ切り替えた。React 19 / React Router 7 / Vite 8 / Playwright との組み合わせで `check` と `build` は追加修正なしで通過した。
+- 直近の作業: `settings flows` E2E で統合バックアップの export/import 復元を履歴まで確認するよう拡張した。復元後に主台帳と履歴が戻り、`/lines/history` のタイムラインで履歴メモとマスク済み電話番号が確認できる。あわせてバックアップ画面にも export/import 結果の notice を表示するようにした。
 - 追加確認: Playwright MCP はローカル `cwd` で起動でき、`/lines/history` の実画面確認が可能
 
 ## 実装済み主要機能
@@ -86,6 +86,6 @@
 
 ## 次の候補
 
-1. TypeScript 6 更新 PR の `check` / `build` / `test:e2e` / `audit` と GitHub Actions を通し、major 更新残がない状態を確認する
-2. `npm outdated --depth=0` で major 更新残がなければ、依存更新フェーズはいったん完了扱いにする
-3. 次は機能追加より前に、現行 E2E の対象外であるバックアップ JSON import/export の薄い自動化を検討する
+1. バックアップ復元 E2E 拡張 PR の `check` / `build` / `test:e2e` / `audit` と GitHub Actions を通し、履歴込み復元の回帰がないことを確認する
+2. `npm audit --audit-level=low` と `npm outdated --depth=0` を継続監視する
+3. 次の品質改善は、通知設定や活動種別設定の localStorage 復元/永続化の薄い回帰確認を検討する
