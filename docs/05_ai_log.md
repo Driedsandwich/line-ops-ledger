@@ -14,7 +14,7 @@
   - 公式移行手順と現行コードを照合し、React Router 7 は React 19 / TypeScript 6 と分離して単独 PR で扱う判断を記録
   - 現行コードでは splat route / fetcher / loader / action / route lazy / SSR hydration が見つからず、主な変更点は `react-router-dom` から `react-router` への依存/import 変更と判断
   - React Router 7 更新 PR の重点確認として、主要ルート、`quickActivity` / `historyIntent` deep link、サイドパネル active state、バックアップ復元後遷移を `docs/08_testing.md` に固定
-- React Router 7 単独更新を実施
+- PR #222: React Router 7 単独更新を main に反映
   - `react-router-dom@6.30.4` を外し、`react-router@7.17.0` へ切り替え
   - `Link` / `NavLink` / `Navigate` / `Outlet` / hooks は `react-router` へ、`RouterProvider` は `react-router/dom` へ import を差し替え
   - v6 用の `v7_startTransition` future prop を削除し、`react-router/dom` の型解決に合わせて `tsconfig.json` の `moduleResolution` を `Bundler` に更新
