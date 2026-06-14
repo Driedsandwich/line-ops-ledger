@@ -286,3 +286,6 @@
 - 通知対象フィルタ E2E を追加
   - サンプルデータ投入後に通知設定を有効化し、`/lines?notificationTargetOnly=true&notificationReason=overdue` を直接開けることを確認する
   - `通知対象のみ: ON`、期限超過 filter の active state、`通知理由: 期限超過` の対象行表示を mobile / desktop の両 viewport で固定する
+- 履歴編集後の reload persistence E2E を追加
+  - `line + history CRUD path` で履歴メモを更新した後、reload しても編集済みメモがタイムラインに残ることを確認する
+  - reload 後も同じ履歴を削除できることまで既存の CRUD 流れで確認する

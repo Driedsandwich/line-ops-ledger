@@ -94,6 +94,8 @@ for (const viewport of viewports) {
       await page.getByRole('button', { name: '履歴を更新する' }).click();
       await expect(page.getByText('契約履歴を更新しました。')).toBeVisible();
       await expect(page.locator('article#history-timeline')).toContainText(editedMemo);
+      await page.reload();
+      await expect(page.locator('article#history-timeline')).toContainText(editedMemo);
 
       await page
         .locator('article#history-timeline .button-row.button-row--tight button', { hasText: '削除する' })
