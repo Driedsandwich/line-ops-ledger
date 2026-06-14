@@ -18,6 +18,10 @@
   - `react-router-dom@6.30.4` を外し、`react-router@7.17.0` へ切り替え
   - `Link` / `NavLink` / `Navigate` / `Outlet` / hooks は `react-router` へ、`RouterProvider` は `react-router/dom` へ import を差し替え
   - v6 用の `v7_startTransition` future prop を削除し、`react-router/dom` の型解決に合わせて `tsconfig.json` の `moduleResolution` を `Bundler` に更新
+- React 19 単独更新を実施
+  - `react@19.2.7` / `react-dom@19.2.7` / `@types/react@19.2.17` / `@types/react-dom@19.2.3` へ切り替え
+  - React 19 型定義に合わせ、明示 return type の `JSX.Element` を `ReactElement` へ更新
+  - TypeScript 6 は混ぜず、次 PR の候補として分離
 
 ## 2026-06-10
 - `@playwright/test` を devDependencies に追加

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactElement } from 'react';
 import { NavLink } from 'react-router';
 import {
   ACTIVITY_TYPE_LABEL_MAX_LENGTH,
@@ -116,7 +116,7 @@ const SETTINGS_SECTIONS: Array<{ key: SettingsSectionKey; label: string; descrip
   { key: 'activity-types', label: '活動種別', description: '履歴入力で使うカスタム活動種別を管理します。' },
 ];
 
-export function SettingsPage({ section }: { section: SettingsSectionKey }): JSX.Element {
+export function SettingsPage({ section }: { section: SettingsSectionKey }): ReactElement {
   const [state, setState] = useState<StoragePersistenceState>(initialState);
   const [storageInfo, setStorageInfo] = useState<LineDraftStorageInfo>(initialStorageInfo);
   const [notificationSettings, setNotificationSettings] = useState<NotificationSettings>(() =>

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactElement } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router';
 import {
   BENEFIT_TYPE_OPTIONS,
@@ -679,7 +679,7 @@ function getDeadlineStatus(value: string): DeadlineStatus {
   return { label: '期限あり', className: 'badge badge--ok', rank: 4 };
 }
 
-export function LinesPage(): JSX.Element {
+export function LinesPage(): ReactElement {
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const [drafts, setDrafts] = useState<LineDraft[]>(() => lineDraftStore.load());

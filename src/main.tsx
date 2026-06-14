@@ -1,5 +1,6 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
+import type { ReactElement } from 'react';
 import { createBrowserRouter, Navigate } from 'react-router';
 import { RouterProvider } from 'react-router/dom';
 import { AppLayout } from './App';
@@ -9,7 +10,7 @@ import { LinesPage } from './pages/LinesPage';
 import { SettingsPage, type SettingsSectionKey } from './pages/SettingsPage';
 import './styles.css';
 
-function settingsRoute(section: SettingsSectionKey): { path: string; element: JSX.Element } {
+function settingsRoute(section: SettingsSectionKey): { path: string; element: ReactElement } {
   return {
     path: `settings/${section}`,
     element: <SettingsPage section={section} />,

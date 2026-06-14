@@ -4,9 +4,9 @@
 
 - Bootstrap Issue: #1（永続 open）
 - Context Hub Issue: #2（永続 open）
-- 現在地: 共通イベントフィードと command center 化を main に反映。PR #217 で `quickActivity` 導線とサイドパネル回帰を Playwright 常設化し、PR #218 で `@types/node` patch を吸収。PR #219 で Vite 8 / plugin-react 6 へ更新し、PR #221 で React Router 7 移行調査を完了。PR #222 で React Router 7 への単独更新を main に反映した。
+- 現在地: 共通イベントフィードと command center 化を main に反映。PR #217 で `quickActivity` 導線とサイドパネル回帰を Playwright 常設化し、PR #218 で `@types/node` patch を吸収。PR #219 で Vite 8 / plugin-react 6 へ更新し、PR #221 で React Router 7 移行調査を完了。PR #222 で React Router 7 への単独更新を main に反映し、続いて React 19 単独更新を実施した。
 - 運用前提: PR 必須 / approval 任意 / required check `check-and-build`
-- 直近の作業: React Router 7 単独更新として `react-router-dom@6.30.4` を外し、`react-router@7.17.0` へ切り替えた。通常 import は `react-router`、DOM 依存の `RouterProvider` は `react-router/dom` へ差し替え、v6 用の `v7_startTransition` future prop は削除。`react-router/dom` の package exports 型解決に合わせて、アプリ側 `tsconfig.json` の `moduleResolution` も `Bundler` に更新した。ローカルと CI で `check` / `build` / `test:e2e` / `audit` は通過済み。
+- 直近の作業: React 19 単独更新として `react@19.2.7` / `react-dom@19.2.7` / `@types/react@19.2.17` / `@types/react-dom@19.2.3` へ切り替えた。React 19 型定義で global `JSX` namespace に依存しないよう、明示 return type は `ReactElement` へ寄せた。TypeScript 6 はこの PR には含めない。
 - 追加確認: Playwright MCP はローカル `cwd` で起動でき、`/lines/history` の実画面確認が可能
 
 ## 実装済み主要機能
@@ -86,6 +86,6 @@
 
 ## 次の候補
 
-1. React 19 は React Router 7 とは分離した単独 PR として、型定義更新と主要導線回帰を確認しながら移行可否を判断する
-2. TypeScript 6 は React 19 とも分離し、`tsc` / Vite / Playwright 周辺の型互換性を調査してから扱う
+1. TypeScript 6 は React 19 更新後に分離し、`tsc` / Vite / Playwright 周辺の型互換性を調査してから扱う
+2. TypeScript 6 更新後に `npm outdated --depth=0` を再確認し、major 更新残がないか判断する
 3. `npm audit --audit-level=low` と `npm outdated --depth=0` を継続監視し、patch/minor は小さく吸収、major は混ぜずに計画化する
