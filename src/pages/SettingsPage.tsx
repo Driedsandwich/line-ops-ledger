@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { NavLink } from 'react-router-dom';
+import { NavLink } from 'react-router';
 import {
   ACTIVITY_TYPE_LABEL_MAX_LENGTH,
   ACTIVITY_TYPE_MAX_CUSTOM,
