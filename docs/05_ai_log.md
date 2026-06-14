@@ -30,6 +30,10 @@
   - `settings flows` で履歴付きバックアップを export/import し、復元後の `/lines/history` タイムラインを確認
   - バックアップ画面に export/import 結果の notice を表示するように修正
   - 電話番号は UI 仕様に合わせてマスク済み表示を検証
+- 設定永続化 E2E を拡張
+  - `settings flows` でカスタム活動種別を追加後に reload し、localStorage から再表示されることを確認
+  - 通知設定を変更後に reload し、有効/期限/再通知/確認日数が保持されることを確認
+  - 既存の backup restore E2E と同じ mobile / desktop 2 viewport で確認
 
 ## 2026-06-10
 - `@playwright/test` を devDependencies に追加
