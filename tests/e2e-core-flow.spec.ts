@@ -801,6 +801,7 @@ for (const viewport of viewports) {
       await page.goto('/');
       const notificationsKpi = page.locator('section[aria-label="Summary KPI"] article', { hasText: 'Notifications' });
       await expect(notificationsKpi.locator('.dashboard-kpi-card__value')).toContainText(/\d+件/);
+      const withinSevenDaysNotificationCount = Number.parseInt((await notificationsKpi.locator('.dashboard-kpi-card__value').innerText()).replace(/\D/g, ''), 10);
       await page.getByRole('link', { name: '期限超過を確認' }).click();
       await expect(page).toHaveURL(/\/lines\?.*notificationReason=overdue/);
       await expect(page.getByRole('button', { name: /期限超過 \d+/ })).toHaveClass(/button--primary/);
@@ -836,6 +837,27 @@ for (const viewport of viewports) {
       await expect(page.getByRole('button', { name: /通知対象合計 \d+/ })).toHaveClass(/button--primary/);
 
       await page.goto('/settings/notifications');
+      await page.getByLabel('通知対象の期限').selectOption('overdue');
+      await expect(page.getByLabel('通知対象の期限')).toHaveValue('overdue');
+
+      await page.goto('/');
+      const overdueNotificationCount = Number.parseInt((await notificationsKpi.locator('.dashboard-kpi-card__value').innerText()).replace(/\D/g, ''), 10);
+      expect(overdueNotificationCount).toBeGreaterThan(0);
+      expect(overdueNotificationCount).toBeLessThanOrEqual(withinSevenDaysNotificationCount);
+
+      await page.goto('/lines?notificationTargetOnly=true');
+      const notificationSummaryPanel = page.locator('.detail-panel', { has: page.getByRole('heading', { name: '通知対象サマリー' }) });
+      await expect(notificationSummaryPanel.locator('.badge')).toHaveText(`対象 ${overdueNotificationCount}件`);
+      await expect(page.getByRole('button', { name: `通知対象合計 ${overdueNotificationCount}` })).toHaveClass(/button--primary/);
+
+      await page.goto('/settings/notifications');
+      await page.getByLabel('通知対象の期限').selectOption('within-7-days');
+      await expect(page.getByLabel('通知対象の期限')).toHaveValue('within-7-days');
+
+      await page.goto('/');
+      await expect(notificationsKpi.locator('.dashboard-kpi-card__value')).toHaveText(`${withinSevenDaysNotificationCount}件`);
+
+      await page.goto('/settings/notifications');
       await page.getByLabel('通知を使うか').selectOption('disabled');
       await expect(page.getByLabel('通知を使うか')).toHaveValue('disabled');
       await expect
@@ -847,7 +869,6 @@ for (const viewport of viewports) {
 
       await page.goto('/lines?notificationTargetOnly=true');
       await expect(page.getByRole('button', { name: '通知対象のみ: ON' })).toBeVisible();
-      const notificationSummaryPanel = page.locator('.detail-panel', { has: page.getByRole('heading', { name: '通知対象サマリー' }) });
       await expect(notificationSummaryPanel.locator('.badge')).toHaveText('対象 0件');
       await expect(page.getByRole('button', { name: '通知対象合計 0' })).toHaveClass(/button--primary/);
     });

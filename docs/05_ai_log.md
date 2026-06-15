@@ -357,3 +357,6 @@
 - 通知設定の有効 / 無効反映 E2E を追加
   - サンプルデータ投入後に通知設定を有効化すると、Dashboard の Notifications KPI が件数表示になることを確認する
   - 通知設定を無効化すると Dashboard は `無効`、`/lines?notificationTargetOnly=true` の通知対象サマリーは `0件` になることを mobile / desktop の両 viewport で固定する
+- 通知期限 window 変更後の対象件数連動 E2E を追加
+  - 通知対象の期限を `overdue` に切り替えると、Dashboard の Notifications KPI が期限超過対象件数へ変わることを確認する
+  - `/lines?notificationTargetOnly=true` の通知対象サマリーが Dashboard の Notifications KPI と同じ件数になり、`within-7-days` に戻すと元の件数へ戻ることを mobile / desktop の両 viewport で固定する
