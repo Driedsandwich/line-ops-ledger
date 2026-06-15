@@ -300,6 +300,59 @@ for (const viewport of viewports) {
       await expect(historyForm.getByRole('button', { name: customMemoTemplate })).toBeVisible();
     });
 
+    test('activity memo template management reset persistence path', async ({ page }) => {
+      await page.goto('/');
+      await clearAllStorage(page);
+
+      const pinnedTemplate = `固定リセット-${viewport.name}-${Date.now().toString().slice(-5)}`;
+      const hiddenTemplate = `非表示リセット-${viewport.name}-${Date.now().toString().slice(-5)}`;
+      const historyForm = page.locator('article#history-form');
+
+      await page.goto('/lines/history');
+      await historyForm.locator('label:has-text("活動メモ") textarea').fill(pinnedTemplate);
+      await historyForm.getByRole('button', { name: 'この文言を候補に追加' }).click();
+      await expect(page.getByText(`活動メモ候補「${pinnedTemplate}」を追加しました。`)).toBeVisible();
+      await historyForm
+        .locator('.button-row.button-row--tight', { has: page.getByRole('button', { name: pinnedTemplate }) })
+        .getByRole('button', { name: '固定', exact: true })
+        .click();
+      await expect(page.getByText(`活動メモ候補「${pinnedTemplate}」を固定しました。`)).toBeVisible();
+
+      await historyForm.locator('label:has-text("活動メモ") textarea').fill(hiddenTemplate);
+      await historyForm.getByRole('button', { name: 'この文言を候補に追加' }).click();
+      await expect(page.getByText(`活動メモ候補「${hiddenTemplate}」を追加しました。`)).toBeVisible();
+      await historyForm
+        .locator('.button-row.button-row--tight', { has: page.getByRole('button', { name: hiddenTemplate }) })
+        .getByRole('button', { name: '非表示', exact: true })
+        .click();
+      await expect(page.getByText(`活動メモ候補「${hiddenTemplate}」を非表示にしました。`)).toBeVisible();
+      await expect
+        .poll(() => page.evaluate((key) => window.localStorage.getItem(key), pinnedActivityMemoTemplatesStorageKey))
+        .toContain(pinnedTemplate);
+      await expect
+        .poll(() => page.evaluate((key) => window.localStorage.getItem(key), hiddenActivityMemoTemplatesStorageKey))
+        .toContain(hiddenTemplate);
+
+      await page.reload();
+      await expect(historyForm.getByText('固定候補（1件）')).toBeVisible();
+      await expect(historyForm.getByText('非表示候補（1件）')).toBeVisible();
+      await historyForm.getByRole('button', { name: '候補管理を初期化' }).click();
+      await expect(page.getByText('活動メモ候補の管理状態を初期化しました。')).toBeVisible();
+      await expect
+        .poll(() => page.evaluate((key) => window.localStorage.getItem(key), pinnedActivityMemoTemplatesStorageKey))
+        .toBe('[]');
+      await expect
+        .poll(() => page.evaluate((key) => window.localStorage.getItem(key), hiddenActivityMemoTemplatesStorageKey))
+        .toBe('[]');
+
+      await page.reload();
+      await expect(historyForm.getByText('固定候補（1件）')).toHaveCount(0);
+      await expect(historyForm.getByText('非表示候補（1件）')).toHaveCount(0);
+      await expect(historyForm.getByRole('button', { name: '候補管理を初期化' })).toHaveCount(0);
+      await expect(historyForm.getByRole('button', { name: pinnedTemplate })).toBeVisible();
+      await expect(historyForm.getByRole('button', { name: hiddenTemplate })).toBeVisible();
+    });
+
     test('custom activity memo template update and reorder persistence path', async ({ page }) => {
       await page.goto('/');
       await clearAllStorage(page);
