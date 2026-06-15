@@ -319,3 +319,6 @@
 - 活動メモ候補セクション折りたたみ persistence E2E を追加
   - custom 活動メモ候補を追加した後、`追加した候補` セクションを `折りたたむ` で閉じると localStorage に `custom` が保存されることを確認する
   - reload 後も候補ボタンが非表示になり、`展開` 後に候補ボタンが戻ることを mobile / desktop の両 viewport で固定する
+- 表示中一括選択 / 解除 E2E を追加
+  - サンプルデータ投入後、`/lines?sort=latestActivityAsc&contractActiveOnly=true&usagePriority=sms` を開き、契約中のみ filter と `S不足優先` が有効な状態を確認する
+  - `表示中をすべて選択` で可視行の checkbox と selected 表示がすべて有効になり、`表示中の選択を解除` で同じ可視行が解除されることを mobile / desktop の両 viewport で固定する

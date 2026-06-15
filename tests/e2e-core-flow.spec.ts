@@ -556,6 +556,34 @@ for (const viewport of viewports) {
       await expect(page.locator('.list__item--priority .badge--info').first()).toBeVisible();
     });
 
+    test('sample data visible bulk selection path', async ({ page }) => {
+      await loadSampleDataFromEmptyDashboard(page);
+
+      await page.goto('/lines?sort=latestActivityAsc&contractActiveOnly=true&usagePriority=sms');
+      await expect(page).toHaveURL(/\/lines\?.*contractActiveOnly=true.*usagePriority=sms/);
+      await expect(page.getByRole('button', { name: '契約中のみ: ON' })).toBeVisible();
+      await expect(page.getByRole('button', { name: 'S不足優先: ON' })).toBeVisible();
+
+      const visibleItems = page.locator('ul.list--drafts > li');
+      const visibleCount = await visibleItems.count();
+      expect(visibleCount).toBeGreaterThan(0);
+      await expect(visibleItems.first()).toBeVisible();
+
+      await page.getByRole('button', { name: '表示中をすべて選択' }).click();
+      await expect(page.getByRole('button', { name: '表示中の選択を解除' })).toBeVisible();
+      await expect(page.locator('ul.list--drafts > li.list__item--selected')).toHaveCount(visibleCount);
+      for (let index = 0; index < visibleCount; index += 1) {
+        await expect(visibleItems.nth(index).locator('input[type="checkbox"]')).toBeChecked();
+      }
+
+      await page.getByRole('button', { name: '表示中の選択を解除' }).click();
+      await expect(page.getByRole('button', { name: '表示中をすべて選択' })).toBeVisible();
+      await expect(page.locator('ul.list--drafts > li.list__item--selected')).toHaveCount(0);
+      for (let index = 0; index < visibleCount; index += 1) {
+        await expect(visibleItems.nth(index).locator('input[type="checkbox"]')).not.toBeChecked();
+      }
+    });
+
     test('sample data notification filter path', async ({ page }) => {
       await loadSampleDataFromEmptyDashboard(page);
       await enableNotificationSettings(page);
