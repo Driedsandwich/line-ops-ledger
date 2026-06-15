@@ -601,6 +601,21 @@ for (const viewport of viewports) {
       await expect
         .poll(() => page.evaluate((key) => window.localStorage.getItem(key), customActivityTypesStorageKey))
         .toBe(JSON.stringify([backupCustomActivityType]));
+
+      await page.goto('/lines/history');
+      await page.getByLabel('電話番号 *').fill(phoneNumber);
+      await page.getByLabel('キャリア *').fill('NTTドコモ');
+      await page.getByLabel('契約開始日 *').fill('2025-01-01');
+      await page.locator('article#history-form label:has-text("活動種別") select').selectOption(backupCustomActivityType);
+      await expect(page.locator('article#history-form label:has-text("活動種別") select')).toHaveValue(backupCustomActivityType);
+      const restoredActivityTypeMemo = `復元活動種別確認-${Date.now().toString().slice(-5)}`;
+      await page.locator('article#history-form label:has-text("活動日") input').fill('2026-06-11');
+      await page.locator('article#history-form label:has-text("活動メモ") textarea').fill(restoredActivityTypeMemo);
+      await page.getByRole('button', { name: '履歴を保存する' }).click();
+      await expect(page.getByText('契約履歴を保存しました。')).toBeVisible();
+      await page.getByLabel('表示期間').selectOption('all');
+      await expect(page.locator('article#history-timeline')).toContainText(backupCustomActivityType);
+      await expect(page.locator('article#history-timeline')).toContainText(restoredActivityTypeMemo);
       await page.waitForFunction(
         ({ key, name }) => {
           const raw = window.localStorage.getItem(key);
