@@ -727,6 +727,37 @@ for (const viewport of viewports) {
       await expect(page.locator('li', { hasText: lineName })).toHaveCount(0);
     });
 
+    test('notification review interval suggestion path', async ({ page }) => {
+      await page.goto('/');
+      await clearAllStorage(page);
+
+      const lineName = `E2E-${viewport.name}-REV-${Date.now().toString().slice(-5)}`;
+      const phoneNumber = '09077776666';
+      const reviewMemo = `次回確認日提案-${viewport.name}-${Date.now().toString().slice(-5)}`;
+
+      await createDraft(page, lineName, phoneNumber);
+
+      await page.goto('/settings/notifications');
+      await page.getByLabel('活動後の次回確認日サジェスト（日数）').fill('21');
+      await expect(page.getByLabel('活動後の次回確認日サジェスト（日数）')).toHaveValue('21');
+      await page.reload();
+      await expect(page.getByLabel('活動後の次回確認日サジェスト（日数）')).toHaveValue('21');
+
+      await page.goto('/lines');
+      await page.locator('li', { hasText: lineName }).first().getByRole('button', { name: '活動を記録' }).click();
+      await expect(page).toHaveURL(/\/lines\/history\?quickActivity=/);
+      await expect(page.getByLabel('電話番号 *')).toHaveValue(phoneNumber);
+      await page.getByLabel('契約開始日 *').fill('2025-01-01');
+      await page.locator('article#history-form label:has-text("活動種別") select').selectOption('利用実績確認');
+      await page.locator('article#history-form label:has-text("活動日") input').fill('2026-06-10');
+      await page.locator('article#history-form label:has-text("活動メモ") textarea').fill(reviewMemo);
+      await page.getByRole('button', { name: '履歴を保存する' }).click();
+
+      await expect(page.getByText('契約履歴を保存しました。')).toBeVisible();
+      await expect(page.locator('.notice', { hasText: '次回確認日を' })).toContainText('2026-07-01');
+      await expect(page.locator('.notice', { hasText: '次回確認日を' })).toContainText('活動日 +21日');
+    });
+
     test('sample data dashboard path', async ({ page }) => {
       await loadSampleDataFromEmptyDashboard(page);
 

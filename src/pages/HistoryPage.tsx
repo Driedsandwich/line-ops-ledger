@@ -607,6 +607,13 @@ function formatDate(value: string): string {
   return new Intl.DateTimeFormat('ja-JP', { year: 'numeric', month: '2-digit', day: '2-digit' }).format(date);
 }
 
+function formatDateInputValue(value: Date): string {
+  const year = value.getFullYear();
+  const month = String(value.getMonth() + 1).padStart(2, '0');
+  const day = String(value.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 function formatDaysUntilLabel(daysUntil: number): string {
   if (daysUntil < 0) {
     return `${Math.abs(daysUntil)}日超過`;
@@ -1321,7 +1328,7 @@ export function HistoryPage(): ReactElement {
         if (relatedDraft) {
           const base = new Date(`${latestActivityDate}T00:00:00`);
           base.setDate(base.getDate() + notificationSettings.reviewIntervalDays);
-          const suggestedDate = base.toISOString().slice(0, 10);
+          const suggestedDate = formatDateInputValue(base);
           setReviewSuggest({ draftId: relatedDraft.id, draftName: relatedDraft.lineName, suggestedDate });
         }
       }

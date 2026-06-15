@@ -396,3 +396,7 @@
 - 通知無効化後の reload 同期 E2E を追加
   - 通知設定を無効化した後、Dashboard reload 後も Notifications KPI が `無効` を維持することを確認する
   - `/lines?notificationTargetOnly=true` reload 後も通知対象サマリーが `対象 0件`、`通知対象合計 0` が active のまま維持されることを mobile / desktop の両 viewport で固定する
+- 通知確認間隔の History サジェスト反映 E2E を追加
+  - `活動後の次回確認日サジェスト（日数）` を `21` に変更し、reload 後も設定値が保持されることを確認する
+  - 履歴保存後の次回確認日提案が活動日 +21日（例: `2026-07-01`）として表示されることを mobile / desktop の両 viewport で固定する
+  - `toISOString().slice(0, 10)` によるタイムゾーン由来の 1 日ずれを避けるため、次回確認日サジェストはローカル日付で `YYYY-MM-DD` を生成する
