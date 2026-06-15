@@ -332,3 +332,6 @@
 - 主台帳単体バックアップ互換 E2E を追加
   - 統合バックアップ内の `lineDrafts` envelope を主台帳単体バックアップとして保存し、`/settings/backup` から復元できることを確認する
   - 主台帳単体バックアップ復元では、バックアップに存在しない活動メモ候補設定を上書きせず、既存 localStorage 設定が残ることを mobile / desktop の両 viewport で固定する
+- 通知設定変更後の通知対象 drilldown E2E を追加
+  - サンプルデータ投入後に通知設定を有効化し、Dashboard の `期限超過` リンクから `/lines?notificationReason=overdue` へ遷移できることを確認する
+  - `/lines` 側で `通知対象のみ` をONにしても `notificationReason=overdue` が維持され、期限超過 filter と対象行表示が残ることを mobile / desktop の両 viewport で固定する

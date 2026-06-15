@@ -703,6 +703,16 @@ for (const viewport of viewports) {
       await loadSampleDataFromEmptyDashboard(page);
       await enableNotificationSettings(page);
 
+      await page.goto('/');
+      await page.getByRole('link', { name: '期限超過を確認' }).click();
+      await expect(page).toHaveURL(/\/lines\?.*notificationReason=overdue/);
+      await expect(page.getByRole('button', { name: /期限超過 \d+/ })).toHaveClass(/button--primary/);
+      await expect(page.locator('li', { hasText: '通知理由: 期限超過' }).first()).toBeVisible();
+
+      await page.getByRole('button', { name: '通知対象のみ' }).click();
+      await expect(page).toHaveURL(/\/lines\?.*notificationReason=overdue.*notificationTargetOnly=true/);
+      await expect(page.getByRole('button', { name: '通知対象のみ: ON' })).toBeVisible();
+
       await page.goto('/lines?notificationTargetOnly=true&notificationReason=overdue');
       await expect(page).toHaveURL(/\/lines\?.*notificationTargetOnly=true.*notificationReason=overdue/);
       await expect(page.getByRole('button', { name: '通知対象のみ: ON' })).toBeVisible();
