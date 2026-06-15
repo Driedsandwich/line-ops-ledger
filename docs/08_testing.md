@@ -91,6 +91,7 @@
     - `/settings/backup` で「統合バックアップをエクスポート」→ 生成 JSON をローカルで保存。
     - 生成 JSON に主台帳、履歴、活動メモ候補設定（custom / pinned / hidden / collapsed sections）、活動種別設定が含まれることを確認する。
     - 主台帳/履歴を初期化後、同じ JSON で復元し、主台帳件数と履歴件数が一致することを確認。
+    - 統合バックアップ復元後、`/lines?openDraft=<id>&focusSection=benefits&notificationTargetOnly=true` で対象回線が展開され、特典セクションと通知対象 filter が同時に維持される。
     - 復元後、活動メモ候補設定が localStorage に戻ることを確認する。
     - 復元後、活動種別設定が localStorage に戻ることを確認する。
     - 復元後、カスタム活動種別を `/lines/history` の活動種別 select で選択し、その活動種別で履歴保存できることを確認する。

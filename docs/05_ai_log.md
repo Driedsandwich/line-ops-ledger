@@ -412,3 +412,6 @@
 - 不正な通知理由 query の fallback E2E を追加
   - `/lines?notificationTargetOnly=true&notificationReason=invalid` で不正な通知理由 query を `all` 扱いにし、通知対象のみ filter が維持されることを確認する
   - 通知対象サマリーが `通知対象合計 1` の active state になり、対象回線が 0 件に落ちないことを E2E で固定する
+- 復元後の複合 URL 導線 E2E を追加
+  - 統合バックアップ復元後に `/lines?openDraft=<id>&focusSection=benefits&notificationTargetOnly=true` を開くことを確認する
+  - 対象回線の展開、特典セクション表示、通知対象のみ filter の active state、通知理由 badge が同時に維持されることを mobile / desktop の両 viewport で固定する
