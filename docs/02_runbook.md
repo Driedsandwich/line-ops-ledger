@@ -59,7 +59,7 @@
   - [ ] 検索・絞り込み・並び替えが動く
   - [ ] `?sort=latestActivityAsc` などの URL パラメータが反映される
   - [ ] 行の「活動を記録」ボタンが `/lines/history` の履歴フォームをセットする
-  - [ ] 統合バックアップエクスポートで JSON がダウンロードされる
+  - [ ] 統合バックアップエクスポートで、主台帳・履歴・活動メモ候補設定を含む JSON がダウンロードされる
   - [ ] `利用実績種別の巡回` の不足種別ボタンが `/lines?sort=latestActivityAsc&contractActiveOnly=true&usagePriority=<kind>` で開く
   - [ ] ダッシュボードの `該当回線を開く` で `/lines?openDraft=<id>&focusSection=...` が開き、対象回線の必要な詳細位置まで寄れる
 - 履歴・タイムライン（`/lines/history`）
@@ -96,7 +96,7 @@
   - [ ] `/settings` で `/settings/storage` へリダイレクトされる
   - [ ] サイドバーの `設定` 見出しの下に `ストレージ` / `バックアップ` / `通知設定` / `活動種別` が重複なく表示される
   - [ ] `/settings/storage` で永続化状態と保存データ情報が表示される
-  - [ ] `/settings/backup` で統合バックアップの入出力ができる
+  - [ ] `/settings/backup` で統合バックアップの入出力ができ、活動メモ候補設定も復元される
   - [ ] `/settings/notifications` で通知方針の変更が保存される
   - [ ] `/settings/activity-types` でカスタム活動種別の追加・削除ができる
 

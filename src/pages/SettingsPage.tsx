@@ -7,12 +7,16 @@ import {
   loadCustomActivityTypes,
   saveCustomActivityTypes,
 } from '../lib/activityTypeSettings';
+import { loadCollapsedActivityMemoSections, saveCollapsedActivityMemoSections } from '../lib/collapsedActivityMemoSections';
+import { loadCustomActivityMemoTemplates, saveCustomActivityMemoTemplates } from '../lib/customActivityMemoTemplates';
+import { loadHiddenActivityMemoTemplates, saveHiddenActivityMemoTemplates } from '../lib/hiddenActivityMemoTemplates';
 import {
   CURRENT_LINE_DRAFT_SCHEMA_VERSION,
   lineDraftStore,
   type LineDraftStorageInfo,
 } from '../lib/lineDrafts';
 import { lineHistoryStore } from '../lib/lineHistory';
+import { loadPinnedActivityMemoTemplates, savePinnedActivityMemoTemplates } from '../lib/pinnedActivityMemoTemplates';
 import {
   getDefaultNotificationSettings,
   loadNotificationSettings,
@@ -79,6 +83,36 @@ function formatStorageFormat(value: LineDraftStorageInfo['format']): string {
 
 function formatSchemaVersion(value: number | null): string {
   return value == null ? '不明' : `v${value}`;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+
+function readStringArrayField(source: Record<string, unknown>, key: string): string[] {
+  const value = source[key];
+  return Array.isArray(value) && value.every((item) => typeof item === 'string') ? value : [];
+}
+
+function buildActivityMemoPreferencesBackup(): Record<string, string[]> {
+  return {
+    customTemplates: loadCustomActivityMemoTemplates(),
+    pinnedTemplates: loadPinnedActivityMemoTemplates(),
+    hiddenTemplates: loadHiddenActivityMemoTemplates(),
+    collapsedSections: loadCollapsedActivityMemoSections(),
+  };
+}
+
+function importActivityMemoPreferencesBackup(value: unknown): boolean {
+  if (!isRecord(value)) {
+    return false;
+  }
+
+  saveCustomActivityMemoTemplates(readStringArrayField(value, 'customTemplates'));
+  savePinnedActivityMemoTemplates(readStringArrayField(value, 'pinnedTemplates'));
+  saveHiddenActivityMemoTemplates(readStringArrayField(value, 'hiddenTemplates'));
+  saveCollapsedActivityMemoSections(readStringArrayField(value, 'collapsedSections'));
+  return true;
 }
 
 function formatReminderWindow(value: NotificationReminderWindow): string {
@@ -163,9 +197,10 @@ export function SettingsPage({ section }: { section: SettingsSectionKey }): Reac
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
       const combined = {
         exportedAt: new Date().toISOString(),
-        version: 1,
+        version: 2,
         lineDrafts: JSON.parse(lineDraftStore.exportJson()),
         lineHistory: JSON.parse(lineHistoryStore.exportJson()),
+        activityMemoPreferences: buildActivityMemoPreferencesBackup(),
       };
       const json = JSON.stringify(combined, null, 2);
       const filename = `line-ops-ledger-backup-${timestamp}.json`;
@@ -198,11 +233,16 @@ export function SettingsPage({ section }: { section: SettingsSectionKey }): Reac
         'lineDrafts' in parsed &&
         'lineHistory' in parsed
       ) {
-        const combined = parsed as { lineDrafts: unknown; lineHistory: unknown };
+        const combined = parsed as { lineDrafts: unknown; lineHistory: unknown; activityMemoPreferences?: unknown };
         const importedDrafts = lineDraftStore.importJson(JSON.stringify(combined.lineDrafts));
         const importedHistory = lineHistoryStore.importJson(JSON.stringify(combined.lineHistory));
+        const importedActivityMemoPreferences = importActivityMemoPreferencesBackup(combined.activityMemoPreferences);
         await refresh();
-        setActionMessage(`統合バックアップを復元しました（主台帳 ${importedDrafts.length} 件 / 履歴 ${importedHistory.length} 件）。`);
+        setActionMessage(
+          importedActivityMemoPreferences
+            ? `統合バックアップを復元しました（主台帳 ${importedDrafts.length} 件 / 履歴 ${importedHistory.length} 件 / 活動メモ候補設定）。`
+            : `統合バックアップを復元しました（主台帳 ${importedDrafts.length} 件 / 履歴 ${importedHistory.length} 件）。`,
+        );
       } else {
         const result = lineDraftStore.importBackupJson(raw);
         await refresh();
@@ -372,7 +412,7 @@ export function SettingsPage({ section }: { section: SettingsSectionKey }): Reac
           </div>
 
           <p className="muted">
-            回線台帳と契約履歴をまとめて1ファイルに退避できます。復元時も両方が一括で戻ります。旧形式（台帳のみ）の JSON も読み込めます。
+            回線台帳、契約履歴、活動メモ候補設定をまとめて1ファイルに退避できます。復元時も一括で戻ります。旧形式（台帳のみ / 台帳＋履歴）の JSON も読み込めます。
           </p>
 
           <input

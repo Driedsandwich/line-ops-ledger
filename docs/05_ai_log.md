@@ -322,3 +322,7 @@
 - 表示中一括選択 / 解除 E2E を追加
   - サンプルデータ投入後、`/lines?sort=latestActivityAsc&contractActiveOnly=true&usagePriority=sms` を開き、契約中のみ filter と `S不足優先` が有効な状態を確認する
   - `表示中をすべて選択` で可視行の checkbox と selected 表示がすべて有効になり、`表示中の選択を解除` で同じ可視行が解除されることを mobile / desktop の両 viewport で固定する
+- 統合バックアップに活動メモ候補設定を追加
+  - 統合バックアップ version 2 として `activityMemoPreferences` を追加し、custom / pinned / hidden / collapsed sections を JSON に含める
+  - 旧形式（台帳のみ / 台帳＋履歴）は従来どおり読み込めるようにし、新形式だけ活動メモ候補設定を復元する
+  - `settings flows` E2E で、エクスポート JSON の内容と localStorage クリア後の復元結果を mobile / desktop の両 viewport で固定する
