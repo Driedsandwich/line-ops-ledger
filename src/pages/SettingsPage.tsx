@@ -98,6 +98,11 @@ function readStringArrayField(source: Record<string, unknown>, key: string): str
   return Array.isArray(value) && value.every((item) => typeof item === 'string') ? value : [];
 }
 
+function hasStringArrayField(source: Record<string, unknown>, key: string): boolean {
+  const value = source[key];
+  return Array.isArray(value) && value.every((item) => typeof item === 'string');
+}
+
 function buildActivityMemoPreferencesBackup(): Record<string, string[]> {
   return {
     customTemplates: loadCustomActivityMemoTemplates(),
@@ -109,6 +114,15 @@ function buildActivityMemoPreferencesBackup(): Record<string, string[]> {
 
 function importActivityMemoPreferencesBackup(value: unknown): boolean {
   if (!isRecord(value)) {
+    return false;
+  }
+
+  if (
+    !hasStringArrayField(value, 'customTemplates')
+    || !hasStringArrayField(value, 'pinnedTemplates')
+    || !hasStringArrayField(value, 'hiddenTemplates')
+    || !hasStringArrayField(value, 'collapsedSections')
+  ) {
     return false;
   }
 
