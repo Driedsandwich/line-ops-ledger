@@ -384,3 +384,6 @@
 - History の今後のイベント MNP drilldown E2E を追加
   - History の `今後のイベント` にある `MNP予約番号期限` の `回線を開く` から `/lines?openDraft=<id>` へ遷移することを確認する
   - 遷移後の Lines で対象回線の MNP 情報へ到達できることを mobile / desktop の両 viewport で固定する
+- 通知無効時の通知理由 query 境界 E2E を追加
+  - 通知を無効化した状態で `/lines?notificationTargetOnly=true&notificationReason=overdue` を開くことを確認する
+  - 通知対象が 0 件になり、`期限超過 0` の active state と保存済み回線 0 件表示が崩れないことを mobile / desktop の両 viewport で固定する

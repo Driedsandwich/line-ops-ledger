@@ -912,6 +912,12 @@ for (const viewport of viewports) {
       await expect(page.getByRole('button', { name: '通知対象のみ: ON' })).toBeVisible();
       await expect(notificationSummaryPanel.locator('.badge')).toHaveText('対象 0件');
       await expect(page.getByRole('button', { name: '通知対象合計 0' })).toHaveClass(/button--primary/);
+
+      await page.goto('/lines?notificationTargetOnly=true&notificationReason=overdue');
+      await expect(page.getByRole('button', { name: '通知対象のみ: ON' })).toBeVisible();
+      await expect(notificationSummaryPanel.locator('.badge')).toHaveText('対象 0件');
+      await expect(page.getByRole('button', { name: '期限超過 0' })).toHaveClass(/button--primary/);
+      await expect(page.locator('ul.list--drafts > li')).toHaveCount(0);
     });
   });
 }
