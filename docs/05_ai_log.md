@@ -363,3 +363,6 @@
 - 通知理由 filter 中の表示行一致 E2E を追加
   - `/lines?notificationTargetOnly=true&notificationReason=overdue` で表示中の行がすべて `通知理由: 期限超過` を持つことを確認する
   - 通知対象のみ filter と通知理由 filter の組み合わせで、理由外の行が混ざらないことを mobile / desktop の両 viewport で固定する
+- Dashboard から Lines への sort URL 同期 E2E を追加
+  - Dashboard の `利用実績を確認` から `/lines?sort=latestActivityAsc&contractActiveOnly=true` へ遷移した後、Lines の `並び順` select が `latestActivityAsc` になることを確認する
+  - URL query だけでなく、初期表示の絞り込み / 並び順 UI が同期されることを mobile / desktop の両 viewport で固定する
