@@ -782,6 +782,11 @@ for (const viewport of viewports) {
       await expect(page).toHaveURL(/\/lines\?.*openDraft=d-003.*focusSection=benefits/);
       await expect(page.locator('#draft-d-003-benefits')).toBeVisible();
 
+      await page.goto('/lines/history');
+      await upcomingEvents.locator('li', { hasText: 'MNP予約番号期限' }).getByRole('link', { name: '回線を開く' }).first().click();
+      await expect(page).toHaveURL(/\/lines\?.*openDraft=d-017/);
+      await expect(page.locator('#draft-d-017')).toContainText('MNP予約番号');
+
       await page.goto('/lines?openDraft=d-005&focusSection=fiber');
       await expect(page.locator('#draft-d-005-fiber')).toBeVisible();
       await expect(page.getByText('光回線の移行種別')).toBeVisible();

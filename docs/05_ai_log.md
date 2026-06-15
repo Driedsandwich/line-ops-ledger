@@ -381,3 +381,6 @@
 - History の今後のイベント特典 drilldown E2E を追加
   - History の `今後のイベント` にある `特典を確認` から `/lines?openDraft=<id>&focusSection=benefits` へ遷移することを確認する
   - 遷移後の Lines で対象回線の特典セクションが開くことを mobile / desktop の両 viewport で固定する
+- History の今後のイベント MNP drilldown E2E を追加
+  - History の `今後のイベント` にある `MNP予約番号期限` の `回線を開く` から `/lines?openDraft=<id>` へ遷移することを確認する
+  - 遷移後の Lines で対象回線の MNP 情報へ到達できることを mobile / desktop の両 viewport で固定する
