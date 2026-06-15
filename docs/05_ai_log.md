@@ -372,3 +372,6 @@
 - Dashboard の契約中 filter drilldown E2E を追加
   - Dashboard の `契約中の回線を見る` から `/lines?contractActiveOnly=true` へ遷移することを確認する
   - 遷移後の Lines で `契約中のみ` checkbox と quick button が ON になることを mobile / desktop の両 viewport で固定する
+- Dashboard の費用 / 特典 CTA E2E を追加
+  - Dashboard の `特典と費用を確認` から `/lines` へ遷移することを確認する
+  - 遷移後の Lines で保存済み回線の月額費用と特典管理の手がかりが見えることを mobile / desktop の両 viewport で固定する

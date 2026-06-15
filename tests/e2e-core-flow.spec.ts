@@ -745,6 +745,13 @@ for (const viewport of viewports) {
       await expect(page.getByRole('button', { name: /期限超過 \d+/ })).toHaveClass(/button--primary/);
 
       await page.goto('/');
+      await summaryKpi.getByRole('link', { name: '特典と費用を確認' }).click();
+      await expect(page).toHaveURL(/\/lines$/);
+      await expect(page.getByRole('heading', { name: '保存済み回線' })).toBeVisible();
+      await expect(page.locator('#draft-d-003')).toContainText('月額費用:');
+      await expect(page.locator('#draft-d-003')).toContainText(/未受取特典|特典管理/);
+
+      await page.goto('/');
       await actionableAlerts.locator('a', { hasText: '履歴で記録' }).first().click();
       await expect(page).toHaveURL(/\/lines\/history\?.*historyIntent=/);
       await expect(page.locator('h3:has-text("開いている文脈")')).toBeVisible();
