@@ -14,7 +14,7 @@
   2. `/`, `/lines`, `/lines/history`, `/settings/storage`, `/settings/backup`, `/settings/notifications`, `/settings/activity-types` を順に開く
   3. localStorage クリアで空状態ガイドが表示されることを確認
   4. 回線追加、履歴入力、`/lines?sort=latestActivityAsc` など URL ドリルダウンが動くことを確認
-  5. バックアップエクスポート→再インポートで主要データ（台帳/履歴/設定）が復元されることを確認
+  5. バックアップエクスポート→再インポートで主要データ（台帳/履歴/活動メモ候補設定）が復元されることを確認
   6. 空状態から確認用サンプルデータを読み込み、dashboard の主要カードと `Actionable Alerts` からの `履歴で記録` 導線が動くことを確認
 - 期待する結果:
   - 主要ルートが読み込みエラーなく表示され、エラーメッセージや空白画面が出ない
@@ -66,7 +66,9 @@
     - 通知設定を有効化した状態で `/lines?notificationTargetOnly=true&notificationReason=<reason>` を開き、通知対象のみ filter と通知理由 filter が表示に反映される。
   - バックアップ導線
     - `/settings/backup` で「統合バックアップをエクスポート」→ 生成 JSON をローカルで保存。
+    - 生成 JSON に主台帳、履歴、活動メモ候補設定（custom / pinned / hidden / collapsed sections）が含まれることを確認する。
     - 主台帳/履歴を初期化後、同じ JSON で復元し、主台帳件数と履歴件数が一致することを確認。
+    - 復元後、活動メモ候補設定が localStorage に戻ることを確認する。
     - 復元後、`/lines` と `/lines/history` に戻って追加・保存・空状態導線が壊れていないことを確認。
     - 復元後、主台帳行を編集して保存し、reload 後も更新内容が保持されることを確認。
     - 復元後、履歴タイムラインの履歴を編集して保存し、reload 後も更新内容が保持されることを確認。
