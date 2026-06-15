@@ -8,6 +8,7 @@ const customActivityMemoTemplatesStorageKey = 'line-ops-ledger.custom-activity-m
 const pinnedActivityMemoTemplatesStorageKey = 'line-ops-ledger.pinned-activity-memo-templates';
 const hiddenActivityMemoTemplatesStorageKey = 'line-ops-ledger.hidden-activity-memo-templates';
 const collapsedActivityMemoSectionsStorageKey = 'line-ops-ledger.collapsed-activity-memo-sections';
+const customActivityTypesStorageKey = 'line-ops-ledger.activity-types';
 
 const viewports = [
   { name: 'mobile', width: 360, height: 812 },
@@ -415,6 +416,7 @@ for (const viewport of viewports) {
       const historyMemo = `バックアップ復元確認-${Date.now().toString().slice(-5)}`;
       const backupCustomMemoTemplate = `バックアップ候補-${viewport.name}-${Date.now().toString().slice(-5)}`;
       const backupHiddenMemoTemplate = `非表示候補-${viewport.name}-${Date.now().toString().slice(-5)}`;
+      const backupCustomActivityType = `バックアップ活動-${viewport.name}-${Date.now().toString().slice(-5)}`;
       const backupDir = '/tmp/line-ops-ledger-e2e';
       const backupPath = path.join(backupDir, `backup-${viewport.name}-${Date.now()}.json`);
       const legacyIntegratedBackupPath = path.join(backupDir, `legacy-integrated-backup-${viewport.name}-${Date.now()}.json`);
@@ -448,19 +450,22 @@ for (const viewport of viewports) {
       await expect(page.getByLabel('活動後の次回確認日サジェスト（日数）')).toHaveValue('21');
 
       await page.evaluate(
-        ({ customKey, pinnedKey, hiddenKey, collapsedKey, customMemo, hiddenMemo }) => {
+        ({ customKey, pinnedKey, hiddenKey, collapsedKey, activityTypesKey, customMemo, hiddenMemo, customActivityType }) => {
           window.localStorage.setItem(customKey, JSON.stringify([customMemo]));
           window.localStorage.setItem(pinnedKey, JSON.stringify([customMemo]));
           window.localStorage.setItem(hiddenKey, JSON.stringify([hiddenMemo]));
           window.localStorage.setItem(collapsedKey, JSON.stringify(['custom']));
+          window.localStorage.setItem(activityTypesKey, JSON.stringify([customActivityType]));
         },
         {
           customKey: customActivityMemoTemplatesStorageKey,
           pinnedKey: pinnedActivityMemoTemplatesStorageKey,
           hiddenKey: hiddenActivityMemoTemplatesStorageKey,
           collapsedKey: collapsedActivityMemoSectionsStorageKey,
+          activityTypesKey: customActivityTypesStorageKey,
           customMemo: backupCustomMemoTemplate,
           hiddenMemo: backupHiddenMemoTemplate,
+          customActivityType: backupCustomActivityType,
         },
       );
       await page.goto('/settings/backup');
@@ -476,6 +481,7 @@ for (const viewport of viewports) {
       expect(fs.statSync(backupPath).size).toBeGreaterThan(20);
       const exportedBackup = JSON.parse(fs.readFileSync(backupPath, 'utf8')) as {
         lineDrafts?: unknown;
+        customActivityTypes?: string[];
         activityMemoPreferences?: {
           customTemplates?: string[];
           pinnedTemplates?: string[];
@@ -487,13 +493,16 @@ for (const viewport of viewports) {
       expect(exportedBackup.activityMemoPreferences?.pinnedTemplates).toEqual([backupCustomMemoTemplate]);
       expect(exportedBackup.activityMemoPreferences?.hiddenTemplates).toEqual([backupHiddenMemoTemplate]);
       expect(exportedBackup.activityMemoPreferences?.collapsedSections).toEqual(['custom']);
+      expect(exportedBackup.customActivityTypes).toEqual([backupCustomActivityType]);
       expect(exportedBackup.lineDrafts).toBeTruthy();
       const legacyIntegratedBackup = {
         ...exportedBackup,
         version: 1,
         activityMemoPreferences: undefined,
+        customActivityTypes: undefined,
       };
       delete legacyIntegratedBackup.activityMemoPreferences;
+      delete legacyIntegratedBackup.customActivityTypes;
       fs.writeFileSync(legacyIntegratedBackupPath, JSON.stringify(legacyIntegratedBackup, null, 2), 'utf8');
       fs.writeFileSync(ledgerOnlyBackupPath, JSON.stringify(exportedBackup.lineDrafts, null, 2), 'utf8');
 
@@ -503,17 +512,19 @@ for (const viewport of viewports) {
       await expect(page.getByText('JSON バックアップの形式が不正です。')).toBeVisible();
 
       await page.evaluate(
-        ({ customKey, pinnedKey, hiddenKey, collapsedKey }) => {
+        ({ customKey, pinnedKey, hiddenKey, collapsedKey, activityTypesKey }) => {
           window.localStorage.setItem(customKey, JSON.stringify(['旧互換の既存custom']));
           window.localStorage.setItem(pinnedKey, JSON.stringify(['旧互換の既存pin']));
           window.localStorage.setItem(hiddenKey, JSON.stringify(['旧互換の既存hidden']));
           window.localStorage.setItem(collapsedKey, JSON.stringify(['pinned']));
+          window.localStorage.setItem(activityTypesKey, JSON.stringify(['旧互換の既存活動']));
         },
         {
           customKey: customActivityMemoTemplatesStorageKey,
           pinnedKey: pinnedActivityMemoTemplatesStorageKey,
           hiddenKey: hiddenActivityMemoTemplatesStorageKey,
           collapsedKey: collapsedActivityMemoSectionsStorageKey,
+          activityTypesKey: customActivityTypesStorageKey,
         },
       );
       await page.getByRole('button', { name: 'バックアップを復元' }).click();
@@ -531,20 +542,25 @@ for (const viewport of viewports) {
       await expect
         .poll(() => page.evaluate((key) => window.localStorage.getItem(key), collapsedActivityMemoSectionsStorageKey))
         .toBe(JSON.stringify(['pinned']));
+      await expect
+        .poll(() => page.evaluate((key) => window.localStorage.getItem(key), customActivityTypesStorageKey))
+        .toBe(JSON.stringify(['旧互換の既存活動']));
 
       await clearAllStorage(page);
       await page.evaluate(
-        ({ customKey, pinnedKey, hiddenKey, collapsedKey }) => {
+        ({ customKey, pinnedKey, hiddenKey, collapsedKey, activityTypesKey }) => {
           window.localStorage.setItem(customKey, JSON.stringify(['台帳単体の既存custom']));
           window.localStorage.setItem(pinnedKey, JSON.stringify(['台帳単体の既存pin']));
           window.localStorage.setItem(hiddenKey, JSON.stringify(['台帳単体の既存hidden']));
           window.localStorage.setItem(collapsedKey, JSON.stringify(['hidden']));
+          window.localStorage.setItem(activityTypesKey, JSON.stringify(['台帳単体の既存活動']));
         },
         {
           customKey: customActivityMemoTemplatesStorageKey,
           pinnedKey: pinnedActivityMemoTemplatesStorageKey,
           hiddenKey: hiddenActivityMemoTemplatesStorageKey,
           collapsedKey: collapsedActivityMemoSectionsStorageKey,
+          activityTypesKey: customActivityTypesStorageKey,
         },
       );
       await page.getByRole('button', { name: 'バックアップを復元' }).click();
@@ -562,11 +578,14 @@ for (const viewport of viewports) {
       await expect
         .poll(() => page.evaluate((key) => window.localStorage.getItem(key), collapsedActivityMemoSectionsStorageKey))
         .toBe(JSON.stringify(['hidden']));
+      await expect
+        .poll(() => page.evaluate((key) => window.localStorage.getItem(key), customActivityTypesStorageKey))
+        .toBe(JSON.stringify(['台帳単体の既存活動']));
 
       await clearAllStorage(page);
       await page.getByRole('button', { name: 'バックアップを復元' }).click();
       await page.locator('input.hidden-file-input').setInputFiles(backupPath);
-      await expect(page.getByText('統合バックアップを復元しました（主台帳 1 件 / 履歴 1 件 / 活動メモ候補設定）。')).toBeVisible();
+      await expect(page.getByText('統合バックアップを復元しました（主台帳 1 件 / 履歴 1 件 / 活動メモ候補設定 / 活動種別設定）。')).toBeVisible();
       await expect
         .poll(() => page.evaluate((key) => window.localStorage.getItem(key), customActivityMemoTemplatesStorageKey))
         .toBe(JSON.stringify([backupCustomMemoTemplate]));
@@ -579,6 +598,9 @@ for (const viewport of viewports) {
       await expect
         .poll(() => page.evaluate((key) => window.localStorage.getItem(key), collapsedActivityMemoSectionsStorageKey))
         .toBe(JSON.stringify(['custom']));
+      await expect
+        .poll(() => page.evaluate((key) => window.localStorage.getItem(key), customActivityTypesStorageKey))
+        .toBe(JSON.stringify([backupCustomActivityType]));
       await page.waitForFunction(
         ({ key, name }) => {
           const raw = window.localStorage.getItem(key);

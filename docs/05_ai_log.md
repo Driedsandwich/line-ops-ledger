@@ -335,3 +335,7 @@
 - 通知設定変更後の通知対象 drilldown E2E を追加
   - サンプルデータ投入後に通知設定を有効化し、Dashboard の `期限超過` リンクから `/lines?notificationReason=overdue` へ遷移できることを確認する
   - `/lines` 側で `通知対象のみ` をONにしても `notificationReason=overdue` が維持され、期限超過 filter と対象行表示が残ることを mobile / desktop の両 viewport で固定する
+- 統合バックアップに活動種別設定を追加
+  - 統合バックアップ version 3 として `customActivityTypes` を追加し、履歴入力で使うカスタム活動種別を JSON に含める
+  - 旧形式（台帳のみ / 台帳＋履歴 / 活動種別設定なし）は従来どおり読み込めるようにし、新形式だけ活動種別設定を復元する
+  - `settings flows` E2E で、エクスポート JSON の内容、旧形式で既存活動種別設定を上書きしないこと、localStorage クリア後の復元結果を mobile / desktop の両 viewport で固定する

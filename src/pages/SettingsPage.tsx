@@ -115,6 +115,19 @@ function importActivityMemoPreferencesBackup(value: unknown): boolean {
   return true;
 }
 
+function importCustomActivityTypesBackup(value: unknown): string[] | null {
+  if (!Array.isArray(value) || !value.every((item) => typeof item === 'string')) {
+    return null;
+  }
+
+  const nextTypes = value
+    .map((item) => item.trim())
+    .filter((item) => item.length > 0 && item.length <= ACTIVITY_TYPE_LABEL_MAX_LENGTH)
+    .slice(0, ACTIVITY_TYPE_MAX_CUSTOM);
+  saveCustomActivityTypes(nextTypes);
+  return nextTypes;
+}
+
 function formatReminderWindow(value: NotificationReminderWindow): string {
   switch (value) {
     case 'overdue':
@@ -197,10 +210,11 @@ export function SettingsPage({ section }: { section: SettingsSectionKey }): Reac
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
       const combined = {
         exportedAt: new Date().toISOString(),
-        version: 2,
+        version: 3,
         lineDrafts: JSON.parse(lineDraftStore.exportJson()),
         lineHistory: JSON.parse(lineHistoryStore.exportJson()),
         activityMemoPreferences: buildActivityMemoPreferencesBackup(),
+        customActivityTypes: loadCustomActivityTypes(),
       };
       const json = JSON.stringify(combined, null, 2);
       const filename = `line-ops-ledger-backup-${timestamp}.json`;
@@ -233,14 +247,22 @@ export function SettingsPage({ section }: { section: SettingsSectionKey }): Reac
         'lineDrafts' in parsed &&
         'lineHistory' in parsed
       ) {
-        const combined = parsed as { lineDrafts: unknown; lineHistory: unknown; activityMemoPreferences?: unknown };
+        const combined = parsed as { lineDrafts: unknown; lineHistory: unknown; activityMemoPreferences?: unknown; customActivityTypes?: unknown };
         const importedDrafts = lineDraftStore.importJson(JSON.stringify(combined.lineDrafts));
         const importedHistory = lineHistoryStore.importJson(JSON.stringify(combined.lineHistory));
         const importedActivityMemoPreferences = importActivityMemoPreferencesBackup(combined.activityMemoPreferences);
+        const importedCustomActivityTypes = importCustomActivityTypesBackup(combined.customActivityTypes);
+        if (importedCustomActivityTypes) {
+          setCustomActivityTypes(importedCustomActivityTypes);
+        }
         await refresh();
+        const importedSettingsLabels = [
+          importedActivityMemoPreferences ? '活動メモ候補設定' : null,
+          importedCustomActivityTypes ? '活動種別設定' : null,
+        ].filter(Boolean);
         setActionMessage(
-          importedActivityMemoPreferences
-            ? `統合バックアップを復元しました（主台帳 ${importedDrafts.length} 件 / 履歴 ${importedHistory.length} 件 / 活動メモ候補設定）。`
+          importedSettingsLabels.length > 0
+            ? `統合バックアップを復元しました（主台帳 ${importedDrafts.length} 件 / 履歴 ${importedHistory.length} 件 / ${importedSettingsLabels.join(' / ')}）。`
             : `統合バックアップを復元しました（主台帳 ${importedDrafts.length} 件 / 履歴 ${importedHistory.length} 件）。`,
         );
       } else {
@@ -412,7 +434,7 @@ export function SettingsPage({ section }: { section: SettingsSectionKey }): Reac
           </div>
 
           <p className="muted">
-            回線台帳、契約履歴、活動メモ候補設定をまとめて1ファイルに退避できます。復元時も一括で戻ります。旧形式（台帳のみ / 台帳＋履歴）の JSON も読み込めます。
+            回線台帳、契約履歴、活動メモ候補設定、活動種別設定をまとめて1ファイルに退避できます。復元時も一括で戻ります。旧形式（台帳のみ / 台帳＋履歴）の JSON も読み込めます。
           </p>
 
           <input
