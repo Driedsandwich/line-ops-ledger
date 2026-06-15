@@ -775,6 +775,13 @@ for (const viewport of viewports) {
       await expect(page.locator('#draft-d-003-benefits')).toBeVisible();
       await expect(page.locator('#draft-d-003-benefits').getByRole('heading', { name: '特典 / キャッシュバック' })).toBeVisible();
 
+      await page.goto('/lines/history');
+      const upcomingEvents = page.locator('article.card', { has: page.getByRole('heading', { name: '今後のイベント' }) });
+      await expect(upcomingEvents).toBeVisible();
+      await upcomingEvents.locator('li', { hasText: '特典期限' }).getByRole('link', { name: '特典を確認' }).first().click();
+      await expect(page).toHaveURL(/\/lines\?.*openDraft=d-003.*focusSection=benefits/);
+      await expect(page.locator('#draft-d-003-benefits')).toBeVisible();
+
       await page.goto('/lines?openDraft=d-005&focusSection=fiber');
       await expect(page.locator('#draft-d-005-fiber')).toBeVisible();
       await expect(page.getByText('光回線の移行種別')).toBeVisible();
