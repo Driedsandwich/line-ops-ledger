@@ -345,3 +345,6 @@
 - 活動メモ候補の管理状態リセット E2E を追加
   - 固定候補と非表示候補がある状態で `候補管理を初期化` を実行し、pinned / hidden の localStorage が空になることを確認する
   - reload 後に固定候補 / 非表示候補セクションと初期化ボタンが消え、custom 候補自体は再表示されることを mobile / desktop の両 viewport で固定する
+- 通知理由 filter のクリック切替 E2E を追加
+  - `/lines?notificationTargetOnly=true&notificationReason=overdue` から通知理由を `今日期限` に切り替えても、通知対象のみ filter が維持されることを確認する
+  - `通知対象合計` をクリックすると通知理由だけが解除され、通知対象のみ filter は残ることを mobile / desktop の両 viewport で固定する
