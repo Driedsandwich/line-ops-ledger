@@ -57,6 +57,7 @@
     - 活動メモ欄から custom 候補を追加すると、入力リセットと reload 後も `追加した候補` として残る。
     - 活動メモ候補を固定 / 非表示 / 復帰すると、reload 後も `固定候補` / `非表示候補` の状態が維持される。
     - custom 活動メモ候補を更新 / 並び替えすると、reload 後も更新後の文言と順序が維持される。
+    - 活動メモ候補セクションを折りたたむと、reload 後も閉じた状態が維持され、`展開` で候補ボタンが戻る。
   - 主台帳 URL 導線
     - サンプルデータ投入後、`Hopping Health` の `利用実績を確認` から `/lines?sort=latestActivityAsc&contractActiveOnly=true` に遷移し、契約中のみ filter が有効になる。
     - `/lines?openDraft=<id>&focusSection=benefits` と `/lines?openDraft=<id>&focusSection=fiber` で対象回線が展開され、該当セクションが表示される。
