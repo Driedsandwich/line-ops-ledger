@@ -360,3 +360,6 @@
 - 通知期限 window 変更後の対象件数連動 E2E を追加
   - 通知対象の期限を `overdue` に切り替えると、Dashboard の Notifications KPI が期限超過対象件数へ変わることを確認する
   - `/lines?notificationTargetOnly=true` の通知対象サマリーが Dashboard の Notifications KPI と同じ件数になり、`within-7-days` に戻すと元の件数へ戻ることを mobile / desktop の両 viewport で固定する
+- 通知理由 filter 中の表示行一致 E2E を追加
+  - `/lines?notificationTargetOnly=true&notificationReason=overdue` で表示中の行がすべて `通知理由: 期限超過` を持つことを確認する
+  - 通知対象のみ filter と通知理由 filter の組み合わせで、理由外の行が混ざらないことを mobile / desktop の両 viewport で固定する
