@@ -4,9 +4,9 @@
 
 - Bootstrap Issue: #1（永続 open）
 - Context Hub Issue: #2（永続 open）
-- 現在地: 共通イベントフィードと command center 化を main に反映。PR #217 で `quickActivity` 導線とサイドパネル回帰を Playwright 常設化し、PR #218 で `@types/node` patch を吸収。PR #219 で Vite 8 / plugin-react 6 へ更新し、PR #221 で React Router 7 移行調査を完了。PR #222 で React Router 7 への単独更新を main に反映し、PR #224 で React 19 単独更新、PR #225 で TypeScript 6 単独更新、PR #226 で統合バックアップ復元 E2E 拡張、PR #227 で設定永続化 E2E 拡張、PR #228 でバックアップ import 失敗表示 E2E 拡張、PR #229 でサンプルデータ投入後の dashboard / history drilldown E2E、PR #230 で `/lines` URL drilldown E2E、PR #231 でバックアップ復元後の編集保存 E2E、PR #232 で通知対象フィルタ E2E、PR #233 で履歴編集後の reload persistence E2E、PR #234 で一括ステータス変更後の undo E2E、PR #235 で一括削除後の undo E2E、PR #236 でバックアップ復元後の履歴編集 E2E、PR #237 で履歴下書き破棄後の persistence E2E、PR #238 で履歴下書きの reset / save cleanup E2E、PR #239 で活動メモ custom 候補の persistence E2E、PR #240 で活動メモ候補の固定 / 非表示 / 復帰 persistence E2E、PR #241 で活動メモ custom 候補の更新 / 並び替え persistence E2E、PR #242 で Playwright 1.61 patch 更新、PR #243 で活動メモ候補セクション折りたたみ persistence E2E、PR #244 で `/lines` フィルタ中の表示中一括選択 / 解除 E2E、PR #245 で統合バックアップへの活動メモ候補設定追加、PR #246 で旧統合バックアップ互換 E2E、PR #247 で主台帳単体バックアップ互換 E2E、PR #248 で通知設定変更後の通知対象 drilldown E2E、PR #249 で統合バックアップへの活動種別設定追加、PR #250 で復元済み活動種別の履歴入力反映 E2E、PR #251 で活動メモ候補の管理状態リセット E2E を main に反映。続いて通知理由 filter のクリック切替 E2E を追加している。
+- 現在地: 共通イベントフィードと command center 化を main に反映。PR #217 で `quickActivity` 導線とサイドパネル回帰を Playwright 常設化し、PR #218 で `@types/node` patch を吸収。PR #219 で Vite 8 / plugin-react 6 へ更新し、PR #221 で React Router 7 移行調査を完了。PR #222 で React Router 7 への単独更新を main に反映し、PR #224 で React 19 単独更新、PR #225 で TypeScript 6 単独更新、PR #226 で統合バックアップ復元 E2E 拡張、PR #227 で設定永続化 E2E 拡張、PR #228 でバックアップ import 失敗表示 E2E 拡張、PR #229 でサンプルデータ投入後の dashboard / history drilldown E2E、PR #230 で `/lines` URL drilldown E2E、PR #231 でバックアップ復元後の編集保存 E2E、PR #232 で通知対象フィルタ E2E、PR #233 で履歴編集後の reload persistence E2E、PR #234 で一括ステータス変更後の undo E2E、PR #235 で一括削除後の undo E2E、PR #236 でバックアップ復元後の履歴編集 E2E、PR #237 で履歴下書き破棄後の persistence E2E、PR #238 で履歴下書きの reset / save cleanup E2E、PR #239 で活動メモ custom 候補の persistence E2E、PR #240 で活動メモ候補の固定 / 非表示 / 復帰 persistence E2E、PR #241 で活動メモ custom 候補の更新 / 並び替え persistence E2E、PR #242 で Playwright 1.61 patch 更新、PR #243 で活動メモ候補セクション折りたたみ persistence E2E、PR #244 で `/lines` フィルタ中の表示中一括選択 / 解除 E2E、PR #245 で統合バックアップへの活動メモ候補設定追加、PR #246 で旧統合バックアップ互換 E2E、PR #247 で主台帳単体バックアップ互換 E2E、PR #248 で通知設定変更後の通知対象 drilldown E2E、PR #249 で統合バックアップへの活動種別設定追加、PR #250 で復元済み活動種別の履歴入力反映 E2E、PR #251 で活動メモ候補の管理状態リセット E2E、PR #252 で通知理由 filter のクリック切替 E2E を main に反映。続いて dashboard の期限系リンク E2E を追加している。
 - 運用前提: PR 必須 / approval 任意 / required check `check-and-build`
-- 直近の作業: `/lines` の通知理由 filter をクリックで切り替え、通知対象のみ filter を保持したまま理由だけを変更 / 解除できることを E2E で確認する。
+- 直近の作業: Dashboard の `期限系を確認` リンクから `/lines` の `notificationReason=overdue` filter へ遷移できることを E2E で確認する。
 - 追加確認: Playwright MCP はローカル `cwd` で起動でき、`/lines/history` の実画面確認が可能
 
 ## 実装済み主要機能
@@ -86,6 +86,6 @@
 
 ## 次の候補
 
-1. 通知理由 filter のクリック切替 E2E PR の `check` / `build` / `test:e2e` / `audit` と GitHub Actions を通し、通知対象のみ filter と理由 filter の組み合わせに回帰がないことを確認する
+1. Dashboard 期限系リンク E2E PR の `check` / `build` / `test:e2e` / `audit` と GitHub Actions を通し、Dashboard から `/lines` filter への遷移に回帰がないことを確認する
 2. `npm audit --audit-level=low` と `npm outdated --depth=0` を継続監視する
-3. 次の品質改善は、通知理由ごとの dashboard リンク確認や設定画面の通知方針変更後の表示確認など、未自動化のユーザー導線を小さく追加する
+3. 次の品質改善は、設定画面の通知方針変更後の dashboard / lines 表示確認や、未使用の `renderCriticalPanels` の扱い整理など、未自動化・未整理の導線を小さく追加する
