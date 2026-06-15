@@ -329,3 +329,6 @@
 - 旧統合バックアップ互換 E2E を追加
   - `activityMemoPreferences` を含まない version 1 相当の統合バックアップを生成し、復元時に従来メッセージで成功することを確認する
   - 旧統合バックアップ復元では、バックアップに存在しない活動メモ候補設定を上書きせず、既存 localStorage 設定が残ることを mobile / desktop の両 viewport で固定する
+- 主台帳単体バックアップ互換 E2E を追加
+  - 統合バックアップ内の `lineDrafts` envelope を主台帳単体バックアップとして保存し、`/settings/backup` から復元できることを確認する
+  - 主台帳単体バックアップ復元では、バックアップに存在しない活動メモ候補設定を上書きせず、既存 localStorage 設定が残ることを mobile / desktop の両 viewport で固定する
