@@ -7,6 +7,7 @@ const historyFormDraftStorageKey = 'line-ops-ledger.history-form-draft';
 const customActivityMemoTemplatesStorageKey = 'line-ops-ledger.custom-activity-memo-templates';
 const pinnedActivityMemoTemplatesStorageKey = 'line-ops-ledger.pinned-activity-memo-templates';
 const hiddenActivityMemoTemplatesStorageKey = 'line-ops-ledger.hidden-activity-memo-templates';
+const collapsedActivityMemoSectionsStorageKey = 'line-ops-ledger.collapsed-activity-memo-sections';
 
 const viewports = [
   { name: 'mobile', width: 360, height: 812 },
@@ -365,6 +366,44 @@ for (const viewport of viewports) {
       await expect(historyForm.getByRole('button', { name: secondTemplate })).toHaveCount(0);
       const storedTemplates = await page.evaluate((key) => window.localStorage.getItem(key), customActivityMemoTemplatesStorageKey);
       expect(storedTemplates).toBe(JSON.stringify([firstTemplate, updatedSecondTemplate]));
+    });
+
+    test('activity memo section collapse persistence path', async ({ page }) => {
+      await page.goto('/');
+      await clearAllStorage(page);
+
+      const customMemoTemplate = `折りたたみ候補-${viewport.name}-${Date.now().toString().slice(-5)}`;
+      const historyForm = page.locator('article#history-form');
+
+      await page.goto('/lines/history');
+      await historyForm.locator('label:has-text("活動メモ") textarea').fill(customMemoTemplate);
+      await historyForm.getByRole('button', { name: 'この文言を候補に追加' }).click();
+      await expect(page.getByText(`活動メモ候補「${customMemoTemplate}」を追加しました。`)).toBeVisible();
+      await expect(historyForm.getByText('追加した候補（1件）')).toBeVisible();
+      await expect(historyForm.getByRole('button', { name: customMemoTemplate })).toBeVisible();
+
+      await historyForm
+        .locator('.button-row.button-row--tight', { hasText: '追加した候補（1件）' })
+        .getByRole('button', { name: '折りたたむ' })
+        .click();
+      await page.waitForFunction(
+        ({ key }) => window.localStorage.getItem(key) === JSON.stringify(['custom']),
+        { key: collapsedActivityMemoSectionsStorageKey },
+      );
+      await expect(historyForm.getByRole('button', { name: customMemoTemplate })).toHaveCount(0);
+      await expect(historyForm.locator('.button-row.button-row--tight', { hasText: '追加した候補（1件）' }).getByRole('button', { name: '展開' })).toBeVisible();
+
+      await page.reload();
+      await expect(historyForm.getByText('追加した候補（1件）')).toBeVisible();
+      await expect(historyForm.getByRole('button', { name: customMemoTemplate })).toHaveCount(0);
+      await historyForm
+        .locator('.button-row.button-row--tight', { hasText: '追加した候補（1件）' })
+        .getByRole('button', { name: '展開' })
+        .click();
+      await expect(historyForm.getByRole('button', { name: customMemoTemplate })).toBeVisible();
+      await expect
+        .poll(() => page.evaluate((key) => window.localStorage.getItem(key), collapsedActivityMemoSectionsStorageKey))
+        .toBe('[]');
     });
 
     test('settings flows', async ({ page }) => {

@@ -316,3 +316,6 @@
 - Playwright 1.61 patch 更新を追加
   - `@playwright/test` を `^1.60.0` から `^1.61.0` へ更新し、推移依存の `playwright` / `playwright-core` も 1.61.0 に揃える
   - E2E 基盤更新として `check` / `build` / `test:e2e` / `audit` / `outdated` で確認する
+- 活動メモ候補セクション折りたたみ persistence E2E を追加
+  - custom 活動メモ候補を追加した後、`追加した候補` セクションを `折りたたむ` で閉じると localStorage に `custom` が保存されることを確認する
+  - reload 後も候補ボタンが非表示になり、`展開` 後に候補ボタンが戻ることを mobile / desktop の両 viewport で固定する
