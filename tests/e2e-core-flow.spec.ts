@@ -298,6 +298,75 @@ for (const viewport of viewports) {
       await expect(historyForm.getByRole('button', { name: customMemoTemplate })).toBeVisible();
     });
 
+    test('custom activity memo template update and reorder persistence path', async ({ page }) => {
+      await page.goto('/');
+      await clearAllStorage(page);
+
+      const firstTemplate = `並び替えA-${viewport.name}-${Date.now().toString().slice(-5)}`;
+      const secondTemplate = `並び替えB-${viewport.name}-${Date.now().toString().slice(-5)}`;
+      const updatedSecondTemplate = `更新済みB-${viewport.name}-${Date.now().toString().slice(-5)}`;
+      const historyForm = page.locator('article#history-form');
+
+      await page.goto('/lines/history');
+      await historyForm.locator('label:has-text("活動メモ") textarea').fill(firstTemplate);
+      await historyForm.getByRole('button', { name: 'この文言を候補に追加' }).click();
+      await expect(page.getByText(`活動メモ候補「${firstTemplate}」を追加しました。`)).toBeVisible();
+      await historyForm.locator('label:has-text("活動メモ") textarea').fill(secondTemplate);
+      await historyForm.getByRole('button', { name: 'この文言を候補に追加' }).click();
+      await expect(page.getByText(`活動メモ候補「${secondTemplate}」を追加しました。`)).toBeVisible();
+
+      await historyForm
+        .locator('.button-row.button-row--tight', { has: page.getByRole('button', { name: firstTemplate }) })
+        .getByRole('button', { name: '上へ' })
+        .click();
+      await expect(page.getByText(`活動メモ候補「${firstTemplate}」を上へ移動しました。`)).toBeVisible();
+      await page.waitForFunction(
+        ({ key, first, second }) => {
+          const raw = window.localStorage.getItem(key);
+          if (!raw) {
+            return false;
+          }
+
+          try {
+            return JSON.stringify(JSON.parse(raw)) === JSON.stringify([first, second]);
+          } catch {
+            return false;
+          }
+        },
+        { key: customActivityMemoTemplatesStorageKey, first: firstTemplate, second: secondTemplate },
+      );
+
+      await historyForm.locator('label:has-text("活動メモ") textarea').fill(updatedSecondTemplate);
+      await historyForm
+        .locator('.button-row.button-row--tight', { has: page.getByRole('button', { name: secondTemplate }) })
+        .getByRole('button', { name: '現在の文言で更新' })
+        .click();
+      await expect(page.getByText(`活動メモ候補「${secondTemplate}」を「${updatedSecondTemplate}」に更新しました。`)).toBeVisible();
+      await page.waitForFunction(
+        ({ key, first, second }) => {
+          const raw = window.localStorage.getItem(key);
+          if (!raw) {
+            return false;
+          }
+
+          try {
+            return JSON.stringify(JSON.parse(raw)) === JSON.stringify([first, second]);
+          } catch {
+            return false;
+          }
+        },
+        { key: customActivityMemoTemplatesStorageKey, first: firstTemplate, second: updatedSecondTemplate },
+      );
+
+      await page.reload();
+      await expect(historyForm.getByText('追加した候補（2件）')).toBeVisible();
+      await expect(historyForm.getByRole('button', { name: firstTemplate })).toBeVisible();
+      await expect(historyForm.getByRole('button', { name: updatedSecondTemplate })).toBeVisible();
+      await expect(historyForm.getByRole('button', { name: secondTemplate })).toHaveCount(0);
+      const storedTemplates = await page.evaluate((key) => window.localStorage.getItem(key), customActivityMemoTemplatesStorageKey);
+      expect(storedTemplates).toBe(JSON.stringify([firstTemplate, updatedSecondTemplate]));
+    });
+
     test('settings flows', async ({ page }) => {
       await page.goto('/');
       await clearAllStorage(page);
