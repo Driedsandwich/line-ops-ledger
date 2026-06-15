@@ -808,6 +808,25 @@ for (const viewport of viewports) {
       await expect(page.getByRole('button', { name: '通知対象のみ: ON' })).toBeVisible();
       await expect(page.getByRole('button', { name: /期限超過 \d+/ })).toHaveClass(/button--primary/);
       await expect(page.locator('li', { hasText: '通知理由: 期限超過' }).first()).toBeVisible();
+
+      await page.getByRole('button', { name: /今日期限 \d+/ }).click();
+      await expect
+        .poll(() => page.evaluate(() => new URL(window.location.href).searchParams.get('notificationReason')))
+        .toBe('today');
+      await expect
+        .poll(() => page.evaluate(() => new URL(window.location.href).searchParams.get('notificationTargetOnly')))
+        .toBe('true');
+      await expect(page.getByRole('button', { name: /今日期限 \d+/ })).toHaveClass(/button--primary/);
+      await expect(page.getByRole('button', { name: /期限超過 \d+/ })).not.toHaveClass(/button--primary/);
+
+      await page.getByRole('button', { name: /通知対象合計 \d+/ }).click();
+      await expect
+        .poll(() => page.evaluate(() => new URL(window.location.href).searchParams.get('notificationReason')))
+        .toBeNull();
+      await expect
+        .poll(() => page.evaluate(() => new URL(window.location.href).searchParams.get('notificationTargetOnly')))
+        .toBe('true');
+      await expect(page.getByRole('button', { name: /通知対象合計 \d+/ })).toHaveClass(/button--primary/);
     });
   });
 }
