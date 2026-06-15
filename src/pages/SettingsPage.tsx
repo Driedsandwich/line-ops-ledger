@@ -89,6 +89,10 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
 }
 
+function isBackupCollection(value: unknown): boolean {
+  return Array.isArray(value) || (isRecord(value) && Array.isArray(value.items));
+}
+
 function readStringArrayField(source: Record<string, unknown>, key: string): string[] {
   const value = source[key];
   return Array.isArray(value) && value.every((item) => typeof item === 'string') ? value : [];
@@ -248,6 +252,9 @@ export function SettingsPage({ section }: { section: SettingsSectionKey }): Reac
         'lineHistory' in parsed
       ) {
         const combined = parsed as { lineDrafts: unknown; lineHistory: unknown; activityMemoPreferences?: unknown; customActivityTypes?: unknown };
+        if (!isBackupCollection(combined.lineDrafts) || !isBackupCollection(combined.lineHistory)) {
+          throw new Error('JSON バックアップの形式が不正です。');
+        }
         const importedDrafts = lineDraftStore.importJson(JSON.stringify(combined.lineDrafts));
         const importedHistory = lineHistoryStore.importJson(JSON.stringify(combined.lineHistory));
         const importedActivityMemoPreferences = importActivityMemoPreferencesBackup(combined.activityMemoPreferences);
