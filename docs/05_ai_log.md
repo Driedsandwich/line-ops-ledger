@@ -354,3 +354,6 @@
 - Dashboard の未使用 panel helper を整理
   - 現行 Dashboard JSX から呼び出されていない `renderCriticalPanels` / `renderWarningPanels` / `renderWatchPanels` を削除する
   - 旧 panel 群だけで使っていた表示 helper も削除し、表示されないリンクやカードを E2E 対象と誤認しないようにする
+- 通知設定の有効 / 無効反映 E2E を追加
+  - サンプルデータ投入後に通知設定を有効化すると、Dashboard の Notifications KPI が件数表示になることを確認する
+  - 通知設定を無効化すると Dashboard は `無効`、`/lines?notificationTargetOnly=true` の通知対象サマリーは `0件` になることを mobile / desktop の両 viewport で固定する
