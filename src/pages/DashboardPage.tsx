@@ -33,6 +33,13 @@ function formatReviewDate(value: string): string {
   }).format(date);
 }
 
+function formatLocalDateInputValue(value: Date): string {
+  const year = value.getFullYear();
+  const month = String(value.getMonth() + 1).padStart(2, '0');
+  const day = String(value.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 function formatCurrency(value: number): string {
   return `${new Intl.NumberFormat('ja-JP').format(value)}円/月`;
 }
@@ -370,7 +377,7 @@ function buildFiberDebtItems(drafts: LineDraft[], today: Date): FiberDebtItem[] 
       const debtClearDate = calculateFiberDebtClearDate(draft.contractStartDate, draft.fiberConstructionFeeMonths);
       return {
         draft,
-        debtClearDate: debtClearDate ? debtClearDate.toISOString().slice(0, 10) : null,
+        debtClearDate: debtClearDate ? formatLocalDateInputValue(debtClearDate) : null,
         daysUntilClear: debtClearDate ? diffInDays(today, debtClearDate) : null,
         remainingDebt: calculateFiberRemainingDebt(
           draft.contractStartDate,
@@ -577,7 +584,7 @@ function buildSummary(drafts: LineDraft[], allHistoryEntries: LineHistoryEntry[]
     }
   }
 
-  const todayStr = today.toISOString().slice(0, 10);
+  const todayStr = formatLocalDateInputValue(today);
   const inactiveLines = drafts
     .filter((draft) => draft.status === '利用中' || draft.status === '解約予定')
     .map((draft) => {

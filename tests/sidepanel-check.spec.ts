@@ -3,6 +3,7 @@ import { test, expect, type Page } from '@playwright/test';
 const routes = ['/', '/lines', '/lines/history', '/settings/storage', '/settings/backup', '/settings/notifications', '/settings/activity-types'];
 const navLinks = ['/', '/lines', '/lines/history', '/settings/storage', '/settings/backup', '/settings/notifications', '/settings/activity-types'];
 const draftStorageKey = 'line-ops-ledger.line-drafts';
+const historyStorageKey = 'line-ops-ledger.line-history';
 const seededDraftSeed = [
   {
     id: 'draft-test-1',
@@ -150,6 +151,49 @@ test.describe('Asia/Tokyo local date boundary', () => {
     await page.locator('li', { hasText: '特典受領日境界テスト' }).first().getByRole('button', { name: '詳細を開く' }).click();
 
     await expect(page.locator('#draft-draft-benefit-local-date-benefits')).toContainText('受取日: 2026/06/10');
+  });
+
+  test('dashboard inactive line threshold uses local today near midnight', async ({ page }) => {
+    await page.clock.setFixedTime(new Date('2026-06-09T15:30:00.000Z'));
+    await page.setViewportSize({ width: 360, height: 812 });
+    await page.goto('/');
+    await page.evaluate(
+      ({ draftKey, historyKey }) => {
+        window.localStorage.setItem(draftKey, JSON.stringify([
+          {
+            id: 'draft-dashboard-inactive-local-date',
+            lineName: 'Dashboard未活動境界テスト',
+            carrier: 'docomo',
+            lineType: '音声SIM',
+            phoneNumber: '090-3333-4444',
+            status: '利用中',
+          },
+        ]));
+        window.localStorage.setItem(historyKey, JSON.stringify([
+          {
+            id: 'history-dashboard-inactive-local-date',
+            phoneNumber: '090-3333-4444',
+            carrier: 'docomo',
+            status: '利用中',
+            contractStartDate: '2025-01-01',
+            activityLogs: [
+              {
+                id: 'activity-dashboard-inactive-local-date',
+                activityDate: '2026-03-12',
+                activityType: '通信実施',
+                activityMemo: '90日前境界',
+              },
+            ],
+          },
+        ]));
+      },
+      { draftKey: draftStorageKey, historyKey: historyStorageKey },
+    );
+
+    await page.goto('/', { waitUntil: 'domcontentloaded' });
+
+    await expect(page.locator('.dashboard-ring-card', { hasText: '実績不足' })).toContainText('未活動あり');
+    await expect(page.locator('.dashboard-ring-card', { hasText: '実績不足' })).toContainText('1/1件');
   });
 });
 
