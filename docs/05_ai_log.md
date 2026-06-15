@@ -409,3 +409,6 @@
 - Dashboard の today 由来日付をローカル日付へ統一
   - Dashboard の光回線残債日付と長期未活動判定で `toISOString().slice(0, 10)` を使わず、ローカル日付 `YYYY-MM-DD` を生成する
   - JST 00:30 相当の固定時刻で Dashboard を開き、90 日前の最終活動が `未活動あり` として扱われることを E2E で固定する
+- 不正な通知理由 query の fallback E2E を追加
+  - `/lines?notificationTargetOnly=true&notificationReason=invalid` で不正な通知理由 query を `all` 扱いにし、通知対象のみ filter が維持されることを確認する
+  - 通知対象サマリーが `通知対象合計 1` の active state になり、対象回線が 0 件に落ちないことを E2E で固定する

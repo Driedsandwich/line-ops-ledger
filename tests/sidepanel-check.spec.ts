@@ -4,6 +4,7 @@ const routes = ['/', '/lines', '/lines/history', '/settings/storage', '/settings
 const navLinks = ['/', '/lines', '/lines/history', '/settings/storage', '/settings/backup', '/settings/notifications', '/settings/activity-types'];
 const draftStorageKey = 'line-ops-ledger.line-drafts';
 const historyStorageKey = 'line-ops-ledger.line-history';
+const notificationSettingsStorageKey = 'line-ops-ledger.notification-settings';
 const seededDraftSeed = [
   {
     id: 'draft-test-1',
@@ -206,6 +207,39 @@ test('history deep link with unformatted stored phone still normalizes against f
 
   await expect(page.locator('h3:has-text("開いている文脈")')).toBeVisible();
   await expect(page.locator('input[placeholder="例: 09012345678"]')).toHaveValue('09011112222');
+});
+
+test('lines with invalid notificationReason keeps notification target filter as all reasons', async ({ page }) => {
+  await page.setViewportSize({ width: 360, height: 812 });
+  await page.goto('/');
+  await page.evaluate(
+    ({ draftKey, settingsKey }) => {
+      window.localStorage.setItem(draftKey, JSON.stringify([
+        {
+          id: 'draft-invalid-notification-reason',
+          lineName: '通知理由不正query境界テスト',
+          carrier: 'docomo',
+          lineType: '音声SIM',
+          status: '利用中',
+          nextReviewDate: '2026-01-01',
+        },
+      ]));
+      window.localStorage.setItem(settingsKey, JSON.stringify({
+        enabled: true,
+        reminderWindow: 'within-7-days',
+        relaunchPolicy: 'on-app-launch',
+        reviewIntervalDays: 30,
+      }));
+    },
+    { draftKey: draftStorageKey, settingsKey: notificationSettingsStorageKey },
+  );
+
+  await page.goto('/lines?notificationTargetOnly=true&notificationReason=invalid', { waitUntil: 'domcontentloaded' });
+
+  await expect(page.getByRole('button', { name: '通知対象のみ: ON' })).toBeVisible();
+  await expect(page.getByRole('button', { name: '通知対象合計 1' })).toHaveClass(/button--primary/);
+  await expect(page.getByRole('button', { name: '期限超過 1' })).not.toHaveClass(/button--primary/);
+  await expect(page.locator('li', { hasText: '通知理由不正query境界テスト' })).toContainText('通知理由: 期限超過');
 });
 
 test('history deep link with quickActivity + historyIntent shows context label', async ({ page }) => {
