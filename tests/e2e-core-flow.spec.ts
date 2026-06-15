@@ -417,6 +417,7 @@ for (const viewport of viewports) {
       const backupHiddenMemoTemplate = `非表示候補-${viewport.name}-${Date.now().toString().slice(-5)}`;
       const backupDir = '/tmp/line-ops-ledger-e2e';
       const backupPath = path.join(backupDir, `backup-${viewport.name}-${Date.now()}.json`);
+      const legacyIntegratedBackupPath = path.join(backupDir, `legacy-integrated-backup-${viewport.name}-${Date.now()}.json`);
       const invalidBackupPath = path.join(backupDir, `invalid-backup-${viewport.name}-${Date.now()}.json`);
 
       await createDraft(page, lineName, phoneNumber);
@@ -484,11 +485,48 @@ for (const viewport of viewports) {
       expect(exportedBackup.activityMemoPreferences?.pinnedTemplates).toEqual([backupCustomMemoTemplate]);
       expect(exportedBackup.activityMemoPreferences?.hiddenTemplates).toEqual([backupHiddenMemoTemplate]);
       expect(exportedBackup.activityMemoPreferences?.collapsedSections).toEqual(['custom']);
+      const legacyIntegratedBackup = {
+        ...exportedBackup,
+        version: 1,
+        activityMemoPreferences: undefined,
+      };
+      delete legacyIntegratedBackup.activityMemoPreferences;
+      fs.writeFileSync(legacyIntegratedBackupPath, JSON.stringify(legacyIntegratedBackup, null, 2), 'utf8');
 
       fs.writeFileSync(invalidBackupPath, '{}', 'utf8');
       await page.getByRole('button', { name: 'バックアップを復元' }).click();
       await page.locator('input.hidden-file-input').setInputFiles(invalidBackupPath);
       await expect(page.getByText('JSON バックアップの形式が不正です。')).toBeVisible();
+
+      await page.evaluate(
+        ({ customKey, pinnedKey, hiddenKey, collapsedKey }) => {
+          window.localStorage.setItem(customKey, JSON.stringify(['旧互換の既存custom']));
+          window.localStorage.setItem(pinnedKey, JSON.stringify(['旧互換の既存pin']));
+          window.localStorage.setItem(hiddenKey, JSON.stringify(['旧互換の既存hidden']));
+          window.localStorage.setItem(collapsedKey, JSON.stringify(['pinned']));
+        },
+        {
+          customKey: customActivityMemoTemplatesStorageKey,
+          pinnedKey: pinnedActivityMemoTemplatesStorageKey,
+          hiddenKey: hiddenActivityMemoTemplatesStorageKey,
+          collapsedKey: collapsedActivityMemoSectionsStorageKey,
+        },
+      );
+      await page.getByRole('button', { name: 'バックアップを復元' }).click();
+      await page.locator('input.hidden-file-input').setInputFiles(legacyIntegratedBackupPath);
+      await expect(page.getByText('統合バックアップを復元しました（主台帳 1 件 / 履歴 1 件）。')).toBeVisible();
+      await expect
+        .poll(() => page.evaluate((key) => window.localStorage.getItem(key), customActivityMemoTemplatesStorageKey))
+        .toBe(JSON.stringify(['旧互換の既存custom']));
+      await expect
+        .poll(() => page.evaluate((key) => window.localStorage.getItem(key), pinnedActivityMemoTemplatesStorageKey))
+        .toBe(JSON.stringify(['旧互換の既存pin']));
+      await expect
+        .poll(() => page.evaluate((key) => window.localStorage.getItem(key), hiddenActivityMemoTemplatesStorageKey))
+        .toBe(JSON.stringify(['旧互換の既存hidden']));
+      await expect
+        .poll(() => page.evaluate((key) => window.localStorage.getItem(key), collapsedActivityMemoSectionsStorageKey))
+        .toBe(JSON.stringify(['pinned']));
 
       await clearAllStorage(page);
       await page.getByRole('button', { name: 'バックアップを復元' }).click();
