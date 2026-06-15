@@ -387,3 +387,6 @@
 - 通知無効時の通知理由 query 境界 E2E を追加
   - 通知を無効化した状態で `/lines?notificationTargetOnly=true&notificationReason=overdue` を開くことを確認する
   - 通知対象が 0 件になり、`期限超過 0` の active state と保存済み回線 0 件表示が崩れないことを mobile / desktop の両 viewport で固定する
+- 復元後の回線表示と活動記録導線 E2E を追加
+  - 統合バックアップ復元後に `/lines` の保存済み回線件数が復元件数と一致することを確認する
+  - 復元された行の `活動を記録` から `/lines/history?quickActivity=` へ遷移し、電話番号が履歴フォームへ入ることを mobile / desktop の両 viewport で固定する

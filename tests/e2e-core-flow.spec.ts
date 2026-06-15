@@ -697,6 +697,12 @@ for (const viewport of viewports) {
 
       await page.goto('/lines');
       await expect(page.getByText(lineName)).toBeVisible();
+      await expect(page.locator('.card', { has: page.getByRole('heading', { name: '保存済み回線' }) }).locator('.card__header .badge')).toHaveText('1件');
+      await page.locator('li', { hasText: lineName }).first().getByRole('button', { name: '活動を記録' }).click();
+      await expect(page).toHaveURL(/\/lines\/history\?quickActivity=/);
+      await expect(page.getByLabel('電話番号 *')).toHaveValue(phoneNumber);
+
+      await page.goto('/lines');
       const restoredMemo = `復元後編集-${Date.now().toString().slice(-5)}`;
       await page.locator('li', { hasText: lineName }).first().getByRole('button', { name: '編集する' }).click();
       await page.locator('form label:has-text("メモ") textarea').fill(restoredMemo);
