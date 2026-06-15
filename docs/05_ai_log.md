@@ -393,3 +393,6 @@
 - 通知期限 window 変更後の reload 同期 E2E を追加
   - 通知対象の期限を `overdue` に切り替えた後、Dashboard reload 後も Notifications KPI が同じ対象件数を維持することを確認する
   - `/lines?notificationTargetOnly=true` reload 後も通知対象サマリーと `通知対象合計` active state が同じ件数を維持することを mobile / desktop の両 viewport で固定する
+- 通知無効化後の reload 同期 E2E を追加
+  - 通知設定を無効化した後、Dashboard reload 後も Notifications KPI が `無効` を維持することを確認する
+  - `/lines?notificationTargetOnly=true` reload 後も通知対象サマリーが `対象 0件`、`通知対象合計 0` が active のまま維持されることを mobile / desktop の両 viewport で固定する

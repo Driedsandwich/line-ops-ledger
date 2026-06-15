@@ -73,6 +73,7 @@
     - 通知設定を有効化した状態で `/lines?notificationTargetOnly=true&notificationReason=<reason>` を開き、通知対象のみ filter と通知理由 filter が表示に反映される。
     - 通知理由 filter が ON の状態では、表示中の行が選択中の通知理由だけに絞られる。
     - 通知設定を有効化すると Dashboard の Notifications KPI が件数表示になり、無効化すると Dashboard は `無効`、Lines の通知対象サマリーは `0件` になる。
+    - 通知設定を無効化した後に Dashboard と Lines を reload しても、Dashboard は `無効`、Lines の通知対象サマリーは `0件` を維持する。
     - 通知対象の期限を `overdue` / `within-7-days` で切り替えると、Dashboard の Notifications KPI と Lines の通知対象サマリーが同じ件数へ連動する。
     - 通知対象の期限を切り替えた後に Dashboard と Lines を reload しても、Notifications KPI と通知対象サマリーが同じ件数を維持する。
     - 通知設定を有効化した状態で Dashboard の通知理由リンクから `/lines` へ遷移し、`通知対象のみ` 切替後も通知理由 filter が維持される。
