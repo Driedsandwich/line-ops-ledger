@@ -369,3 +369,6 @@
 - 通知理由 0 件境界 E2E を追加
   - 通知対象のみ filter 中に `今日期限 0` を選んでも `notificationReason=today` と active state が維持されることを確認する
   - 0 件理由選択時に保存済み回線の件数 badge と表示行が 0 件になることを mobile / desktop の両 viewport で固定する
+- Dashboard の契約中 filter drilldown E2E を追加
+  - Dashboard の `契約中の回線を見る` から `/lines?contractActiveOnly=true` へ遷移することを確認する
+  - 遷移後の Lines で `契約中のみ` checkbox と quick button が ON になることを mobile / desktop の両 viewport で固定する

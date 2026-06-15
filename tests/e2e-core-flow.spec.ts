@@ -734,6 +734,12 @@ for (const viewport of viewports) {
       await expect(summaryKpi.locator('.dashboard-kpi-card__label', { hasText: 'Danger Alerts' })).toBeVisible();
       await expect(actionableAlerts.locator('.badge--danger', { hasText: 'Critical' }).first()).toBeVisible();
 
+      await hoppingHealth.getByRole('link', { name: '契約中の回線を見る' }).click();
+      await expect(page).toHaveURL(/\/lines\?.*contractActiveOnly=true/);
+      await expect(page.getByRole('button', { name: '契約中のみ: ON' })).toBeVisible();
+      await expect(page.getByLabel('契約中のみ')).toBeChecked();
+
+      await page.goto('/');
       await hoppingHealth.getByRole('link', { name: '期限系を確認' }).click();
       await expect(page).toHaveURL(/\/lines\?.*notificationReason=overdue/);
       await expect(page.getByRole('button', { name: /期限超過 \d+/ })).toHaveClass(/button--primary/);

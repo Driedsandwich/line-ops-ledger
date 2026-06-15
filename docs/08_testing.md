@@ -61,6 +61,7 @@
     - custom 活動メモ候補を更新 / 並び替えすると、reload 後も更新後の文言と順序が維持される。
     - 活動メモ候補セクションを折りたたむと、reload 後も閉じた状態が維持され、`展開` で候補ボタンが戻る。
   - 主台帳 URL 導線
+    - Dashboard の `契約中の回線を見る` から `/lines?contractActiveOnly=true` へ遷移し、Lines の `契約中のみ` checkbox / quick button が ON になる。
     - サンプルデータ投入後、`Hopping Health` の `利用実績を確認` から `/lines?sort=latestActivityAsc&contractActiveOnly=true` に遷移し、契約中のみ filter が有効になる。
     - Dashboard から `/lines?sort=latestActivityAsc&contractActiveOnly=true` へ遷移した後、Lines の `並び順` select が `latestActivityAsc` として初期化される。
     - `/lines?openDraft=<id>&focusSection=benefits` と `/lines?openDraft=<id>&focusSection=fiber` で対象回線が展開され、該当セクションが表示される。
