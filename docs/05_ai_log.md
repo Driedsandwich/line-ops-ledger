@@ -424,3 +424,6 @@
 - 壊れた活動メモ候補設定の非破壊 E2E を追加
   - 統合バックアップの `activityMemoPreferences` は custom / pinned / hidden / collapsed sections がすべて string array の場合だけ復元する
   - 活動メモ候補設定だけが壊れた統合バックアップでは、主台帳 / 履歴 / 活動種別の復元を続けつつ、既存の活動メモ候補設定が維持されることを mobile / desktop の両 viewport で固定する
+- 設定系 E2E を責務別に分割
+  - `settings flows` から活動種別管理と通知設定 reload persistence を独立テストへ切り出す
+  - バックアップ復元 E2E は import / export / 互換 / 非破壊 / 復元後導線の確認に寄せ、失敗時の原因を追いやすくする

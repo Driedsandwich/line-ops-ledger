@@ -460,6 +460,39 @@ for (const viewport of viewports) {
         .toBe('[]');
     });
 
+    test('settings activity type management path', async ({ page }) => {
+      await page.goto('/');
+      await clearAllStorage(page);
+
+      await page.goto('/settings/activity-types');
+      const customType = `カスタム-${viewport.name}-${Date.now().toString().slice(-5)}`;
+      await page.getByPlaceholder('例: データ速度確認').fill(customType);
+      await page.getByRole('button', { name: '追加する' }).click();
+      await expect(page.locator('ul.list li', { hasText: customType })).toBeVisible();
+      await page.reload();
+      await expect(page.locator('ul.list li', { hasText: customType })).toBeVisible();
+      await page.locator('ul.list li', { hasText: customType }).getByRole('button', { name: '削除' }).click();
+      await expect(page.getByText(customType)).toHaveCount(0);
+    });
+
+    test('notification settings persistence path', async ({ page }) => {
+      await page.goto('/');
+      await clearAllStorage(page);
+
+      await page.goto('/settings/notifications');
+      await enableNotificationSettings(page);
+
+      await expect(page.getByLabel('通知を使うか')).toHaveValue('enabled');
+      await expect(page.getByLabel('通知対象の期限')).toHaveValue('within-7-days');
+      await expect(page.getByLabel('再通知の扱い')).toHaveValue('on-app-launch');
+      await expect(page.getByLabel('活動後の次回確認日サジェスト（日数）')).toHaveValue('21');
+      await page.reload();
+      await expect(page.getByLabel('通知を使うか')).toHaveValue('enabled');
+      await expect(page.getByLabel('通知対象の期限')).toHaveValue('within-7-days');
+      await expect(page.getByLabel('再通知の扱い')).toHaveValue('on-app-launch');
+      await expect(page.getByLabel('活動後の次回確認日サジェスト（日数）')).toHaveValue('21');
+    });
+
     test('settings flows', async ({ page }) => {
       await page.goto('/');
       await clearAllStorage(page);
@@ -480,29 +513,6 @@ for (const viewport of viewports) {
 
       await createDraft(page, lineName, phoneNumber);
       await createHistoryEntry(page, lineName, phoneNumber, historyMemo);
-
-      await page.goto('/settings/activity-types');
-      const customType = `カスタム-${Date.now().toString().slice(-5)}`;
-      await page.getByPlaceholder('例: データ速度確認').fill(customType);
-      await page.getByRole('button', { name: '追加する' }).click();
-      await expect(page.locator('ul.list li', { hasText: customType })).toBeVisible();
-      await page.reload();
-      await expect(page.locator('ul.list li', { hasText: customType })).toBeVisible();
-      await page.locator('ul.list li', { hasText: customType }).getByRole('button', { name: '削除' }).click();
-      await expect(page.getByText(customType)).toHaveCount(0);
-
-      await page.goto('/settings/notifications');
-      await enableNotificationSettings(page);
-
-      await expect(page.getByLabel('通知を使うか')).toHaveValue('enabled');
-      await expect(page.getByLabel('通知対象の期限')).toHaveValue('within-7-days');
-      await expect(page.getByLabel('再通知の扱い')).toHaveValue('on-app-launch');
-      await expect(page.getByLabel('活動後の次回確認日サジェスト（日数）')).toHaveValue('21');
-      await page.reload();
-      await expect(page.getByLabel('通知を使うか')).toHaveValue('enabled');
-      await expect(page.getByLabel('通知対象の期限')).toHaveValue('within-7-days');
-      await expect(page.getByLabel('再通知の扱い')).toHaveValue('on-app-launch');
-      await expect(page.getByLabel('活動後の次回確認日サジェスト（日数）')).toHaveValue('21');
 
       await page.evaluate(
         ({ customKey, pinnedKey, hiddenKey, collapsedKey, activityTypesKey, customMemo, hiddenMemo, customActivityType }) => {
