@@ -750,6 +750,7 @@ for (const viewport of viewports) {
       await page.getByRole('link', { name: '利用実績を確認' }).click();
       await expect(page).toHaveURL(/\/lines\?.*sort=latestActivityAsc.*contractActiveOnly=true/);
       await expect(page.getByRole('button', { name: '契約中のみ: ON' })).toBeVisible();
+      await expect(page.getByLabel('並び順')).toHaveValue('latestActivityAsc');
 
       await page.goto('/lines?openDraft=d-003&focusSection=benefits');
       await expect(page.locator('#draft-d-003-benefits')).toBeVisible();
