@@ -64,6 +64,7 @@
     - `/lines?openDraft=<id>&focusSection=benefits` と `/lines?openDraft=<id>&focusSection=fiber` で対象回線が展開され、該当セクションが表示される。
     - `/lines?sort=latestActivityAsc&contractActiveOnly=true&usagePriority=<kind>` で不足種別の優先 filter と対象行の強調が表示される。
     - 通知設定を有効化した状態で `/lines?notificationTargetOnly=true&notificationReason=<reason>` を開き、通知対象のみ filter と通知理由 filter が表示に反映される。
+    - 通知設定を有効化した状態で Dashboard の通知理由リンクから `/lines` へ遷移し、`通知対象のみ` 切替後も通知理由 filter が維持される。
   - バックアップ導線
     - `/settings/backup` で「統合バックアップをエクスポート」→ 生成 JSON をローカルで保存。
     - 生成 JSON に主台帳、履歴、活動メモ候補設定（custom / pinned / hidden / collapsed sections）が含まれることを確認する。
