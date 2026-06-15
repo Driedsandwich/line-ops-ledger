@@ -107,6 +107,18 @@ test('history deep link with quickActivity seeds history context and phone input
   await expect(page.locator('input[placeholder="例: 09012345678"]')).toHaveValue('09011112222');
 });
 
+test('history deep link with quickActivity uses local date for activity date near midnight', async ({ page }) => {
+  await page.clock.setFixedTime(new Date('2026-06-09T15:30:00.000Z'));
+  await page.setViewportSize({ width: 360, height: 812 });
+  await page.goto('/');
+  await seedDraftLocalStorage(page);
+
+  await page.goto('/lines/history?quickActivity=090-1111-2222', { waitUntil: 'domcontentloaded' });
+
+  await expect(page.locator('h3:has-text("開いている文脈")')).toBeVisible();
+  await expect(page.locator('article#history-form label:has-text("活動日") input')).toHaveValue('2026-06-10');
+});
+
 test('history deep link with unformatted stored phone still normalizes against formatted quickActivity', async ({ page }) => {
   await page.setViewportSize({ width: 360, height: 812 });
   await page.goto('/');
