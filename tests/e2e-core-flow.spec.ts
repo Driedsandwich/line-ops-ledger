@@ -816,6 +816,12 @@ for (const viewport of viewports) {
       await expect(page.getByRole('button', { name: '通知対象のみ: ON' })).toBeVisible();
       await expect(page.getByRole('button', { name: /期限超過 \d+/ })).toHaveClass(/button--primary/);
       await expect(page.locator('li', { hasText: '通知理由: 期限超過' }).first()).toBeVisible();
+      const overdueItems = page.locator('ul.list--drafts > li');
+      const overdueVisibleCount = await overdueItems.count();
+      expect(overdueVisibleCount).toBeGreaterThan(0);
+      for (let index = 0; index < overdueVisibleCount; index += 1) {
+        await expect(overdueItems.nth(index)).toContainText('通知理由: 期限超過');
+      }
 
       await page.getByRole('button', { name: /今日期限 \d+/ }).click();
       await expect
