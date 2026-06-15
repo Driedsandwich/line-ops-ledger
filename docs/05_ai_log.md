@@ -326,3 +326,6 @@
   - 統合バックアップ version 2 として `activityMemoPreferences` を追加し、custom / pinned / hidden / collapsed sections を JSON に含める
   - 旧形式（台帳のみ / 台帳＋履歴）は従来どおり読み込めるようにし、新形式だけ活動メモ候補設定を復元する
   - `settings flows` E2E で、エクスポート JSON の内容と localStorage クリア後の復元結果を mobile / desktop の両 viewport で固定する
+- 旧統合バックアップ互換 E2E を追加
+  - `activityMemoPreferences` を含まない version 1 相当の統合バックアップを生成し、復元時に従来メッセージで成功することを確認する
+  - 旧統合バックアップ復元では、バックアップに存在しない活動メモ候補設定を上書きせず、既存 localStorage 設定が残ることを mobile / desktop の両 viewport で固定する
