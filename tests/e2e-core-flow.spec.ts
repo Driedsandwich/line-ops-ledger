@@ -474,6 +474,7 @@ for (const viewport of viewports) {
       const backupPath = path.join(backupDir, `backup-${viewport.name}-${Date.now()}.json`);
       const legacyIntegratedBackupPath = path.join(backupDir, `legacy-integrated-backup-${viewport.name}-${Date.now()}.json`);
       const ledgerOnlyBackupPath = path.join(backupDir, `ledger-only-backup-${viewport.name}-${Date.now()}.json`);
+      const malformedIntegratedBackupPath = path.join(backupDir, `malformed-integrated-backup-${viewport.name}-${Date.now()}.json`);
       const invalidBackupPath = path.join(backupDir, `invalid-backup-${viewport.name}-${Date.now()}.json`);
 
       await createDraft(page, lineName, phoneNumber);
@@ -534,6 +535,7 @@ for (const viewport of viewports) {
       expect(fs.statSync(backupPath).size).toBeGreaterThan(20);
       const exportedBackup = JSON.parse(fs.readFileSync(backupPath, 'utf8')) as {
         lineDrafts?: unknown;
+        lineHistory?: unknown;
         customActivityTypes?: string[];
         activityMemoPreferences?: {
           customTemplates?: string[];
@@ -583,11 +585,29 @@ for (const viewport of viewports) {
       delete legacyIntegratedBackup.customActivityTypes;
       fs.writeFileSync(legacyIntegratedBackupPath, JSON.stringify(legacyIntegratedBackup, null, 2), 'utf8');
       fs.writeFileSync(ledgerOnlyBackupPath, JSON.stringify(exportedBackup.lineDrafts, null, 2), 'utf8');
+      const malformedIntegratedBackup = JSON.parse(JSON.stringify(exportedBackup)) as {
+        lineDrafts?: { items?: Array<Record<string, unknown>> };
+        lineHistory?: unknown;
+      };
+      if (malformedIntegratedBackup.lineDrafts?.items?.[0]) {
+        malformedIntegratedBackup.lineDrafts.items[0].lineName = `破損バックアップ-${viewport.name}`;
+      }
+      malformedIntegratedBackup.lineHistory = {};
+      fs.writeFileSync(malformedIntegratedBackupPath, JSON.stringify(malformedIntegratedBackup, null, 2), 'utf8');
 
       fs.writeFileSync(invalidBackupPath, '{}', 'utf8');
       await page.getByRole('button', { name: 'バックアップを復元' }).click();
       await page.locator('input.hidden-file-input').setInputFiles(invalidBackupPath);
       await expect(page.getByText('JSON バックアップの形式が不正です。')).toBeVisible();
+      await page.getByRole('button', { name: 'バックアップを復元' }).click();
+      await page.locator('input.hidden-file-input').setInputFiles(malformedIntegratedBackupPath);
+      await expect(page.getByText('JSON バックアップの形式が不正です。')).toBeVisible();
+      await page.goto('/lines');
+      await expect(page.locator('li', { hasText: lineName })).toBeVisible();
+      await expect(page.locator('li', { hasText: `破損バックアップ-${viewport.name}` })).toHaveCount(0);
+      await page.goto('/lines/history');
+      await expect(page.locator('article#history-timeline')).toContainText(historyMemo);
+      await page.goto('/settings/backup');
 
       await page.evaluate(
         ({ customKey, pinnedKey, hiddenKey, collapsedKey, activityTypesKey }) => {

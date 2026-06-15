@@ -418,3 +418,6 @@
 - 復元後の光回線 focus URL 導線 E2E を追加
   - 統合バックアップ復元後に `/lines?openDraft=<id>&focusSection=fiber` を開くことを確認する
   - 対象回線の展開、光回線詳細セクション表示、復元した移行種別 / ISP / 工事費関連の値が同時に維持されることを mobile / desktop の両 viewport で固定する
+- 部分破損した統合バックアップの非破壊 E2E を追加
+  - 統合バックアップの `lineHistory` が配列 / items 配列 envelope でない場合は、主台帳や履歴を書き換える前に形式不正として止める
+  - 履歴部分が壊れた統合バックアップを読み込んでも、既存の主台帳行と履歴タイムラインが維持されることを mobile / desktop の両 viewport で固定する
