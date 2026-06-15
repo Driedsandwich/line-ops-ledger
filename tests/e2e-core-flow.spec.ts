@@ -418,6 +418,7 @@ for (const viewport of viewports) {
       const backupDir = '/tmp/line-ops-ledger-e2e';
       const backupPath = path.join(backupDir, `backup-${viewport.name}-${Date.now()}.json`);
       const legacyIntegratedBackupPath = path.join(backupDir, `legacy-integrated-backup-${viewport.name}-${Date.now()}.json`);
+      const ledgerOnlyBackupPath = path.join(backupDir, `ledger-only-backup-${viewport.name}-${Date.now()}.json`);
       const invalidBackupPath = path.join(backupDir, `invalid-backup-${viewport.name}-${Date.now()}.json`);
 
       await createDraft(page, lineName, phoneNumber);
@@ -474,6 +475,7 @@ for (const viewport of viewports) {
       expect(fs.existsSync(backupPath)).toBe(true);
       expect(fs.statSync(backupPath).size).toBeGreaterThan(20);
       const exportedBackup = JSON.parse(fs.readFileSync(backupPath, 'utf8')) as {
+        lineDrafts?: unknown;
         activityMemoPreferences?: {
           customTemplates?: string[];
           pinnedTemplates?: string[];
@@ -485,6 +487,7 @@ for (const viewport of viewports) {
       expect(exportedBackup.activityMemoPreferences?.pinnedTemplates).toEqual([backupCustomMemoTemplate]);
       expect(exportedBackup.activityMemoPreferences?.hiddenTemplates).toEqual([backupHiddenMemoTemplate]);
       expect(exportedBackup.activityMemoPreferences?.collapsedSections).toEqual(['custom']);
+      expect(exportedBackup.lineDrafts).toBeTruthy();
       const legacyIntegratedBackup = {
         ...exportedBackup,
         version: 1,
@@ -492,6 +495,7 @@ for (const viewport of viewports) {
       };
       delete legacyIntegratedBackup.activityMemoPreferences;
       fs.writeFileSync(legacyIntegratedBackupPath, JSON.stringify(legacyIntegratedBackup, null, 2), 'utf8');
+      fs.writeFileSync(ledgerOnlyBackupPath, JSON.stringify(exportedBackup.lineDrafts, null, 2), 'utf8');
 
       fs.writeFileSync(invalidBackupPath, '{}', 'utf8');
       await page.getByRole('button', { name: 'バックアップを復元' }).click();
@@ -527,6 +531,37 @@ for (const viewport of viewports) {
       await expect
         .poll(() => page.evaluate((key) => window.localStorage.getItem(key), collapsedActivityMemoSectionsStorageKey))
         .toBe(JSON.stringify(['pinned']));
+
+      await clearAllStorage(page);
+      await page.evaluate(
+        ({ customKey, pinnedKey, hiddenKey, collapsedKey }) => {
+          window.localStorage.setItem(customKey, JSON.stringify(['台帳単体の既存custom']));
+          window.localStorage.setItem(pinnedKey, JSON.stringify(['台帳単体の既存pin']));
+          window.localStorage.setItem(hiddenKey, JSON.stringify(['台帳単体の既存hidden']));
+          window.localStorage.setItem(collapsedKey, JSON.stringify(['hidden']));
+        },
+        {
+          customKey: customActivityMemoTemplatesStorageKey,
+          pinnedKey: pinnedActivityMemoTemplatesStorageKey,
+          hiddenKey: hiddenActivityMemoTemplatesStorageKey,
+          collapsedKey: collapsedActivityMemoSectionsStorageKey,
+        },
+      );
+      await page.getByRole('button', { name: 'バックアップを復元' }).click();
+      await page.locator('input.hidden-file-input').setInputFiles(ledgerOnlyBackupPath);
+      await expect(page.getByText('主台帳バックアップを復元しました（1 件）。')).toBeVisible();
+      await expect
+        .poll(() => page.evaluate((key) => window.localStorage.getItem(key), customActivityMemoTemplatesStorageKey))
+        .toBe(JSON.stringify(['台帳単体の既存custom']));
+      await expect
+        .poll(() => page.evaluate((key) => window.localStorage.getItem(key), pinnedActivityMemoTemplatesStorageKey))
+        .toBe(JSON.stringify(['台帳単体の既存pin']));
+      await expect
+        .poll(() => page.evaluate((key) => window.localStorage.getItem(key), hiddenActivityMemoTemplatesStorageKey))
+        .toBe(JSON.stringify(['台帳単体の既存hidden']));
+      await expect
+        .poll(() => page.evaluate((key) => window.localStorage.getItem(key), collapsedActivityMemoSectionsStorageKey))
+        .toBe(JSON.stringify(['hidden']));
 
       await clearAllStorage(page);
       await page.getByRole('button', { name: 'バックアップを復元' }).click();
