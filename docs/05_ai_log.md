@@ -351,3 +351,6 @@
 - Dashboard 期限系リンク E2E を追加
   - Dashboard の `期限系を確認` リンクから `/lines` へ遷移し、`notificationReason=overdue` query が付くことを確認する
   - 遷移後の `/lines` で `期限超過` filter ボタンが active になることを mobile / desktop の両 viewport で固定する
+- Dashboard の未使用 panel helper を整理
+  - 現行 Dashboard JSX から呼び出されていない `renderCriticalPanels` / `renderWarningPanels` / `renderWatchPanels` を削除する
+  - 旧 panel 群だけで使っていた表示 helper も削除し、表示されないリンクやカードを E2E 対象と誤認しないようにする
