@@ -552,7 +552,13 @@ for (const viewport of viewports) {
       const restoredDraftId = String(exportedDraftItems[0]?.id ?? '');
       expect(restoredDraftId).toBeTruthy();
       if (exportedDraftItems[0]) {
+        exportedDraftItems[0].lineType = '光回線';
         exportedDraftItems[0].nextReviewDate = '2026-01-01';
+        exportedDraftItems[0].fiberTransferType = '事業者変更';
+        exportedDraftItems[0].fiberIspName = '復元後ISP';
+        exportedDraftItems[0].fiberConstructionFee = 26400;
+        exportedDraftItems[0].fiberMonthlyDiscount = 1100;
+        exportedDraftItems[0].fiberConstructionFeeMonths = 24;
         exportedDraftItems[0].benefits = [
           {
             id: 'backup-query-benefit',
@@ -688,6 +694,14 @@ for (const viewport of viewports) {
       await expect(page.locator(`#draft-${restoredDraftId}-benefits`)).toBeVisible();
       await expect(page.locator(`#draft-${restoredDraftId}-benefits`).getByRole('heading', { name: '特典 / キャッシュバック' })).toBeVisible();
       await expect(page.locator('li', { hasText: lineName })).toContainText('通知理由: 期限超過');
+      await page.goto(`/lines?openDraft=${encodeURIComponent(restoredDraftId)}&focusSection=fiber`);
+      await expect(page.locator(`#draft-${restoredDraftId}-fiber`)).toBeVisible();
+      await expect(page.locator('li', { hasText: lineName })).toContainText('光回線の移行種別');
+      await expect(page.locator('li', { hasText: lineName })).toContainText('事業者変更');
+      await expect(page.locator('li', { hasText: lineName })).toContainText('復元後ISP');
+      await expect(page.locator('li', { hasText: lineName })).toContainText('26,400円');
+      await expect(page.locator('li', { hasText: lineName })).toContainText('1,100円');
+      await expect(page.locator('li', { hasText: lineName })).toContainText('24ヶ月');
 
       await page.goto('/lines/history');
       await page.getByLabel('電話番号 *').fill(phoneNumber);
