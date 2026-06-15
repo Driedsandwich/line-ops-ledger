@@ -313,3 +313,6 @@
 - 活動メモ custom 候補の更新 / 並び替え persistence E2E を追加
   - custom 活動メモ候補を2件追加し、`上へ` で並び替えた順序が localStorage に保持されることを確認する
   - `現在の文言で更新` 後に旧文言が消え、reload 後も更新済み候補と並び順が保持されることを mobile / desktop の両 viewport で固定する
+- Playwright 1.61 patch 更新を追加
+  - `@playwright/test` を `^1.60.0` から `^1.61.0` へ更新し、推移依存の `playwright` / `playwright-core` も 1.61.0 に揃える
+  - E2E 基盤更新として `check` / `build` / `test:e2e` / `audit` / `outdated` で確認する
