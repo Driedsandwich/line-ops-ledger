@@ -559,7 +559,7 @@ function isEntryVisibleInTimeline(
 ): boolean {
   if (viewMode === 'active' && !isCurrentHistoryStatus(entry.status)) return false;
   const entryStart = parseDate(entry.contractStartDate);
-  const entryEnd = parseDate(entry.contractEndDate || today.toISOString().slice(0, 10));
+  const entryEnd = parseDate(entry.contractEndDate || formatDateInputValue(today));
   if (!entryStart || !entryEnd) return viewMode === 'all';
   const windowStart = getTimelineWindowStart(windowKey, today);
   const windowEnd = startOfDay(today);
@@ -575,7 +575,7 @@ function calculateTimelineStyleForWindow(
   fallbackEnd: string,
 ): { left: string; width: string } {
   const entryStart = parseDate(entry.contractStartDate) ?? parseDate(fallbackStart);
-  const entryEnd = parseDate(entry.contractEndDate || today.toISOString().slice(0, 10)) ?? parseDate(fallbackEnd);
+  const entryEnd = parseDate(entry.contractEndDate || formatDateInputValue(today)) ?? parseDate(fallbackEnd);
   if (!entryStart || !entryEnd) return { left: '0%', width: '100%' };
   const explicitWindowStart = getTimelineWindowStart(windowKey, today);
   const windowStart = explicitWindowStart ?? parseDate(fallbackStart) ?? entryStart;
@@ -793,7 +793,7 @@ export function HistoryPage(): ReactElement {
     const latestHistoryEntry = getLatestMatchingHistoryEntry(lineHistoryEntries, normalizedPhoneNumber, editingHistoryId);
     return latestHistoryEntry ? buildHistoryFormEntrySuggestion(latestHistoryEntry) : null;
   }, [editingHistoryId, lineHistoryEntries, normalizedPhoneNumber]);
-  const todayDateString = useMemo(() => today.toISOString().slice(0, 10), [today]);
+  const todayDateString = useMemo(() => formatDateInputValue(today), [today]);
   const quickActivityParam = searchParams.get('quickActivity');
   const normalizedQuickActivityParam = quickActivityParam ? normalizePhoneNumber(quickActivityParam) : null;
   const isFirstRun = drafts.length === 0 && lineHistoryEntries.length === 0;
@@ -994,7 +994,7 @@ export function HistoryPage(): ReactElement {
       status: target.status === '利用中' || target.status === '解約予定' || target.status === '解約済み' || target.status === 'MNP転出済み' ? target.status : '利用中',
       contractStartDate: target.contractStartDate,
       contractEndDate: target.contractEndDate,
-      activityLogs: [createActivityLogFormState({ activityDate: today.toISOString().slice(0, 10) })],
+      activityLogs: [createActivityLogFormState({ activityDate: formatDateInputValue(today) })],
       memo: '',
     });
   // eslint-disable-next-line react-hooks/exhaustive-deps

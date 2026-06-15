@@ -400,3 +400,6 @@
   - `活動後の次回確認日サジェスト（日数）` を `21` に変更し、reload 後も設定値が保持されることを確認する
   - 履歴保存後の次回確認日提案が活動日 +21日（例: `2026-07-01`）として表示されることを mobile / desktop の両 viewport で固定する
   - `toISOString().slice(0, 10)` によるタイムゾーン由来の 1 日ずれを避けるため、次回確認日サジェストはローカル日付で `YYYY-MM-DD` を生成する
+- History の today 由来日付をローカル日付へ統一
+  - History のタイムライン判定と quickActivity 初期活動日で `today.toISOString().slice(0, 10)` を使わず、ローカル日付 `YYYY-MM-DD` を生成する
+  - JST 00:30 相当の固定時刻で `/lines/history?quickActivity=` を開き、活動日が前日ではなく当日 `2026-06-10` になることを E2E で固定する
