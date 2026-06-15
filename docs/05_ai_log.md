@@ -378,3 +378,6 @@
 - Dashboard の月額費用 CTA E2E を追加
   - Dashboard の `回線一覧で確認` から `/lines` へ遷移することを確認する
   - 遷移後の Lines で保存済み回線の月額費用表示へ到達できることを mobile / desktop の両 viewport で固定する
+- History の今後のイベント特典 drilldown E2E を追加
+  - History の `今後のイベント` にある `特典を確認` から `/lines?openDraft=<id>&focusSection=benefits` へ遷移することを確認する
+  - 遷移後の Lines で対象回線の特典セクションが開くことを mobile / desktop の両 viewport で固定する
