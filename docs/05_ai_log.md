@@ -421,3 +421,6 @@
 - 部分破損した統合バックアップの非破壊 E2E を追加
   - 統合バックアップの `lineHistory` が配列 / items 配列 envelope でない場合は、主台帳や履歴を書き換える前に形式不正として止める
   - 履歴部分が壊れた統合バックアップを読み込んでも、既存の主台帳行と履歴タイムラインが維持されることを mobile / desktop の両 viewport で固定する
+- 壊れた活動メモ候補設定の非破壊 E2E を追加
+  - 統合バックアップの `activityMemoPreferences` は custom / pinned / hidden / collapsed sections がすべて string array の場合だけ復元する
+  - 活動メモ候補設定だけが壊れた統合バックアップでは、主台帳 / 履歴 / 活動種別の復元を続けつつ、既存の活動メモ候補設定が維持されることを mobile / desktop の両 viewport で固定する

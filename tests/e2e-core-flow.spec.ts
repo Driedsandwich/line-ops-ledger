@@ -475,6 +475,7 @@ for (const viewport of viewports) {
       const legacyIntegratedBackupPath = path.join(backupDir, `legacy-integrated-backup-${viewport.name}-${Date.now()}.json`);
       const ledgerOnlyBackupPath = path.join(backupDir, `ledger-only-backup-${viewport.name}-${Date.now()}.json`);
       const malformedIntegratedBackupPath = path.join(backupDir, `malformed-integrated-backup-${viewport.name}-${Date.now()}.json`);
+      const malformedPreferencesBackupPath = path.join(backupDir, `malformed-preferences-backup-${viewport.name}-${Date.now()}.json`);
       const invalidBackupPath = path.join(backupDir, `invalid-backup-${viewport.name}-${Date.now()}.json`);
 
       await createDraft(page, lineName, phoneNumber);
@@ -594,6 +595,16 @@ for (const viewport of viewports) {
       }
       malformedIntegratedBackup.lineHistory = {};
       fs.writeFileSync(malformedIntegratedBackupPath, JSON.stringify(malformedIntegratedBackup, null, 2), 'utf8');
+      const malformedPreferencesBackup = {
+        ...exportedBackup,
+        activityMemoPreferences: {
+          customTemplates: 'not-array',
+          pinnedTemplates: [backupCustomMemoTemplate],
+          hiddenTemplates: [backupHiddenMemoTemplate],
+          collapsedSections: ['custom'],
+        },
+      };
+      fs.writeFileSync(malformedPreferencesBackupPath, JSON.stringify(malformedPreferencesBackup, null, 2), 'utf8');
 
       fs.writeFileSync(invalidBackupPath, '{}', 'utf8');
       await page.getByRole('button', { name: 'バックアップを復元' }).click();
@@ -608,6 +619,35 @@ for (const viewport of viewports) {
       await page.goto('/lines/history');
       await expect(page.locator('article#history-timeline')).toContainText(historyMemo);
       await page.goto('/settings/backup');
+      await page.evaluate(
+        ({ customKey, pinnedKey, hiddenKey, collapsedKey }) => {
+          window.localStorage.setItem(customKey, JSON.stringify(['破損設定前custom']));
+          window.localStorage.setItem(pinnedKey, JSON.stringify(['破損設定前pin']));
+          window.localStorage.setItem(hiddenKey, JSON.stringify(['破損設定前hidden']));
+          window.localStorage.setItem(collapsedKey, JSON.stringify(['pinned']));
+        },
+        {
+          customKey: customActivityMemoTemplatesStorageKey,
+          pinnedKey: pinnedActivityMemoTemplatesStorageKey,
+          hiddenKey: hiddenActivityMemoTemplatesStorageKey,
+          collapsedKey: collapsedActivityMemoSectionsStorageKey,
+        },
+      );
+      await page.getByRole('button', { name: 'バックアップを復元' }).click();
+      await page.locator('input.hidden-file-input').setInputFiles(malformedPreferencesBackupPath);
+      await expect(page.getByText('統合バックアップを復元しました（主台帳 1 件 / 履歴 1 件 / 活動種別設定）。')).toBeVisible();
+      await expect
+        .poll(() => page.evaluate((key) => window.localStorage.getItem(key), customActivityMemoTemplatesStorageKey))
+        .toBe(JSON.stringify(['破損設定前custom']));
+      await expect
+        .poll(() => page.evaluate((key) => window.localStorage.getItem(key), pinnedActivityMemoTemplatesStorageKey))
+        .toBe(JSON.stringify(['破損設定前pin']));
+      await expect
+        .poll(() => page.evaluate((key) => window.localStorage.getItem(key), hiddenActivityMemoTemplatesStorageKey))
+        .toBe(JSON.stringify(['破損設定前hidden']));
+      await expect
+        .poll(() => page.evaluate((key) => window.localStorage.getItem(key), collapsedActivityMemoSectionsStorageKey))
+        .toBe(JSON.stringify(['pinned']));
 
       await page.evaluate(
         ({ customKey, pinnedKey, hiddenKey, collapsedKey, activityTypesKey }) => {
