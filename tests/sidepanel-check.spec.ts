@@ -121,6 +121,36 @@ test.describe('Asia/Tokyo local date boundary', () => {
     await expect(page.locator('h3:has-text("開いている文脈")')).toBeVisible();
     await expect(page.locator('article#history-form label:has-text("活動日") input')).toHaveValue('2026-06-10');
   });
+
+  test('received benefit without received date is normalized to local date near midnight', async ({ page }) => {
+    await page.clock.setFixedTime(new Date('2026-06-09T15:30:00.000Z'));
+    await page.setViewportSize({ width: 360, height: 812 });
+    await page.goto('/');
+    await page.evaluate((key) => {
+      window.localStorage.setItem(key, JSON.stringify([
+        {
+          id: 'draft-benefit-local-date',
+          lineName: '特典受領日境界テスト',
+          carrier: 'docomo',
+          lineType: '音声SIM',
+          status: '利用中',
+          benefits: [
+            {
+              id: 'benefit-local-date',
+              benefitType: '現金',
+              amount: 16000,
+              receivedFlag: true,
+            },
+          ],
+        },
+      ]));
+    }, draftStorageKey);
+
+    await page.goto('/lines', { waitUntil: 'domcontentloaded' });
+    await page.locator('li', { hasText: '特典受領日境界テスト' }).first().getByRole('button', { name: '詳細を開く' }).click();
+
+    await expect(page.locator('#draft-draft-benefit-local-date-benefits')).toContainText('受取日: 2026/06/10');
+  });
 });
 
 test('history deep link with unformatted stored phone still normalizes against formatted quickActivity', async ({ page }) => {

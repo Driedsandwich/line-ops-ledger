@@ -403,3 +403,6 @@
 - History の today 由来日付をローカル日付へ統一
   - History のタイムライン判定と quickActivity 初期活動日で `today.toISOString().slice(0, 10)` を使わず、ローカル日付 `YYYY-MM-DD` を生成する
   - JST 00:30 相当の固定時刻で `/lines/history?quickActivity=` を開き、活動日が前日ではなく当日 `2026-06-10` になることを E2E で固定する
+- 特典受領日の today 由来日付をローカル日付へ統一
+  - 受取済み特典に `receivedDate` がない旧データ / 復元データを正規化するとき、`new Date().toISOString().slice(0, 10)` ではなくローカル日付 `YYYY-MM-DD` を生成する
+  - JST 00:30 相当の固定時刻で `/lines` を開き、受取日が前日ではなく当日 `2026-06-10` になることを E2E で固定する

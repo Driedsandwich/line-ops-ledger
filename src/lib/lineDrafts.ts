@@ -170,6 +170,13 @@ function createId(): string {
   return globalThis.crypto?.randomUUID?.() ?? `line_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
 }
 
+function formatLocalDateInputValue(value: Date): string {
+  const year = value.getFullYear();
+  const month = String(value.getMonth() + 1).padStart(2, '0');
+  const day = String(value.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 export function normalizeReviewDate(value: string | null | undefined): string {
   if (!value) {
     return '';
@@ -346,7 +353,7 @@ function normalizeBenefitRecord(input: BenefitRecordInput | BenefitRecord): Bene
   }
 
   if (receivedFlag && !receivedDate) {
-    receivedDate = new Date().toISOString().slice(0, 10);
+    receivedDate = formatLocalDateInputValue(new Date());
   }
   if (!receivedFlag) {
     receivedDate = '';
