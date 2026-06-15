@@ -833,6 +833,9 @@ for (const viewport of viewports) {
         .toBe('true');
       await expect(page.getByRole('button', { name: /今日期限 \d+/ })).toHaveClass(/button--primary/);
       await expect(page.getByRole('button', { name: /期限超過 \d+/ })).not.toHaveClass(/button--primary/);
+      await expect(page.getByRole('button', { name: '今日期限 0' })).toHaveClass(/button--primary/);
+      await expect(page.locator('.card', { has: page.getByRole('heading', { name: '保存済み回線' }) }).locator('.badge')).toHaveText('0件');
+      await expect(page.locator('ul.list--drafts > li')).toHaveCount(0);
 
       await page.getByRole('button', { name: /通知対象合計 \d+/ }).click();
       await expect

@@ -366,3 +366,6 @@
 - Dashboard から Lines への sort URL 同期 E2E を追加
   - Dashboard の `利用実績を確認` から `/lines?sort=latestActivityAsc&contractActiveOnly=true` へ遷移した後、Lines の `並び順` select が `latestActivityAsc` になることを確認する
   - URL query だけでなく、初期表示の絞り込み / 並び順 UI が同期されることを mobile / desktop の両 viewport で固定する
+- 通知理由 0 件境界 E2E を追加
+  - 通知対象のみ filter 中に `今日期限 0` を選んでも `notificationReason=today` と active state が維持されることを確認する
+  - 0 件理由選択時に保存済み回線の件数 badge と表示行が 0 件になることを mobile / desktop の両 viewport で固定する

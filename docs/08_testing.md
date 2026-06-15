@@ -72,6 +72,7 @@
     - 通知設定を有効化した状態で Dashboard の通知理由リンクから `/lines` へ遷移し、`通知対象のみ` 切替後も通知理由 filter が維持される。
     - Dashboard の `期限系を確認` リンクから `/lines` へ遷移すると、期限超過 filter が active になる。
     - 通知対象のみ filter が ON の状態で通知理由をクリック切替し、理由だけを解除しても通知対象のみ filter が維持される。
+    - 通知理由別件数が 0 件の理由を選んでも、理由 filter の active state と保存済み回線 0 件表示が崩れない。
   - バックアップ導線
     - `/settings/backup` で「統合バックアップをエクスポート」→ 生成 JSON をローカルで保存。
     - 生成 JSON に主台帳、履歴、活動メモ候補設定（custom / pinned / hidden / collapsed sections）、活動種別設定が含まれることを確認する。
