@@ -548,6 +548,25 @@ for (const viewport of viewports) {
       expect(exportedBackup.activityMemoPreferences?.collapsedSections).toEqual(['custom']);
       expect(exportedBackup.customActivityTypes).toEqual([backupCustomActivityType]);
       expect(exportedBackup.lineDrafts).toBeTruthy();
+      const exportedDraftItems = (exportedBackup.lineDrafts as { items?: Array<Record<string, unknown>> }).items ?? [];
+      const restoredDraftId = String(exportedDraftItems[0]?.id ?? '');
+      expect(restoredDraftId).toBeTruthy();
+      if (exportedDraftItems[0]) {
+        exportedDraftItems[0].nextReviewDate = '2026-01-01';
+        exportedDraftItems[0].benefits = [
+          {
+            id: 'backup-query-benefit',
+            benefitType: '現金',
+            amount: 12000,
+            deadlineDate: '2026-12-31',
+            condition: '復元後のURL導線確認',
+            receivedFlag: false,
+            receivedDate: '',
+            memo: 'openDraft focusSection 確認',
+          },
+        ];
+        fs.writeFileSync(backupPath, JSON.stringify(exportedBackup, null, 2), 'utf8');
+      }
       const legacyIntegratedBackup = {
         ...exportedBackup,
         version: 1,
@@ -655,6 +674,21 @@ for (const viewport of viewports) {
         .poll(() => page.evaluate((key) => window.localStorage.getItem(key), customActivityTypesStorageKey))
         .toBe(JSON.stringify([backupCustomActivityType]));
 
+      await page.evaluate(() => {
+        window.localStorage.setItem('line-ops-ledger.notification-settings', JSON.stringify({
+          enabled: true,
+          reminderWindow: 'within-7-days',
+          relaunchPolicy: 'on-app-launch',
+          reviewIntervalDays: 21,
+        }));
+      });
+      await page.goto(`/lines?openDraft=${encodeURIComponent(restoredDraftId)}&focusSection=benefits&notificationTargetOnly=true`);
+      await expect(page.getByRole('button', { name: '通知対象のみ: ON' })).toBeVisible();
+      await expect(page.getByRole('button', { name: '通知対象合計 1' })).toHaveClass(/button--primary/);
+      await expect(page.locator(`#draft-${restoredDraftId}-benefits`)).toBeVisible();
+      await expect(page.locator(`#draft-${restoredDraftId}-benefits`).getByRole('heading', { name: '特典 / キャッシュバック' })).toBeVisible();
+      await expect(page.locator('li', { hasText: lineName })).toContainText('通知理由: 期限超過');
+
       await page.goto('/lines/history');
       await page.getByLabel('電話番号 *').fill(phoneNumber);
       await page.getByLabel('キャリア *').fill('NTTドコモ');
@@ -705,7 +739,7 @@ for (const viewport of viewports) {
       await page.goto('/lines');
       const restoredMemo = `復元後編集-${Date.now().toString().slice(-5)}`;
       await page.locator('li', { hasText: lineName }).first().getByRole('button', { name: '編集する' }).click();
-      await page.locator('form label:has-text("メモ") textarea').fill(restoredMemo);
+      await page.getByPlaceholder('特典期限や確認メモなど').fill(restoredMemo);
       await page.getByRole('button', { name: '更新する' }).click();
       await expect(page.getByText('回線を更新しました。')).toBeVisible();
       await page.reload();
