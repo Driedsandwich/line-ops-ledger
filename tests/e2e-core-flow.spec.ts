@@ -891,9 +891,15 @@ for (const viewport of viewports) {
       const overdueNotificationCount = Number.parseInt((await notificationsKpi.locator('.dashboard-kpi-card__value').innerText()).replace(/\D/g, ''), 10);
       expect(overdueNotificationCount).toBeGreaterThan(0);
       expect(overdueNotificationCount).toBeLessThanOrEqual(withinSevenDaysNotificationCount);
+      await page.reload();
+      await expect(notificationsKpi.locator('.dashboard-kpi-card__value')).toHaveText(`${overdueNotificationCount}件`);
 
       await page.goto('/lines?notificationTargetOnly=true');
       const notificationSummaryPanel = page.locator('.detail-panel', { has: page.getByRole('heading', { name: '通知対象サマリー' }) });
+      await expect(notificationSummaryPanel.locator('.badge')).toHaveText(`対象 ${overdueNotificationCount}件`);
+      await expect(page.getByRole('button', { name: `通知対象合計 ${overdueNotificationCount}` })).toHaveClass(/button--primary/);
+      await page.reload();
+      await expect(page.getByRole('button', { name: '通知対象のみ: ON' })).toBeVisible();
       await expect(notificationSummaryPanel.locator('.badge')).toHaveText(`対象 ${overdueNotificationCount}件`);
       await expect(page.getByRole('button', { name: `通知対象合計 ${overdueNotificationCount}` })).toHaveClass(/button--primary/);
 

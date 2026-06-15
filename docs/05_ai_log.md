@@ -390,3 +390,6 @@
 - 復元後の回線表示と活動記録導線 E2E を追加
   - 統合バックアップ復元後に `/lines` の保存済み回線件数が復元件数と一致することを確認する
   - 復元された行の `活動を記録` から `/lines/history?quickActivity=` へ遷移し、電話番号が履歴フォームへ入ることを mobile / desktop の両 viewport で固定する
+- 通知期限 window 変更後の reload 同期 E2E を追加
+  - 通知対象の期限を `overdue` に切り替えた後、Dashboard reload 後も Notifications KPI が同じ対象件数を維持することを確認する
+  - `/lines?notificationTargetOnly=true` reload 後も通知対象サマリーと `通知対象合計` active state が同じ件数を維持することを mobile / desktop の両 viewport で固定する
