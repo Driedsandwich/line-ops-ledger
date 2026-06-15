@@ -375,3 +375,6 @@
 - Dashboard の費用 / 特典 CTA E2E を追加
   - Dashboard の `特典と費用を確認` から `/lines` へ遷移することを確認する
   - 遷移後の Lines で保存済み回線の月額費用と特典管理の手がかりが見えることを mobile / desktop の両 viewport で固定する
+- Dashboard の月額費用 CTA E2E を追加
+  - Dashboard の `回線一覧で確認` から `/lines` へ遷移することを確認する
+  - 遷移後の Lines で保存済み回線の月額費用表示へ到達できることを mobile / desktop の両 viewport で固定する
