@@ -348,3 +348,6 @@
 - 通知理由 filter のクリック切替 E2E を追加
   - `/lines?notificationTargetOnly=true&notificationReason=overdue` から通知理由を `今日期限` に切り替えても、通知対象のみ filter が維持されることを確認する
   - `通知対象合計` をクリックすると通知理由だけが解除され、通知対象のみ filter は残ることを mobile / desktop の両 viewport で固定する
+- Dashboard 期限系リンク E2E を追加
+  - Dashboard の `期限系を確認` リンクから `/lines` へ遷移し、`notificationReason=overdue` query が付くことを確認する
+  - 遷移後の `/lines` で `期限超過` filter ボタンが active になることを mobile / desktop の両 viewport で固定する
