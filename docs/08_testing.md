@@ -69,6 +69,7 @@
     - Dashboard の `契約中の回線を見る` から `/lines?contractActiveOnly=true` へ遷移し、Lines の `契約中のみ` checkbox / quick button が ON になる。
     - Dashboard の `回線一覧で確認` から `/lines` へ遷移し、保存済み回線の月額費用表示へ到達できる。
     - Dashboard の `特典と費用を確認` から `/lines` へ遷移し、保存済み回線の月額費用と特典管理の表示へ到達できる。
+    - 受取済み特典の旧データに受取日がない場合でも、JST 深夜帯の読み込みで受取日がローカル日付の今日になり、前日へずれない。
     - サンプルデータ投入後、`Hopping Health` の `利用実績を確認` から `/lines?sort=latestActivityAsc&contractActiveOnly=true` に遷移し、契約中のみ filter が有効になる。
     - Dashboard から `/lines?sort=latestActivityAsc&contractActiveOnly=true` へ遷移した後、Lines の `並び順` select が `latestActivityAsc` として初期化される。
     - `/lines?openDraft=<id>&focusSection=benefits` と `/lines?openDraft=<id>&focusSection=fiber` で対象回線が展開され、該当セクションが表示される。
