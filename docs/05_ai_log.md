@@ -310,3 +310,6 @@
 - 活動メモ候補の固定 / 非表示 / 復帰 persistence E2E を追加
   - custom 活動メモ候補を `固定` し、reload 後も `固定候補` として残ることを確認する
   - 固定候補を `非表示` にして reload 後に `非表示候補` へ残し、`戻す` 後の reload で通常表示へ復帰することを mobile / desktop の両 viewport で固定する
+- 活動メモ custom 候補の更新 / 並び替え persistence E2E を追加
+  - custom 活動メモ候補を2件追加し、`上へ` で並び替えた順序が localStorage に保持されることを確認する
+  - `現在の文言で更新` 後に旧文言が消え、reload 後も更新済み候補と並び順が保持されることを mobile / desktop の両 viewport で固定する
