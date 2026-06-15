@@ -59,7 +59,7 @@
   - [ ] 検索・絞り込み・並び替えが動く
   - [ ] `?sort=latestActivityAsc` などの URL パラメータが反映される
   - [ ] 行の「活動を記録」ボタンが `/lines/history` の履歴フォームをセットする
-  - [ ] 統合バックアップエクスポートで、主台帳・履歴・活動メモ候補設定を含む JSON がダウンロードされる
+  - [ ] 統合バックアップエクスポートで、主台帳・履歴・活動メモ候補設定・活動種別設定を含む JSON がダウンロードされる
   - [ ] `利用実績種別の巡回` の不足種別ボタンが `/lines?sort=latestActivityAsc&contractActiveOnly=true&usagePriority=<kind>` で開く
   - [ ] ダッシュボードの `該当回線を開く` で `/lines?openDraft=<id>&focusSection=...` が開き、対象回線の必要な詳細位置まで寄れる
 - 履歴・タイムライン（`/lines/history`）
