@@ -445,3 +445,8 @@
 - backup E2E の localStorage JSON assertion を helper 化
   - backup import/export compatibility path 内で繰り返していた localStorage JSON 完全一致確認を `expectLocalStorageJson` に集約する
   - テスト対象の導線、期待値、実行範囲は変更しない
+- 2026-06-16: 表示テーマ / サイドバー / フィルタ UI を調整
+  - Light / dark theme toggle を追加し、テーマ選択を localStorage に保持する
+  - 左サイドバーを閉じる / 開く操作を追加し、ナビ項目の縦幅を通常行として見える寸法へ圧縮する
+  - Lines の検索フィルタ checkbox を横並びの switch-like control に整理し、誤って浮いた位置に見えない配置へ変更する
+  - 類似 dashboard / filter UI の light-dark toggle、collapsible sidebar、persistent filter pattern を確認し、既存導線を保ったまま必要要素だけ採用する

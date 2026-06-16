@@ -1793,23 +1793,25 @@ export function LinesPage(): ReactElement {
               </select>
             </label>
 
-            <label className="field checkbox-row">
-              <input
-                type="checkbox"
-                checked={filters.notificationTargetOnly}
-                onChange={(event) => setNotificationTargetOnlyFilter(event.target.checked)}
-              />
-              <span>通知対象のみ</span>
-            </label>
+            <div className="filter-toggle-row field--full" aria-label="クイックフィルター">
+              <label className="checkbox-row checkbox-row--switch">
+                <input
+                  type="checkbox"
+                  checked={filters.notificationTargetOnly}
+                  onChange={(event) => setNotificationTargetOnlyFilter(event.target.checked)}
+                />
+                <span>通知対象のみ</span>
+              </label>
 
-            <label className="field checkbox-row">
-              <input
-                type="checkbox"
-                checked={filters.contractActiveOnly}
-                onChange={(event) => setContractActiveOnlyFilter(event.target.checked)}
-              />
-              <span>契約中のみ</span>
-            </label>
+              <label className="checkbox-row checkbox-row--switch">
+                <input
+                  type="checkbox"
+                  checked={filters.contractActiveOnly}
+                  onChange={(event) => setContractActiveOnlyFilter(event.target.checked)}
+                />
+                <span>契約中のみ</span>
+              </label>
+            </div>
           </div>
 
           <div className="detail-panel">

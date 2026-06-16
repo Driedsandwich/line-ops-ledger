@@ -5,6 +5,8 @@ const navLinks = ['/', '/lines', '/lines/history', '/settings/storage', '/settin
 const draftStorageKey = 'line-ops-ledger.line-drafts';
 const historyStorageKey = 'line-ops-ledger.line-history';
 const notificationSettingsStorageKey = 'line-ops-ledger.notification-settings';
+const themeStorageKey = 'line-ops-ledger.ui-theme';
+const sidebarStorageKey = 'line-ops-ledger.sidebar-collapsed';
 const seededDraftSeed = [
   {
     id: 'draft-test-1',
@@ -97,6 +99,68 @@ for (const route of routes) {
     }
   });
 }
+
+test('display theme, collapsible sidebar, and lines filter toggles remain usable', async ({ page }) => {
+  await page.addInitScript(
+    ({ themeKey, sidebarKey }) => {
+      if (window.sessionStorage.getItem('display-controls-test-initialized') === 'true') {
+        return;
+      }
+
+      window.localStorage.setItem(themeKey, 'light');
+      window.localStorage.removeItem(sidebarKey);
+      window.sessionStorage.setItem('display-controls-test-initialized', 'true');
+    },
+    { themeKey: themeStorageKey, sidebarKey: sidebarStorageKey },
+  );
+  await page.setViewportSize({ width: 1366, height: 768 });
+  await page.goto('/lines', { waitUntil: 'domcontentloaded' });
+
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
+  await page.getByRole('button', { name: 'ダーク表示' }).click();
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+  await expect.poll(() => page.evaluate((key) => window.localStorage.getItem(key), themeStorageKey)).toBe('dark');
+
+  await page.getByRole('button', { name: 'ライト表示' }).click();
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
+
+  const navItemHeights = await page.locator('.nav__item').evaluateAll((items) => items.map((item) => item.getBoundingClientRect().height));
+  expect(Math.max(...navItemHeights)).toBeLessThanOrEqual(48);
+
+  await page.getByRole('button', { name: 'ナビを閉じる' }).click();
+  await expect(page.getByRole('button', { name: 'ナビを開く' })).toBeVisible();
+  await expect(page.locator('.sidebar')).toBeHidden();
+  await expect.poll(() => page.evaluate((key) => window.localStorage.getItem(key), sidebarStorageKey)).toBe('true');
+
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  await expect(page.getByRole('button', { name: 'ナビを開く' })).toBeVisible();
+  await expect(page.locator('.sidebar')).toBeHidden();
+
+  await page.getByRole('button', { name: 'ナビを開く' }).click();
+  await expect(page.getByRole('navigation', { name: 'サイドナビゲーション' })).toBeVisible();
+
+  const filterToggleGeometry = await page.locator('.filter-toggle-row').evaluate((container) => {
+    const labels = Array.from(container.querySelectorAll('.checkbox-row--switch'));
+    return labels.map((label) => {
+      const input = label.querySelector('input[type="checkbox"]');
+      const labelRect = label.getBoundingClientRect();
+      const inputRect = input?.getBoundingClientRect();
+
+      return {
+        labelHeight: labelRect.height,
+        labelTop: labelRect.top,
+        inputCenterOffset: inputRect ? Math.abs((inputRect.top + inputRect.height / 2) - (labelRect.top + labelRect.height / 2)) : null,
+      };
+    });
+  });
+  expect(filterToggleGeometry).toHaveLength(2);
+  for (const geometry of filterToggleGeometry) {
+    expect(geometry.labelHeight).toBeLessThanOrEqual(46);
+    expect(geometry.inputCenterOffset).not.toBeNull();
+    expect(geometry.inputCenterOffset ?? 99).toBeLessThanOrEqual(2);
+  }
+  expect(Math.abs(filterToggleGeometry[0].labelTop - filterToggleGeometry[1].labelTop)).toBeLessThanOrEqual(2);
+});
 
 test('history deep link with quickActivity seeds history context and phone input', async ({ page }) => {
   await page.setViewportSize({ width: 360, height: 812 });
