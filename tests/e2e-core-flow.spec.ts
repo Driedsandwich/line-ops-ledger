@@ -493,7 +493,7 @@ for (const viewport of viewports) {
       await expect(page.getByLabel('活動後の次回確認日サジェスト（日数）')).toHaveValue('21');
     });
 
-    test('settings flows', async ({ page }) => {
+    test('backup import/export compatibility path', async ({ page }) => {
       await page.goto('/');
       await clearAllStorage(page);
 
