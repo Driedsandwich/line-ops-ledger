@@ -77,6 +77,12 @@ async function enableNotificationSettings(page: Page): Promise<void> {
   await page.getByLabel('活動後の次回確認日サジェスト（日数）').fill('21');
 }
 
+async function expectLocalStorageJson(page: Page, key: string, expectedValue: unknown): Promise<void> {
+  await expect
+    .poll(() => page.evaluate((storageKey) => window.localStorage.getItem(storageKey), key))
+    .toBe(JSON.stringify(expectedValue));
+}
+
 for (const viewport of viewports) {
   test.describe(`core flow (${viewport.name})`, () => {
     test.use({ viewport: { width: viewport.width, height: viewport.height } });
@@ -646,18 +652,10 @@ for (const viewport of viewports) {
       await page.getByRole('button', { name: 'バックアップを復元' }).click();
       await page.locator('input.hidden-file-input').setInputFiles(malformedPreferencesBackupPath);
       await expect(page.getByText('統合バックアップを復元しました（主台帳 1 件 / 履歴 1 件 / 活動種別設定）。')).toBeVisible();
-      await expect
-        .poll(() => page.evaluate((key) => window.localStorage.getItem(key), customActivityMemoTemplatesStorageKey))
-        .toBe(JSON.stringify(['破損設定前custom']));
-      await expect
-        .poll(() => page.evaluate((key) => window.localStorage.getItem(key), pinnedActivityMemoTemplatesStorageKey))
-        .toBe(JSON.stringify(['破損設定前pin']));
-      await expect
-        .poll(() => page.evaluate((key) => window.localStorage.getItem(key), hiddenActivityMemoTemplatesStorageKey))
-        .toBe(JSON.stringify(['破損設定前hidden']));
-      await expect
-        .poll(() => page.evaluate((key) => window.localStorage.getItem(key), collapsedActivityMemoSectionsStorageKey))
-        .toBe(JSON.stringify(['pinned']));
+      await expectLocalStorageJson(page, customActivityMemoTemplatesStorageKey, ['破損設定前custom']);
+      await expectLocalStorageJson(page, pinnedActivityMemoTemplatesStorageKey, ['破損設定前pin']);
+      await expectLocalStorageJson(page, hiddenActivityMemoTemplatesStorageKey, ['破損設定前hidden']);
+      await expectLocalStorageJson(page, collapsedActivityMemoSectionsStorageKey, ['pinned']);
 
       await page.evaluate(
         ({ customKey, pinnedKey, hiddenKey, collapsedKey, activityTypesKey }) => {
@@ -678,21 +676,11 @@ for (const viewport of viewports) {
       await page.getByRole('button', { name: 'バックアップを復元' }).click();
       await page.locator('input.hidden-file-input').setInputFiles(legacyIntegratedBackupPath);
       await expect(page.getByText('統合バックアップを復元しました（主台帳 1 件 / 履歴 1 件）。')).toBeVisible();
-      await expect
-        .poll(() => page.evaluate((key) => window.localStorage.getItem(key), customActivityMemoTemplatesStorageKey))
-        .toBe(JSON.stringify(['旧互換の既存custom']));
-      await expect
-        .poll(() => page.evaluate((key) => window.localStorage.getItem(key), pinnedActivityMemoTemplatesStorageKey))
-        .toBe(JSON.stringify(['旧互換の既存pin']));
-      await expect
-        .poll(() => page.evaluate((key) => window.localStorage.getItem(key), hiddenActivityMemoTemplatesStorageKey))
-        .toBe(JSON.stringify(['旧互換の既存hidden']));
-      await expect
-        .poll(() => page.evaluate((key) => window.localStorage.getItem(key), collapsedActivityMemoSectionsStorageKey))
-        .toBe(JSON.stringify(['pinned']));
-      await expect
-        .poll(() => page.evaluate((key) => window.localStorage.getItem(key), customActivityTypesStorageKey))
-        .toBe(JSON.stringify(['旧互換の既存活動']));
+      await expectLocalStorageJson(page, customActivityMemoTemplatesStorageKey, ['旧互換の既存custom']);
+      await expectLocalStorageJson(page, pinnedActivityMemoTemplatesStorageKey, ['旧互換の既存pin']);
+      await expectLocalStorageJson(page, hiddenActivityMemoTemplatesStorageKey, ['旧互換の既存hidden']);
+      await expectLocalStorageJson(page, collapsedActivityMemoSectionsStorageKey, ['pinned']);
+      await expectLocalStorageJson(page, customActivityTypesStorageKey, ['旧互換の既存活動']);
 
       await clearAllStorage(page);
       await page.evaluate(
@@ -714,41 +702,21 @@ for (const viewport of viewports) {
       await page.getByRole('button', { name: 'バックアップを復元' }).click();
       await page.locator('input.hidden-file-input').setInputFiles(ledgerOnlyBackupPath);
       await expect(page.getByText('主台帳バックアップを復元しました（1 件）。')).toBeVisible();
-      await expect
-        .poll(() => page.evaluate((key) => window.localStorage.getItem(key), customActivityMemoTemplatesStorageKey))
-        .toBe(JSON.stringify(['台帳単体の既存custom']));
-      await expect
-        .poll(() => page.evaluate((key) => window.localStorage.getItem(key), pinnedActivityMemoTemplatesStorageKey))
-        .toBe(JSON.stringify(['台帳単体の既存pin']));
-      await expect
-        .poll(() => page.evaluate((key) => window.localStorage.getItem(key), hiddenActivityMemoTemplatesStorageKey))
-        .toBe(JSON.stringify(['台帳単体の既存hidden']));
-      await expect
-        .poll(() => page.evaluate((key) => window.localStorage.getItem(key), collapsedActivityMemoSectionsStorageKey))
-        .toBe(JSON.stringify(['hidden']));
-      await expect
-        .poll(() => page.evaluate((key) => window.localStorage.getItem(key), customActivityTypesStorageKey))
-        .toBe(JSON.stringify(['台帳単体の既存活動']));
+      await expectLocalStorageJson(page, customActivityMemoTemplatesStorageKey, ['台帳単体の既存custom']);
+      await expectLocalStorageJson(page, pinnedActivityMemoTemplatesStorageKey, ['台帳単体の既存pin']);
+      await expectLocalStorageJson(page, hiddenActivityMemoTemplatesStorageKey, ['台帳単体の既存hidden']);
+      await expectLocalStorageJson(page, collapsedActivityMemoSectionsStorageKey, ['hidden']);
+      await expectLocalStorageJson(page, customActivityTypesStorageKey, ['台帳単体の既存活動']);
 
       await clearAllStorage(page);
       await page.getByRole('button', { name: 'バックアップを復元' }).click();
       await page.locator('input.hidden-file-input').setInputFiles(backupPath);
       await expect(page.getByText('統合バックアップを復元しました（主台帳 1 件 / 履歴 1 件 / 活動メモ候補設定 / 活動種別設定）。')).toBeVisible();
-      await expect
-        .poll(() => page.evaluate((key) => window.localStorage.getItem(key), customActivityMemoTemplatesStorageKey))
-        .toBe(JSON.stringify([backupCustomMemoTemplate]));
-      await expect
-        .poll(() => page.evaluate((key) => window.localStorage.getItem(key), pinnedActivityMemoTemplatesStorageKey))
-        .toBe(JSON.stringify([backupCustomMemoTemplate]));
-      await expect
-        .poll(() => page.evaluate((key) => window.localStorage.getItem(key), hiddenActivityMemoTemplatesStorageKey))
-        .toBe(JSON.stringify([backupHiddenMemoTemplate]));
-      await expect
-        .poll(() => page.evaluate((key) => window.localStorage.getItem(key), collapsedActivityMemoSectionsStorageKey))
-        .toBe(JSON.stringify(['custom']));
-      await expect
-        .poll(() => page.evaluate((key) => window.localStorage.getItem(key), customActivityTypesStorageKey))
-        .toBe(JSON.stringify([backupCustomActivityType]));
+      await expectLocalStorageJson(page, customActivityMemoTemplatesStorageKey, [backupCustomMemoTemplate]);
+      await expectLocalStorageJson(page, pinnedActivityMemoTemplatesStorageKey, [backupCustomMemoTemplate]);
+      await expectLocalStorageJson(page, hiddenActivityMemoTemplatesStorageKey, [backupHiddenMemoTemplate]);
+      await expectLocalStorageJson(page, collapsedActivityMemoSectionsStorageKey, ['custom']);
+      await expectLocalStorageJson(page, customActivityTypesStorageKey, [backupCustomActivityType]);
 
       await page.evaluate(() => {
         window.localStorage.setItem('line-ops-ledger.notification-settings', JSON.stringify({
