@@ -450,3 +450,7 @@
   - 左サイドバーを閉じる / 開く操作を追加し、ナビ項目の縦幅を通常行として見える寸法へ圧縮する
   - Lines の検索フィルタ checkbox を横並びの switch-like control に整理し、誤って浮いた位置に見えない配置へ変更する
   - 類似 dashboard / filter UI の light-dark toggle、collapsible sidebar、persistent filter pattern を確認し、既存導線を保ったまま必要要素だけ採用する
+- 2026-06-16: Dashboard の light theme 視認性と確認待ち導線を調整
+  - KPI card / Hopping Health / Actionable Alerts の背景色を theme variable ベースに戻し、light theme で暗いグラデーションが残らないようにする
+  - 左サイドバーの nav grid を上詰めにし、縦配置時のセクション間余白を圧縮する
+  - 類似 dashboard / subscription management UI の centralized overview / renewal-alert pattern を確認し、Dashboard 上部に確認待ちサマリー導線を追加する

@@ -243,6 +243,15 @@ type ActionGroupViewModel = {
   events: LineEvent[];
 };
 
+type ReviewQueueItem = {
+  id: string;
+  label: string;
+  value: string;
+  detail: string;
+  to: string;
+  tone: 'ok' | 'warn' | 'danger' | 'info';
+};
+
 const SAFE_EXIT_DAYS = 181;
 const FIBER_DEBT_ALERT_DAYS = 60;
 
@@ -902,6 +911,45 @@ function buildActionGroups(eventGroups: LineEventGroup[]): ActionGroupViewModel[
   ];
 }
 
+function buildReviewQueue(summary: DashboardSummary, notificationSettingsEnabled: boolean): ReviewQueueItem[] {
+  return [
+    {
+      id: 'overdue',
+      label: '期限超過',
+      value: `${summary.notificationReasonSummary.overdue}件`,
+      detail: '今日最初に見る対象',
+      to: buildLinesLink({ reasonLabel: '期限超過', notificationTargetOnly: true }),
+      tone: summary.notificationReasonSummary.overdue > 0 ? 'danger' : 'ok',
+    },
+    {
+      id: 'notifications',
+      label: '通知対象',
+      value: notificationSettingsEnabled ? `${summary.notificationEligibleCount}件` : '無効',
+      detail: notificationSettingsEnabled ? '通知設定に基づく対象' : '通知設定を確認',
+      to: notificationSettingsEnabled ? '/lines?notificationTargetOnly=true' : '/settings/notifications',
+      tone: notificationSettingsEnabled
+        ? (summary.notificationEligibleCount > 0 ? 'info' : 'ok')
+        : 'warn',
+    },
+    {
+      id: 'contract-end',
+      label: '契約終了警告',
+      value: `${summary.contractEndAlerts.length}件`,
+      detail: `${CONTRACT_END_ALERT_DAYS}日以内の終了予定`,
+      to: '/lines?contractActiveOnly=true',
+      tone: summary.contractEndAlerts.length > 0 ? 'warn' : 'ok',
+    },
+    {
+      id: 'usage-gaps',
+      label: '利用実績不足',
+      value: `${summary.usageAlertItems.length}件`,
+      detail: `直近 ${USAGE_SUMMARY_DAYS} 日の不足`,
+      to: '/lines?sort=latestActivityAsc&contractActiveOnly=true',
+      tone: summary.usageAlertItems.length > 0 ? 'warn' : 'ok',
+    },
+  ];
+}
+
 function renderEventMetaTags(event: LineEvent): ReactElement | null {
   const metaTags = Array.from(new Set([event.carrier, event.status, ...getUniqueEventMetaTags(event)].filter(Boolean)));
   if (metaTags.length === 0) {
@@ -1038,6 +1086,7 @@ export function DashboardPage(): ReactElement {
   const isFirstRun = drafts.length === 0 && historyEntries.length === 0;
   const kpiCards = buildKpiCards(summary, notificationSettings.enabled);
   const healthRings = buildHealthRings(summary, drafts);
+  const reviewQueue = buildReviewQueue(summary, notificationSettings.enabled);
   const lineEvents = buildLineEventFeed(drafts, historyEntries);
   const actionGroups = buildActionGroups(groupLineEventsBySeverity(lineEvents));
 
@@ -1135,6 +1184,16 @@ export function DashboardPage(): ReactElement {
               </span>
             </div>
           </div>
+        </section>
+
+        <section className="dashboard-review-strip" aria-label="Review queue">
+          {reviewQueue.map((item) => (
+            <Link key={item.id} className={`dashboard-review-link dashboard-review-link--${item.tone}`} to={item.to}>
+              <span className="dashboard-review-link__label">{item.label}</span>
+              <strong className="dashboard-review-link__value">{item.value}</strong>
+              <span className="muted">{item.detail}</span>
+            </Link>
+          ))}
         </section>
 
         <section className="dashboard-kpi-grid" aria-label="Summary KPI">
