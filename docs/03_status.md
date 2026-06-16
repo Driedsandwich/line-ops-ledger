@@ -27,6 +27,7 @@
   - 不正な通知理由 query fallback、復元後の複合 URL 導線、復元後の光回線 focus URL 導線を追加。
   - 部分破損した統合バックアップと活動メモ候補設定の非破壊 E2E を追加。
   - 設定系 E2E は活動種別管理 / 通知設定 persistence / バックアップ復元の責務別に分割。
+  - 表示テーマを light / dark で切り替え可能にし、左サイドバーの閉じる / 開く操作と Lines の filter checkbox 配置を調整。
 - 運用前提: PR 必須 / approval 任意 / required check `check-and-build`
 - 直近の作業: Dashboard / History から Lines / History への主要 drilldown、通知 filter 境界、backup/restore 後の主要表示状態は順次 E2E 固定済み。次は新規 E2E 追加を急がず、現状 coverage と保守負荷を読み取りレビューしてから、実利用で壊れると発見が遅い導線だけを小さい PR で追加確認する。
 - 追加確認: Playwright MCP はローカル `cwd` で起動でき、`/lines/history` の実画面確認が可能
@@ -54,9 +55,12 @@
 - 共通イベントフィードを read-only 集約として `src/lib/lineEvents.ts` に分離し、`plannedExitDate` / `mnpReservationExpiry` / `freeOptionDeadline` / `benefits.deadlineDate` / `nextReviewDate` / `contractEndDate` / 光回線残債 / 長期未活動 を横断して扱えるようにした
 - 通知方針サマリー / 通知理由別件数 / 通知対象回線一覧
 - サイドバーの `設定` は見出しに整理し、`ストレージ` / `バックアップ` / `通知設定` / `活動種別` の配下リンクが重複しない状態にした
+- 表示テーマは light / dark をサイドバーから切り替え可能で、選択状態を localStorage に保持する
+- 左側サイドバーは閉じる / 開く操作が可能で、選択状態を localStorage に保持する
 
 ### 主台帳 (`/lines`)
 - CRUD・Undo / 絞り込み・並び替え・一括操作
+- `通知対象のみ` / `契約中のみ` filter は、検索パネル内で横並びの switch-like control として表示
 - URLパラメータでソート指定（`?sort=latestActivityAsc` など）
 - 契約開始日から 181 日後の `解約可能推奨日` を自動表示
 - `plannedExitDate` / `plannedExitType` / `plannedNextCarrier` を構造化して保存・表示

@@ -1,10 +1,66 @@
 :root {
-  color-scheme: light dark;
+  color-scheme: dark;
   font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   line-height: 1.5;
   font-weight: 400;
-  color: #e5e7eb;
-  background: #020617;
+  color: var(--text);
+  background: var(--page-bg);
+  --page-bg: #020617;
+  --page-glow: rgba(59, 130, 246, 0.18);
+  --surface: rgba(15, 23, 42, 0.88);
+  --surface-strong: rgba(15, 23, 42, 0.95);
+  --surface-muted: rgba(2, 6, 23, 0.45);
+  --sidebar-bg: rgba(15, 23, 42, 0.92);
+  --text: #e5e7eb;
+  --text-strong: #f8fafc;
+  --muted: #94a3b8;
+  --muted-strong: #64748b;
+  --border: rgba(148, 163, 184, 0.18);
+  --border-strong: rgba(148, 163, 184, 0.24);
+  --button-bg: rgba(15, 23, 42, 0.95);
+  --button-hover: rgba(30, 41, 59, 0.95);
+  --primary-bg: rgba(37, 99, 235, 0.3);
+  --primary-border: rgba(96, 165, 250, 0.4);
+  --field-bg: rgba(2, 6, 23, 0.58);
+  --shadow: rgba(2, 6, 23, 0.24);
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
+  --page-bg: #f5f7fb;
+  --page-glow: rgba(59, 130, 246, 0.12);
+  --surface: rgba(255, 255, 255, 0.96);
+  --surface-strong: #ffffff;
+  --surface-muted: #f1f5f9;
+  --sidebar-bg: #ffffff;
+  --text: #0f172a;
+  --text-strong: #020617;
+  --muted: #64748b;
+  --muted-strong: #475569;
+  --border: rgba(100, 116, 139, 0.22);
+  --border-strong: rgba(71, 85, 105, 0.28);
+  --button-bg: #ffffff;
+  --button-hover: #eaf1f8;
+  --primary-bg: rgba(37, 99, 235, 0.11);
+  --primary-border: rgba(37, 99, 235, 0.38);
+  --field-bg: #ffffff;
+  --shadow: rgba(15, 23, 42, 0.08);
+}
+
+:root[data-theme="light"] .badge--ok {
+  color: #166534;
+}
+
+:root[data-theme="light"] .badge--warn {
+  color: #92400e;
+}
+
+:root[data-theme="light"] .badge--danger {
+  color: #991b1b;
+}
+
+:root[data-theme="light"] .badge--info {
+  color: #1d4ed8;
 }
 
 * {
@@ -16,8 +72,8 @@ body {
   min-width: 320px;
   min-height: 100vh;
   background:
-    radial-gradient(circle at top, rgba(59, 130, 246, 0.18), transparent 30%),
-    #020617;
+    radial-gradient(circle at top, var(--page-glow), transparent 30%),
+    var(--page-bg);
 }
 
 a {
@@ -42,9 +98,13 @@ textarea {
   grid-template-columns: 280px 1fr;
 }
 
+.app-shell--sidebar-collapsed {
+  grid-template-columns: 1fr;
+}
+
 .sidebar {
-  border-right: 1px solid rgba(148, 163, 184, 0.18);
-  background: rgba(15, 23, 42, 0.92);
+  border-right: 1px solid var(--border);
+  background: var(--sidebar-bg);
   padding: 24px 18px;
   position: sticky;
   top: 0;
@@ -52,6 +112,24 @@ textarea {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+}
+
+.sidebar[hidden] {
+  display: none;
+}
+
+.sidebar-restore {
+  position: fixed;
+  top: 18px;
+  left: 18px;
+  z-index: 20;
+  border: 1px solid var(--border-strong);
+  background: var(--surface-strong);
+  color: var(--text);
+  border-radius: 999px;
+  padding: 10px 14px;
+  box-shadow: 0 12px 32px var(--shadow);
+  cursor: pointer;
 }
 
 .sidebar__header h1,
@@ -66,7 +144,7 @@ textarea {
 .notice,
 .definition-list dt,
 .field span {
-  color: #94a3b8;
+  color: var(--muted);
 }
 
 .eyebrow {
@@ -75,6 +153,17 @@ textarea {
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: #60a5fa;
+}
+
+.sidebar__controls {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 16px;
+}
+
+.sidebar__controls .button {
+  flex: 1 1 104px;
 }
 
 .dev-progress-badge {
@@ -105,7 +194,7 @@ textarea {
 .nav__section {
   margin: 0 0 6px;
   padding: 0 4px;
-  color: #64748b;
+  color: var(--muted-strong);
   font-size: 0.75rem;
   font-weight: 700;
   letter-spacing: 0.12em;
@@ -126,16 +215,17 @@ textarea {
 
 .nav__item {
   border: 1px solid transparent;
-  border-radius: 14px;
-  padding: 12px 14px;
-  color: #cbd5e1;
+  border-radius: 10px;
+  padding: 9px 12px;
+  color: var(--text);
   display: block;
+  line-height: 1.3;
 }
 
 .nav__item:hover,
 .nav__item--active {
   border-color: rgba(96, 165, 250, 0.35);
-  background: rgba(30, 41, 59, 0.9);
+  background: var(--button-hover);
 }
 
 .nav__item:focus-visible {
@@ -145,6 +235,10 @@ textarea {
 
 .content {
   padding: 32px;
+}
+
+.app-shell--sidebar-collapsed .content {
+  padding-left: 72px;
 }
 
 .page {
@@ -178,11 +272,11 @@ textarea {
 }
 
 .card {
-  background: rgba(15, 23, 42, 0.88);
-  border: 1px solid rgba(148, 163, 184, 0.16);
+  background: var(--surface);
+  border: 1px solid var(--border);
   border-radius: 20px;
   padding: 20px;
-  box-shadow: 0 12px 32px rgba(2, 6, 23, 0.24);
+  box-shadow: 0 12px 32px var(--shadow);
 }
 
 .card--accent {
@@ -220,8 +314,8 @@ textarea {
 .history-kpi {
   padding: 14px;
   border-radius: 16px;
-  background: rgba(2, 6, 23, 0.38);
-  border: 1px solid rgba(148, 163, 184, 0.12);
+  background: var(--surface-muted);
+  border: 1px solid var(--border);
   display: grid;
   gap: 6px;
 }
@@ -230,12 +324,12 @@ textarea {
   font-size: 0.78rem;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: #94a3b8;
+  color: var(--muted);
 }
 
 .history-kpi__value {
   font-size: 1.05rem;
-  color: #e2e8f0;
+  color: var(--text);
   line-height: 1.35;
 }
 
@@ -246,8 +340,8 @@ textarea {
   min-height: 32px;
   padding: 0 10px;
   border-radius: 999px;
-  background: rgba(51, 65, 85, 0.8);
-  color: #e2e8f0;
+  background: var(--button-hover);
+  color: var(--text);
   font-size: 0.875rem;
 }
 
@@ -289,7 +383,7 @@ textarea {
   display: inline-flex;
   align-items: center;
   gap: 10px;
-  color: #e2e8f0;
+  color: var(--text);
 }
 
 .list {
@@ -305,7 +399,7 @@ textarea {
   gap: 4px;
   padding: 12px;
   border-radius: 16px;
-  background: rgba(2, 6, 23, 0.45);
+  background: var(--surface-muted);
 }
 
 .list__item--selected {
@@ -345,7 +439,7 @@ textarea {
 .stat-box {
   padding: 14px;
   border-radius: 16px;
-  background: rgba(2, 6, 23, 0.45);
+  background: var(--surface-muted);
   display: grid;
   gap: 4px;
 }
@@ -365,7 +459,7 @@ textarea {
   gap: 4px;
   padding: 12px;
   border-radius: 16px;
-  background: rgba(2, 6, 23, 0.45);
+  background: var(--surface-muted);
 }
 
 .definition-list dt,
@@ -381,7 +475,7 @@ textarea {
   margin: 8px 0;
   padding: 12px 14px;
   border-radius: 14px;
-  background: rgba(30, 41, 59, 0.9);
+  background: var(--button-hover);
 }
 
 .notice--warn {
@@ -413,21 +507,21 @@ textarea {
 }
 
 .button {
-  border: 1px solid rgba(148, 163, 184, 0.22);
-  background: rgba(15, 23, 42, 0.95);
-  color: #e2e8f0;
+  border: 1px solid var(--border-strong);
+  background: var(--button-bg);
+  color: var(--text);
   border-radius: 14px;
   padding: 10px 14px;
   cursor: pointer;
 }
 
 .button:hover {
-  background: rgba(30, 41, 59, 0.95);
+  background: var(--button-hover);
 }
 
 .button--primary {
-  background: rgba(37, 99, 235, 0.3);
-  border-color: rgba(96, 165, 250, 0.4);
+  background: var(--primary-bg);
+  border-color: var(--primary-border);
 }
 
 .button--sm {
@@ -445,10 +539,40 @@ textarea {
   gap: 14px;
 }
 
+.filter-toggle-row {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: center;
+  padding-top: 2px;
+}
+
+.checkbox-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 40px;
+  color: var(--text);
+}
+
+.checkbox-row--switch {
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  background: var(--button-bg);
+  padding: 8px 12px;
+}
+
+.checkbox-row input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  accent-color: #2563eb;
+}
+
 .form-grid--filters {
   margin-bottom: 16px;
   padding-bottom: 16px;
-  border-bottom: 1px solid rgba(148, 163, 184, 0.16);
+  border-bottom: 1px solid var(--border);
 }
 
 .field {
@@ -464,16 +588,20 @@ textarea {
 .field select,
 .field textarea {
   width: 100%;
-  border: 1px solid rgba(148, 163, 184, 0.22);
+  border: 1px solid var(--border-strong);
   border-radius: 14px;
-  background: rgba(2, 6, 23, 0.58);
-  color: #e2e8f0;
+  background: var(--field-bg);
+  color: var(--text);
   padding: 12px 14px;
+}
+
+.field input[type="checkbox"] {
+  width: auto;
 }
 
 .field input::placeholder,
 .field textarea::placeholder {
-  color: #64748b;
+  color: var(--muted-strong);
 }
 
 .field input:focus,
@@ -731,6 +859,18 @@ textarea {
     border-right: 0;
     border-bottom: 1px solid rgba(148, 163, 184, 0.18);
     overflow: visible;
+  }
+
+  .sidebar-restore {
+    position: sticky;
+    top: 12px;
+    left: 12px;
+    margin: 12px;
+    justify-self: start;
+  }
+
+  .app-shell--sidebar-collapsed .content {
+    padding-left: 20px;
   }
 
   .content {

@@ -1,4 +1,4 @@
-import type { ReactElement } from 'react';
+import { useEffect, useState, type ReactElement } from 'react';
 import { NavLink, Outlet } from 'react-router';
 
 type NavItem = { to: string; label: string; end?: boolean; };
@@ -28,11 +28,40 @@ const navSections: NavSection[] = [
 ];
 
 const devLabel = import.meta.env.VITE_DEV_LABEL as string | undefined;
+const themeStorageKey = 'line-ops-ledger.ui-theme';
+const sidebarStorageKey = 'line-ops-ledger.sidebar-collapsed';
+type ThemeMode = 'light' | 'dark';
+
+function getInitialTheme(): ThemeMode {
+  const stored = window.localStorage.getItem(themeStorageKey);
+  if (stored === 'light' || stored === 'dark') {
+    return stored;
+  }
+
+  return window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+}
 
 export function AppLayout(): ReactElement {
+  const [theme, setTheme] = useState<ThemeMode>(getInitialTheme);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => window.localStorage.getItem(sidebarStorageKey) === 'true');
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme;
+    window.localStorage.setItem(themeStorageKey, theme);
+  }, [theme]);
+
+  useEffect(() => {
+    window.localStorage.setItem(sidebarStorageKey, String(isSidebarCollapsed));
+  }, [isSidebarCollapsed]);
+
   return (
-    <div className="app-shell">
-      <aside className="sidebar">
+    <div className={`app-shell ${isSidebarCollapsed ? 'app-shell--sidebar-collapsed' : ''}`}>
+      {isSidebarCollapsed ? (
+        <button type="button" className="sidebar-restore" onClick={() => setIsSidebarCollapsed(false)}>
+          ナビを開く
+        </button>
+      ) : null}
+      <aside className="sidebar" aria-label="アプリナビゲーション" hidden={isSidebarCollapsed}>
         <div className="sidebar__header">
           <p className="eyebrow">Local-first encrypted PWA</p>
           <h1>回線運用台帳</h1>
@@ -40,6 +69,18 @@ export function AppLayout(): ReactElement {
             回線・期限・証跡・特典の確認導線を先に固定するための初期シェルです。
           </p>
           {import.meta.env.DEV && devLabel ? <p className="dev-progress-badge">{devLabel}</p> : null}
+          <div className="sidebar__controls" aria-label="表示設定">
+            <button
+              type="button"
+              className="button button--sm"
+              onClick={() => setTheme((current) => (current === 'dark' ? 'light' : 'dark'))}
+            >
+              {theme === 'dark' ? 'ライト表示' : 'ダーク表示'}
+            </button>
+            <button type="button" className="button button--sm" onClick={() => setIsSidebarCollapsed(true)}>
+              ナビを閉じる
+            </button>
+          </div>
         </div>
         <nav className="nav" aria-label="サイドナビゲーション">
           {navSections.map((section) => {
