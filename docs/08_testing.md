@@ -5,8 +5,15 @@
 - 静的チェック:
   - `npx tsc --noEmit` （`npm run check`）
   - `npm run build`
-  - `npm run test:sidepanel`
-  - GitHub Actions `check-and-build`（CI側で `npm ci` → `npm run check` → `npm run build`）
+- Playwright:
+  - `npm run test:sidepanel`（CI の必須回帰。サイドパネルと主要 deep link の低 viewport 確認）
+  - `npm run test:e2e`（ローカル full 回帰。導線 / backup / persistence / 通知境界を広く確認）
+- 依存関係監視:
+  - `npm audit --audit-level=low`
+  - `npm outdated --depth=0`
+- GitHub Actions:
+  - `Repo sanity`（必須ファイル、secret env 未追跡、履歴リンク helper 利用を確認）
+  - `check-and-build`（CI側で `npm ci` → `npm run check` → `npm run build` → `npm run test:sidepanel`）
 
 ## 手動スモークテスト（最小）
 - 手順:
@@ -143,4 +150,6 @@
 - [ ] セキュリティ観点で問題がない
 - [ ] docs/02_runbook.md が最新
 - [ ] docs/03_status.md が最新
+- [ ] docs/08_testing.md が最新
+- [ ] `Repo sanity` と `check-and-build` が通過
 - [ ] バージョンやタグ運用を決めた

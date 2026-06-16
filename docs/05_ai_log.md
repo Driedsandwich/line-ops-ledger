@@ -433,3 +433,6 @@
 - `docs/03_status.md` の次候補を現状に同期
   - 追加 E2E を増やす前に、現状 coverage の読み取りレビューと依存関係監視を優先する方針へ更新する
   - 次の品質改善は、新規導線追加より docs / runbook alignment や E2E 保守性の確認を優先する
+- `docs/08_testing.md` の保守チェックを現状に同期
+  - 自動チェック欄に `npm run test:e2e`、`npm audit --audit-level=low`、`npm outdated --depth=0`、GitHub Actions の `Repo sanity` / `check-and-build` の役割を明記する
+  - リリース前チェックに `docs/08_testing.md` と required checks の確認を追加する
