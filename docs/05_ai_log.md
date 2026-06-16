@@ -436,3 +436,6 @@
 - `docs/08_testing.md` の保守チェックを現状に同期
   - 自動チェック欄に `npm run test:e2e`、`npm audit --audit-level=low`、`npm outdated --depth=0`、GitHub Actions の `Repo sanity` / `check-and-build` の役割を明記する
   - リリース前チェックに `docs/08_testing.md` と required checks の確認を追加する
+- PR テンプレートの検証欄を現状に同期
+  - 変更概要 / 検証 / Workflow Changes / rollback を分け、`test:sidepanel`、該当時の `test:e2e`、audit、outdated を記録しやすくする
+  - docs / runbook / testing docs の更新要否確認を受け入れチェックに追加する
