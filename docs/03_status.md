@@ -28,7 +28,7 @@
   - 部分破損した統合バックアップと活動メモ候補設定の非破壊 E2E を追加。
   - 設定系 E2E は活動種別管理 / 通知設定 persistence / バックアップ復元の責務別に分割。
 - 運用前提: PR 必須 / approval 任意 / required check `check-and-build`
-- 直近の作業: Dashboard / History から Lines / History への主要 drilldown、通知 filter 境界、backup/restore 後の主要表示状態は順次 E2E 固定済み。次は未自動化の通知設定境界や復元後の周辺導線を、小さい PR 単位で追加確認する。
+- 直近の作業: Dashboard / History から Lines / History への主要 drilldown、通知 filter 境界、backup/restore 後の主要表示状態は順次 E2E 固定済み。次は新規 E2E 追加を急がず、現状 coverage と保守負荷を読み取りレビューしてから、実利用で壊れると発見が遅い導線だけを小さい PR で追加確認する。
 - 追加確認: Playwright MCP はローカル `cwd` で起動でき、`/lines/history` の実画面確認が可能
 
 ## 実装済み主要機能
@@ -108,6 +108,6 @@
 
 ## 次の候補
 
-1. 通知設定境界や backup/restore 後の周辺導線のうち、実利用で壊れると発見が遅いものを1つ選び、E2E と docs を小さい PR で追加する
+1. 新規 E2E を増やす前に、既存 coverage と保守負荷を読み取りレビューし、実利用で壊れると発見が遅い未固定導線だけを候補化する
 2. `npm audit --audit-level=low` と `npm outdated --depth=0` を継続監視する
-3. 次の品質改善は、Dashboard からの他 drilldown の表示状態確認や、通知設定 window ごとの理由別件数の境界ケースなど、未自動化の導線を小さく追加する
+3. 次の品質改善は、新規導線追加よりも docs / runbook alignment や E2E 保守性の確認を優先し、具体的な failure mode が見つかった場合だけ小さい PR にする
