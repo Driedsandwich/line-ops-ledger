@@ -442,3 +442,6 @@
 - E2E の backup flow 名称を実体に同期
   - `settings flows` を `backup import/export compatibility path` に改名し、失敗時に import / export / 互換 / 非破壊 / 復元後導線のテストだと分かるようにする
   - テスト手順と期待値は変更しない
+- backup E2E の localStorage JSON assertion を helper 化
+  - backup import/export compatibility path 内で繰り返していた localStorage JSON 完全一致確認を `expectLocalStorageJson` に集約する
+  - テスト対象の導線、期待値、実行範囲は変更しない
