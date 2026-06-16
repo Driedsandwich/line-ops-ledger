@@ -439,3 +439,6 @@
 - PR テンプレートの検証欄を現状に同期
   - 変更概要 / 検証 / Workflow Changes / rollback を分け、`test:sidepanel`、該当時の `test:e2e`、audit、outdated を記録しやすくする
   - docs / runbook / testing docs の更新要否確認を受け入れチェックに追加する
+- E2E の backup flow 名称を実体に同期
+  - `settings flows` を `backup import/export compatibility path` に改名し、失敗時に import / export / 互換 / 非破壊 / 復元後導線のテストだと分かるようにする
+  - テスト手順と期待値は変更しない
