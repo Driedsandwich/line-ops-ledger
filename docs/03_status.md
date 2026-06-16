@@ -28,6 +28,7 @@
   - 部分破損した統合バックアップと活動メモ候補設定の非破壊 E2E を追加。
   - 設定系 E2E は活動種別管理 / 通知設定 persistence / バックアップ復元の責務別に分割。
   - 表示テーマを light / dark で切り替え可能にし、左サイドバーの閉じる / 開く操作と Lines の filter checkbox 配置を調整。
+  - Dashboard の light theme 配色、左ナビ縦配置の間隔、確認待ちサマリー導線を調整。
 - 運用前提: PR 必須 / approval 任意 / required check `check-and-build`
 - 直近の作業: Dashboard / History から Lines / History への主要 drilldown、通知 filter 境界、backup/restore 後の主要表示状態は順次 E2E 固定済み。次は新規 E2E 追加を急がず、現状 coverage と保守負荷を読み取りレビューしてから、実利用で壊れると発見が遅い導線だけを小さい PR で追加確認する。
 - 追加確認: Playwright MCP はローカル `cwd` で起動でき、`/lines/history` の実画面確認が可能
@@ -37,6 +38,7 @@
 ### ダッシュボード (`/`)
 - データ 0 件時の初回ガイド（回線追加 / 確認用サンプルデータ投入 / 履歴確認 / バックアップ復元）
 - `Summary KPI` で `Danger Alerts / Notifications / Monthly Cost / Net Balance` を横並び表示
+- Dashboard 上部に `期限超過` / `通知対象` / `契約終了警告` / `利用実績不足` の確認待ちサマリー導線を表示
 - `Hopping Health` で `安全離脱 / 期限警告 / 実績不足` の 3 リングを表示
 - `Actionable Alerts` を `Critical / Warning / Watch` のアコーディオンで整理
 - `Actionable Alerts` は共通イベントフィード由来で、`安全離脱 / 期限警告 / 実績不足` の3分類を維持したまま並べ替えている
